@@ -10,25 +10,25 @@ type ButtonProps = {
     className: string;
     onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
     disabled?: boolean;
-    type?: string
+    variant?: 'task' | 'report' | 'camera' | 'add';
 }
 
-export function Button({children, onClick, type = 'add', className, disabled = false}: ButtonProps){
-    function variant(type:string) {
+export function Button({children, onClick, variant = 'add', className, disabled = false}: ButtonProps){
+    function getIcon(type:string) {
         if (type === 'task') {
-            return TaskLogo
+            return <TaskLogo />
         } else if (type === 'report'){
-            return ReportLogo
+            return <ReportLogo />
         } else if (type === 'camera'){
-            return CameraLogo
+            return <CameraLogo />
         } else {
-            return PlusButtonLogo
+            return <PlusButtonLogo />
         }
     }
     return (
         <button onClick={onClick} disabled={disabled} className={className}>
-            <div>
-                <img src="{variant(type)}" alt="Logo buttons" />
+            <div className="mb-0.5 px-2">
+                {getIcon(variant)}
             </div>
 
             <span>{children}</span>
