@@ -1,3 +1,4 @@
+import { Button } from "@/global/buttons"
 export default function Testing() {
     return (
         <>
