@@ -1,3 +1,5 @@
+"use client"
+import { Button } from "@/global/buttons"
 export default function Testing() {
     return (
         <>
@@ -7,6 +9,7 @@ export default function Testing() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="border_primary component_styling component_container_square">
+                    <Button className="button_primary_lg">Dynamic Button</Button>
                     <button className=" my-6 mx-6 button_primary_lg">button-lg</button>
                     <button className=" my-6 mx-6 button_primary_xl">button-xl</button>
                     <h3 className="my-6 mx-6 component_heading">Component Heading</h3>
