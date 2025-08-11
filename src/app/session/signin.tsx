@@ -65,7 +65,7 @@ export default function Signin() {
           throw new Error("Failed to request email verification. Try Again later.");
         }
 
-        setCookie('token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        setCookie('access_token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
         router.push(`/session/verify-code?email=${encodeURIComponent(email)}`);
       } else {
         router.push('/dashboard');

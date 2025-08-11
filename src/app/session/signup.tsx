@@ -45,6 +45,10 @@ export default function Signup() {
       });
 
       const responseData = await res.json();
+
+      setCookie('token', responseData.access_token, { path: '/',
+        maxAge: 60 * 60 * 24 * 1,
+        })
       
       if (!res.ok) {
         throw new Error(responseData.message || "Failed to create an account. Try Again later.");
@@ -57,13 +61,13 @@ export default function Signup() {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${responseData.access_token}`,
-          "Content-Type": "application/json",
+          "Content-Type": "application/json",          
         },
         body: JSON.stringify({}),
       });
 
       if (req.ok) {
-      setCookie('token', responseData.access_token, { path: '/',
+      setCookie('access_token', responseData.access_token, { path: '/',
         maxAge: 60 * 60 * 24 * 1,
         });
       router.push(`/session/verify-code?email=${encodeURIComponent(email)}`);
