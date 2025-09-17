@@ -5,7 +5,7 @@ import { jwtVerify } from "jose";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { getCookie } from "cookies-next";
+import { deleteCookie, getCookie, getCookies, hasCookie } from "cookies-next";
 import "./globals.css";
 
 const access_secret = new TextEncoder().encode("synergi_user");
@@ -27,6 +27,7 @@ const publicRoutes = [
 
 const programmaticOnlyRoutes = [
   "/session/verify-code",
+  "/session/register-business",
 ];
 
 const geistSans = Geist({
@@ -39,6 +40,8 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -48,9 +51,11 @@ export default function RootLayout({
   const pathName = usePathname();
   const [isLoading, setIsLoading] = useState(true);
 
+
   useEffect(() => {
     const verifyTokenAndProtectRoutes = async () => {
       const token = getCookie("access_token");
+
       const isProtectedPath = protectedRoutes.some(
         (route) => pathName === route || pathName.startsWith(route + "/")
       );
@@ -64,7 +69,14 @@ export default function RootLayout({
       // Programmatic routes
       if (isProgrammaticPath) {
         if (pathName.startsWith("/session/verify-code")) {
-          const codeToken = getCookie("token");
+          const codeToken = getCookie("verify-token");
+          if (!codeToken) {
+            router.replace("/session");
+            return;
+          }
+        }
+        if (pathName.startsWith("/session/register-business")) {
+          const codeToken = getCookie("register-token");
           if (!codeToken) {
             router.replace("/session");
             return;
@@ -91,12 +103,29 @@ export default function RootLayout({
 
       // Protected routes
       if (isProtectedPath) {
+        const userBusiness = hasCookie("business_id");
+        const userBusinessName = hasCookie("business_name");
+
+        if (!userBusiness || !userBusinessName) {
+          deleteCookie("access_token");
+          deleteCookie("user_email");
+          deleteCookie("user");
+          deleteCookie("verify-token");
+          deleteCookie("register-token");
+          router.replace("/session");
+          return;
+        }
+
         if (typeof token !== "string") {
           router.replace("/session");
           return;
         }
         try {
-          await jwtVerify(token, access_secret);
+          const data = await jwtVerify(token, access_secret);
+          const user_email = getCookie("user_email");
+          if (data.payload.email != user_email) {
+            throw new Error("Invalid token");
+          }
           setIsLoading(false);
         } catch {
           document.cookie =

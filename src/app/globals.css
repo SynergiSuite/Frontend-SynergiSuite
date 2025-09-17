@@ -104,6 +104,24 @@ body {
 
 .button_primary_full {
   background-color: #18181B;
+  cursor: pointer;
+  color: #FAFAFA;
+  height: 40px;
+  width: 100%;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 0 16px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  white-space: nowrap;
+  transition: all 0.3s ease;
+}
+
+.button_primary_full:disabled {
+  background-color: #707076;
   color: #FAFAFA;
   height: 40px;
   width: 100%;

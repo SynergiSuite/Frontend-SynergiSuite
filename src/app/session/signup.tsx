@@ -17,10 +17,12 @@ export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setIsLoading(true);
 
     const data = {
       name,
@@ -46,7 +48,7 @@ export default function Signup() {
 
       const responseData = await res.json();
 
-      setCookie('token', responseData.access_token, { path: '/',
+      setCookie('verify-token', responseData.access_token, { path: '/',
         maxAge: 60 * 60 * 24 * 1,
         })
       
@@ -54,7 +56,6 @@ export default function Signup() {
         throw new Error(responseData.message || "Failed to create an account. Try Again later.");
       }
       setError(null);
-      console.log(responseData.access_token);
 
       // Request email verification
       const req = await fetch("http://localhost:3002/user/request-verify-email", {
@@ -67,13 +68,24 @@ export default function Signup() {
       });
 
       if (req.ok) {
-      setCookie('access_token', responseData.access_token, { path: '/',
+      setCookie('access-token', responseData.access_token, { path: '/',
         maxAge: 60 * 60 * 24 * 1,
         });
-      router.push(`/session/verify-code?email=${encodeURIComponent(email)}`);
+
+      setCookie('user', responseData.user.name, { path: '/',
+        maxAge: 60 * 60 * 24 * 1,
+      });
+
+      setCookie('user_email', responseData.user.email, { path: '/',
+        maxAge: 60 * 60 * 24 * 1,
+      });
+
+      router.push(`/session/verify-code`);
       } else {
         throw new Error("Failed to request email verification. Try Again later.");
       }
+
+      setIsLoading(false);
     } catch (error) {
       if (error instanceof ZodError) {
         setError(error.issues[0]?.message || "Invalid input");
@@ -82,6 +94,7 @@ export default function Signup() {
       } else {
         setError("Unknown error occurred.");
       }
+      setIsLoading(false);
     }
   };
 
@@ -183,7 +196,7 @@ export default function Signup() {
           </a>
         </div>
 
-        <Button type="submit" className="button_primary_full mt-5">
+        <Button type="submit" disabled={isLoading} className={`button_primary_full ${isLoading ? "bg-gray-600" : ""} mt-5`}>
           Create Account
         </Button>
       </form>

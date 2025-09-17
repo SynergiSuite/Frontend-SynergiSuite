@@ -13,6 +13,7 @@ import { ZodError } from "zod";
 import { setCookie } from "cookies-next";
 
 export default function Signin() {
+  const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +22,7 @@ export default function Signin() {
   // Upon submit
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
+    setIsLoading(true);
     const data = {
       email,
       password_hash: password,
@@ -44,9 +45,10 @@ export default function Signin() {
       });
 
       const responseData = await res.json();
+      console.log(responseData)
       
       if (!res.ok) {
-        throw new Error( "Failed to login. Try Again later.");
+        throw new Error( responseData.message || "Failed to login. Try Again later.");
       }
 
       // If user is created and not verified
@@ -63,14 +65,24 @@ export default function Signin() {
         });
         if (!req.ok) {
           throw new Error("Failed to request email verification. Try Again later.");
-        }
+        } 
 
+        setCookie('verify-token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
         setCookie('access_token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        router.push(`/session/verify-code?email=${encodeURIComponent(email)}`);
+        setCookie('user_email', responseData.user.email, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        setCookie('user', responseData.user.name, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        router.push(`/session/verify-code`);
       } else {
+        setCookie('access_token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        setCookie('user_email', responseData.user.email, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        setCookie('user', responseData.user.name, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        setCookie('business_name', responseData.user.business.name, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        setCookie('business_id', responseData.user.business.business_id, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        // setCookie('role', responseData.user.role, { path: '/', maxAge: 60 * 60 * 24 * 1 });
         router.push('/dashboard');
       }
       setError(null);
+      setIsLoading(false);
     } catch (error) {
       if (error instanceof ZodError) {
         setError(error.issues[0]?.message || "Invalid input");
@@ -79,6 +91,7 @@ export default function Signin() {
       } else {
         setError("Unknown error occurred.");
       }
+      setIsLoading(false);
     }
   };
 
@@ -161,7 +174,7 @@ export default function Signin() {
           </a>
         </div>
 
-        <Button type="submit" className="button_primary_full mt-5">
+        <Button type="submit" disabled={isLoading} className="button_primary_full mt-5">
           Login
         </Button>
       </form>
