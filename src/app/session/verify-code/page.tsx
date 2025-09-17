@@ -1,10 +1,9 @@
 "use client";
 
-
 import { useState, useEffect, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { ZodError } from 'zod';
-import { getCookie } from 'cookies-next';
+import { deleteCookie, getCookie, setCookie } from 'cookies-next';
 import { Button } from '@/global/buttons';
 import { verificationSchema } from '../schema/verificationSchema';
 import { motion } from 'framer-motion';
@@ -13,23 +12,19 @@ import { Terminal, ChevronLeft } from 'lucide-react';
 
 export default function VerifyCode() {
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(59);
   const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(6).fill(null));
 
   // Get email from URL query parameters
   useEffect(() => {
-    const emailParam = searchParams?.get('email');
-    if (emailParam) {
-      setEmail(decodeURIComponent(emailParam));
-    } else {
-      // If no email is provided, you might want to redirect back to signup
-      // router.push('/session/signup');
-    }
-  }, [searchParams]);
+    const email = getCookie('user_email');
+    setEmail(email as string);
+  }, []);
 
   // Handle back button click
   const handleBack = () => {
@@ -60,6 +55,7 @@ export default function VerifyCode() {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     const verificationCode = code.join('');
 
     const validation = await verificationSchema.safeParse({ userCode: verificationCode });
@@ -71,11 +67,11 @@ export default function VerifyCode() {
     const userCode = validation.data;
     
     try {
-      const token = getCookie('token');
+      const accessToken = getCookie('access-token');
+      setToken(accessToken as string);
       if (!token) {
         throw new Error('No authentication token found. Please sign up again.');
       }
-
       const response = await fetch('http://localhost:3002/auth/verify-email', {
         method: 'PATCH',
         headers: {
@@ -90,7 +86,9 @@ export default function VerifyCode() {
       if (!response.ok) {
         throw new Error(data.message || 'Verification failed');
       }
-      router.push('/dashboard');
+      deleteCookie('verify-token');
+      setCookie('register-token', token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+      router.push('/session/register-business');
       
     } catch (error) {
       if (error instanceof ZodError) {
@@ -100,8 +98,8 @@ export default function VerifyCode() {
       } else {
         setError("Unknown error occurred.");
       }
+      setIsLoading(false);
       console.error('Verification error:', error);
-      // Handle error (show error message to user)
     }
   };
 
@@ -196,6 +194,7 @@ export default function VerifyCode() {
           {/* Verify Button */}
           <Button
             type="submit"
+            disabled={isLoading}
             className="button_primary_full"
           >
             Verify

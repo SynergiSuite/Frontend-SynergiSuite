@@ -26,6 +26,7 @@ const programmaticOnlyRoutes = [
   '/session/verify-code',
 ];
 
+// In middleware.ts
 async function verifyJWT(token: string): Promise<JWTPayload | null> {
   try {
     const result = await jwtVerify(token, secret);
@@ -76,14 +77,15 @@ export async function middleware(request: NextRequest) {
   // -------------------------
   // 2. Handle public routes
   // -------------------------
-  const isPublic = publicRoutes.some(route => pathname.startsWith(route));
+  const isPublic = publicRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
   
   if (isPublic) {
-    if (accessToken && (pathname.startsWith('/login') || pathname.startsWith('/signup'))) {
-      const payload = await verifyJWT(accessToken);
-      if (payload) {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
-      }
+    // If user is already logged in and tries to access login/signup, redirect to dashboard
+    if (accessToken && (pathname === '/login' || pathname === '/signup')) {
+      const response = NextResponse.redirect(new URL('/dashboard', request.url));
+      return response;
     }
     return NextResponse.next();
   }
@@ -91,7 +93,9 @@ export async function middleware(request: NextRequest) {
   // -------------------------
   // 3. Handle protected routes
   // -------------------------
-  const isProtected = protectedRoutes.some(route => pathname.startsWith(route));
+  const isProtected = protectedRoutes.some(route => 
+    pathname === route || pathname.startsWith(route + '/')
+  );
 
   if (isProtected) {
     if (!accessToken) {
@@ -100,8 +104,15 @@ export async function middleware(request: NextRequest) {
       return response;
     }
 
-    const payload = await verifyJWT(accessToken);
-    if (!payload) {
+    try {
+      const payload = await verifyJWT(accessToken);
+      if (!payload) {
+        throw new Error('Invalid token');
+      }
+      // If token is valid, continue to the requested page
+      return NextResponse.next();
+    } catch (error) {
+      // If token verification fails, redirect to login
       const response = NextResponse.redirect(new URL('/login', request.url));
       response.cookies.delete('access_token');
       return response;
