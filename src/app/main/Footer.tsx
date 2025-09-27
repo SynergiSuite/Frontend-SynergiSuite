@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 text-gray-700">
           {/* Brand */}
           <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">CollabFlow</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">SynergiSuite</h2>
             <p className="text-sm text-gray-600">
               The all-in-one platform for team collaboration, productivity, and project management.
             </p>
@@ -49,7 +49,7 @@ export default function Footer() {
 
         {/* Copyright */}
         <div className="mt-10 border-t border-gray-300 pt-4 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} CollabFlow. All rights reserved.
+          &copy; {new Date().getFullYear()} SynergiSuite. All rights reserved.
         </div>
       </footer>
     </>

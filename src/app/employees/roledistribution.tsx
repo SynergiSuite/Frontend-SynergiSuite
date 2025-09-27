@@ -2,15 +2,19 @@
 import React from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-export default function RoleDistribution() {
-  const roles = [
-    { label: "Analysts", value: 20, color: "#3B82F6" },   // blue
-    { label: "Designers", value: 15, color: "#EC4899" },  // pink
-    { label: "Developers", value: 40, color: "#22C55E" }, // green
-    { label: "Managers", value: 10, color: "#EAB308" },   // yellow
-    { label: "Support", value: 15, color: "#8B5CF6" },    // purple
-  ];
+type Role = {
+  label: string;
+  value: number;
+};
 
+type Props = {
+  roles: Role[];
+};
+
+const COLORS = ["#3B82F6", "#EC4899", "#22C55E", "#EAB308", "#8B5CF6", "#F97316"];
+
+
+export default function RoleDistribution({ roles }: Props) {
   return (
     <div className="bg-white p-4 rounded-lg shadow">
       <h2 className="text-lg font-bold mb-4">Role Distribution</h2>
@@ -27,7 +31,7 @@ export default function RoleDistribution() {
               paddingAngle={2}
             >
               {roles.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Pie>
           </PieChart>
@@ -40,7 +44,7 @@ export default function RoleDistribution() {
           <div key={idx} className="flex items-center gap-2">
             <span
               className="w-3 h-3 rounded-full"
-              style={{ backgroundColor: role.color }}
+              style={{ backgroundColor: COLORS[idx % COLORS.length] }}
             ></span>
             <span className="text-sm">{role.label}</span>
           </div>

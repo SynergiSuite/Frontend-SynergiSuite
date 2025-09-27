@@ -10,6 +10,7 @@ export default function dashboard() {
     const [userEmail, setUserEmail] = useState<string>("");
     const [userBusinessName, setUserBusinessName] = useState<string>("");
     const [userBusinessId, setUserBusinessId] = useState<string>("");
+    const [userRole, setUserRole] = useState<string>("");
     const [token, setToken] = useState<string>("");
 
     const router = useRouter();
@@ -25,47 +26,20 @@ export default function dashboard() {
         setUserBusinessName(userBusinessName as string);
         const userBusinessId = getCookie("business_id");
         setUserBusinessId(userBusinessId as string);
+        const userRole = getCookie("role");
+        setUserRole(userRole as string);
     }, []);
 
-    const logout = async () => {
-        setIsLoading(true);
-        const token = getCookie("access_token");
-        setToken(token as string);
-        try {
-            const res = await fetch("http://localhost:3002/auth/logout", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${token}`
-                },
-            });
-            const responseData = await res.json();
-            if (!res.ok) {
-                throw new Error(responseData.message || "Failed to logout. Try Again later.");
-            }
-            deleteCookie("access_token");
-            deleteCookie("user_email");
-            deleteCookie("user");
-            deleteCookie("business_name");
-            deleteCookie("business_id");
-            router.replace("/session");
-        } catch (error) {
-            console.log(error);
-        }
-        setIsLoading(false);
-    }
     return (
 
-        <div>
+        <div className=''>
             <h1>Dashboard</h1>
             <p>{userName}</p>
             <p>{userEmail}</p>
             <p>{userBusinessName}</p>
             <p>{userBusinessId}</p>
+            <p>{userRole}</p>
             <p>{token}</p>
-            <Button className="button_primary_full" type='button' disabled={isLoading} onClick={logout} >
-                Logout
-            </Button>
         </div>
     );
 }

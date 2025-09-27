@@ -3,15 +3,19 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { jwtVerify } from "jose";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Children, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { deleteCookie, getCookie, getCookies, hasCookie } from "cookies-next";
 import "./globals.css";
+import Sidebar from "../components/ui/sidebar";
+import Navbar from "../components/ui/navbar";
+import LoaderCustom from "../components/ui/loader-custom";
 
 const access_secret = new TextEncoder().encode("synergi_user");
 
 const protectedRoutes = [
   "/dashboard",
+  "/employees",
   "/settings",
   "/projects",
   "/crm",
@@ -50,6 +54,7 @@ export default function RootLayout({
   const router = useRouter();
   const pathName = usePathname();
   const [isLoading, setIsLoading] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false);
 
 
   useEffect(() => {
@@ -124,15 +129,19 @@ export default function RootLayout({
           const data = await jwtVerify(token, access_secret);
           const user_email = getCookie("user_email");
           if (data.payload.email != user_email) {
+            setShowSidebar(false);
             throw new Error("Invalid token");
           }
+          setShowSidebar(true);
           setIsLoading(false);
         } catch {
           document.cookie =
             "access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+            setShowSidebar(false)
           router.replace("/session");
         }
       } else {
+        setShowSidebar(false)
         setIsLoading(false);
       }
     };
@@ -143,10 +152,34 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="px-6">
-          {isLoading ? <div>Loading...</div> : children}
+        <div className="flex flex-col min-h-screen">
+          {/* Navbar (always on top) */}
+          {showSidebar && (
+            <header className="border-b border-gray-200 bg-white">
+              <Navbar />
+            </header>
+          )}
+  
+          <div className="flex flex-1">
+            {/* Sidebar (left) */}
+            {showSidebar && (
+              <aside className="w-64 border-r border-gray-200 bg-white">
+                <Sidebar />
+              </aside>
+            )}
+  
+            {/* Main content (right) */}
+            <main className="flex-1 bg-gray-50 p-10 overflow-y-auto">
+              {isLoading ? (
+                <LoaderCustom />
+              ) : (
+                children
+              )}
+            </main>
+          </div>
         </div>
       </body>
     </html>
   );
+  
 }

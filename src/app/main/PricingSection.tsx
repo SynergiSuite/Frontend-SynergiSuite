@@ -1,3 +1,4 @@
+import { Button } from "@/global/buttons";
 import React from "react";
 
 export default function PricingSection() {
@@ -29,9 +30,9 @@ export default function PricingSection() {
                 <li>✔ Basic reporting</li>
                 <li>✔ API access</li>
               </ul>
-              <button onClick={() => handleClick("Starter")} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              <Button  onClick={() => handleClick("Starter")} className="button_primary_full">
                Get Started
-              </button>
+              </Button>
             </div>
 
             {/* Professional Plan */}
@@ -48,9 +49,9 @@ export default function PricingSection() {
                 <li>✔ Priority support</li>
                 <li>✔ Custom integrations</li>
               </ul>
-              <button onClick={() => handleClick("Professional")} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              <Button  onClick={() => handleClick("Professional")} className="button_primary_full">
                Get Started
-              </button>
+              </Button>
             </div>
 
             {/* Enterprise Plan */}
@@ -66,9 +67,9 @@ export default function PricingSection() {
                 <li>✔ Dedicated account manager</li>
                 <li>✔ Custom deployment</li>
               </ul>
-              <button onClick={() => handleClick("Enterprise")} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-lg transition duration-300">
+              <Button  onClick={() => handleClick("Enterprise")} className="button_primary_full">
                Get Started
-              </button>
+              </Button>
             </div>
           </div>
         </div>

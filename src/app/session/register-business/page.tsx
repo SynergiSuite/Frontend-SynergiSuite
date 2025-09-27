@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { Button } from "@/global/buttons";
@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Header from "./header";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerBusinessScheme } from "../schema/registerBusinessSchema";
-import { json, ZodError } from "zod";
+import { ZodError } from "zod";
 import { deleteCookie, getCookie, setCookie } from "cookies-next";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -18,7 +18,7 @@ interface Category {
 
 export default function RegisterBusiness() {
   const [selectedOption, setSelectedOption] = useState<string>("");
-  const [token, setToken] = useState<string>("");
+  const [accessToken, setAccessToken] = useState<string>("");
   const [data, setData] = useState<Category[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,26 +27,26 @@ export default function RegisterBusiness() {
   const [name, setName] = useState<string>("");
   const [number_of_employees, setNumberOfEmployees] = useState<number>(0);
   const [category_id, setCategoryID] = useState<number>(0);
-  const [invitationLink, setInvitationLink] = useState("");
+  const [token, setToken] = useState("");
   const router = useRouter();
 
   // Category Call
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = getCookie('access_token');
-        setToken(token as string);
+        const token = getCookie("access_token");
+        setAccessToken(token as string);
         setIsLoading(true);
         // Replace this URL with your actual API endpoint
-        const response = await fetch('http://localhost:3002/category/get-all');
+        const response = await fetch("http://localhost:3002/category/get-all");
         if (!response.ok) {
-          throw new Error('Failed to fetch data');
+          throw new Error("Failed to fetch data");
         }
         const result = await response.json();
         setData(result);
       } catch (error) {
-        console.error('Error fetching data:', error);
-        setError(error instanceof Error ? error.message : 'An error occurred');
+        console.error("Error fetching data:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
       } finally {
         setIsLoading(false);
       }
@@ -70,22 +70,67 @@ export default function RegisterBusiness() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedOption === "Register a new Business") {
-      console.log({ name, number_of_employees, category_id });
       registerBusiness();
     } else if (selectedOption === "Join an existing Business") {
-      console.log({ invitationLink });
+      joinBusiness();
     }
   };
 
-  const joinBusiness = () => {}
+  const logout = () => {
+    deleteCookie("access_token");
+    deleteCookie("register-token");
+    deleteCookie("user_email");
+    deleteCookie("user");
+  };
 
-  const registerBusiness = async() => {
+  const joinBusiness = async () => {
+    const accessToken = getCookie("access_token");
+    try {
+      const response = await fetch(
+        "http://localhost:3002/business/join-business",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ token }),
+        },
+      );
+
+      const responseData = await response.json();
+      if (!response.ok) {
+        setError(responseData.message);
+      } else {
+        setCookie("business_name", responseData.business_name, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("business_id", responseData.business_id, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("role", responseData.role_name, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+
+        deleteCookie("register-token");
+
+        router.push("/dashboard");
+      }
+    } catch (error) {
+      setError(error);
+    }
+  };
+
+  const registerBusiness = async () => {
     setIsLoading(true);
     const data = {
       name,
       number_of_employees,
       category_id,
-    }
+    };
 
     try {
       const validation = registerBusinessScheme.safeParse(data);
@@ -99,21 +144,29 @@ export default function RegisterBusiness() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
+          Authorization: `Bearer ${accessToken}`,
         },
         body: userData,
       });
 
       const responseData = await res.json();
       if (!res.ok) {
-        throw new Error(responseData.message || "Failed to register business. Try Again later.");
+        throw new Error(
+          responseData.message ||
+            "Failed to register business. Try Again later.",
+        );
       }
 
       deleteCookie("register-token");
-      setCookie("business_name", responseData.updated_user.business.name, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-      setCookie("business_id", responseData.updated_user.business.business_id, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+      setCookie("business_name", responseData.updated_user.business.name, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 1,
+      });
+      setCookie("business_id", responseData.updated_user.business.business_id, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 1,
+      });
       router.replace("/dashboard");
-
     } catch (error) {
       if (error instanceof ZodError) {
         setError(error.issues[0]?.message || "Invalid input");
@@ -124,7 +177,7 @@ export default function RegisterBusiness() {
       }
     }
     setIsLoading(false);
-  }
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4">
@@ -138,7 +191,7 @@ export default function RegisterBusiness() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className='my-4'
+            className="my-4"
           >
             <Alert variant="destructive">
               <Terminal />
@@ -223,8 +276,10 @@ export default function RegisterBusiness() {
                   <input
                     type="number"
                     id="numberOfEmployees"
-                    value={number_of_employees} 
-                    onChange={(e) => setNumberOfEmployees(Number(e.target.value))}
+                    value={number_of_employees}
+                    onChange={(e) =>
+                      setNumberOfEmployees(Number(e.target.value))
+                    }
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
                     placeholder="Enter number of employees"
                     min="1"
@@ -291,15 +346,19 @@ export default function RegisterBusiness() {
                   <input
                     type="text"
                     id="invitationLink"
-                    value={invitationLink}
-                    onChange={(e) => setInvitationLink(e.target.value)}
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
                     className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
                     placeholder="Paste your invitation link here"
                     required
                   />
                 </div>
 
-                <Button type="submit" className="button_primary_full" disabled={isLoading}>
+                <Button
+                  type="submit"
+                  className="button_primary_full"
+                  disabled={isLoading}
+                >
                   Join Now
                 </Button>
               </motion.div>
@@ -309,7 +368,7 @@ export default function RegisterBusiness() {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => router.back()}
+            onClick={() => logout()}
             className="text-blue-600 hover:text-blue-800 text-sm font-medium"
           >
             Back to login

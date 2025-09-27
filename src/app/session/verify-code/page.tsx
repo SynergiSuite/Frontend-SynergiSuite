@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
-import { ZodError } from 'zod';
-import { deleteCookie, getCookie, setCookie } from 'cookies-next';
-import { Button } from '@/global/buttons';
-import { verificationSchema } from '../schema/verificationSchema';
-import { motion } from 'framer-motion';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Terminal, ChevronLeft } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { ZodError } from "zod";
+import { deleteCookie, getCookie, setCookie } from "cookies-next";
+import { Button } from "@/global/buttons";
+import { verificationSchema } from "../schema/verificationSchema";
+import { motion } from "framer-motion";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Terminal, ChevronLeft } from "lucide-react";
 
 export default function VerifyCode() {
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [code, setCode] = useState(['', '', '', '', '', '']);
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState(["", "", "", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(59);
   const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(6).fill(null));
 
   // Get email from URL query parameters
   useEffect(() => {
-    const email = getCookie('user_email');
+    const email = getCookie("user_email");
     setEmail(email as string);
   }, []);
 
@@ -34,7 +34,7 @@ export default function VerifyCode() {
   // Handle input change
   const handleChange = (index: number, value: string) => {
     if (value && !/^\d*$/.test(value)) return;
-    
+
     const newCode = [...code];
     newCode[index] = value;
     setCode(newCode);
@@ -46,8 +46,11 @@ export default function VerifyCode() {
   };
 
   // Handle backspace
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !code[index] && index > 0) {
+  const handleKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (e.key === "Backspace" && !code[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
   };
@@ -56,40 +59,41 @@ export default function VerifyCode() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const verificationCode = code.join('');
+    const verificationCode = code.join("");
 
-    const validation = await verificationSchema.safeParse({ userCode: verificationCode });
+    const validation = await verificationSchema.safeParse({
+      otp: verificationCode,
+    });
     if (!validation.success) {
       setError(validation.error.issues[0]?.message || "Invalid Input");
       return;
     }
 
-    const userCode = validation.data;
-    
+    const otp = validation.data;
+
     try {
-      const accessToken = getCookie('access-token');
+      const accessToken = getCookie("access_token");
       setToken(accessToken as string);
-      if (!token) {
-        throw new Error('No authentication token found. Please sign up again.');
-      }
-      const response = await fetch('http://localhost:3002/auth/verify-email', {
-        method: 'PATCH',
+      const response = await fetch("http://localhost:3002/auth/verify-email", {
+        method: "PATCH",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify(userCode)
+        body: JSON.stringify(otp),
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
-        throw new Error(data.message || 'Verification failed');
+        throw new Error(data.message || "Verification failed");
       }
-      deleteCookie('verify-token');
-      setCookie('register-token', token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-      router.push('/session/register-business');
-      
+      deleteCookie("verify-token");
+      setCookie("register-token", token, {
+        path: "/",
+        maxAge: 60 * 60 * 24 * 1,
+      });
+      router.push("/session/register-business");
     } catch (error) {
       if (error instanceof ZodError) {
         setError(error.issues[0]?.message || "Invalid input");
@@ -99,7 +103,7 @@ export default function VerifyCode() {
         setError("Unknown error occurred.");
       }
       setIsLoading(false);
-      console.error('Verification error:', error);
+      console.error("Verification error:", error);
     }
   };
 
@@ -118,7 +122,7 @@ export default function VerifyCode() {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
   // Handle resend code
@@ -146,14 +150,14 @@ export default function VerifyCode() {
           Enter verification code
         </h1>
 
-         {/* Error Alert */}
-         {error && (
+        {/* Error Alert */}
+        {error && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
-            className='my-4'
+            className="my-4"
           >
             <Alert variant="destructive">
               <Terminal />
@@ -169,7 +173,7 @@ export default function VerifyCode() {
           We've sent a 6-digit code to:
         </p>
         <p className="text-sm font-medium text-gray-900 mb-8">
-          {email || 'your email address'}
+          {email || "your email address"}
         </p>
 
         {/* Verification Code Inputs */}
@@ -178,7 +182,9 @@ export default function VerifyCode() {
             {Array.from({ length: 6 }).map((_, index) => (
               <input
                 key={index}
-                ref={(el) => { inputRefs.current[index] = el; }}
+                ref={(el) => {
+                  inputRefs.current[index] = el;
+                }}
                 type="text"
                 inputMode="numeric"
                 maxLength={1}
@@ -217,7 +223,7 @@ export default function VerifyCode() {
           </p>
           <button
             className={`text-blue-600 hover:text-blue-800 font-medium ${
-              timeLeft > 0 ? 'opacity-50 cursor-not-allowed' : ''
+              timeLeft > 0 ? "opacity-50 cursor-not-allowed" : ""
             }`}
             disabled={timeLeft > 0}
             onClick={timeLeft === 0 ? handleResend : undefined}
