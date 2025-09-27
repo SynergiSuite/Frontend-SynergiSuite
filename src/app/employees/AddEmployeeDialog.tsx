@@ -5,9 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { X } from "lucide-react";
 import { Button } from "@/global/buttons";
-import { getCookie } from "cookies-next";
-import { Loader } from "@/components/ui/loader";
-import { is } from "zod/v4/locales";
+import { CookieManager } from "@/lib/cookieManager";
 
 type AddEmployeeDialogProps = {
   isOpen: boolean;
@@ -34,7 +32,7 @@ export default function AddEmployeeDialog({
   useEffect(() => {
     const getRoles = async () => {
       try {
-        const token = await getCookie("access_token");
+        const token = await CookieManager("get", "access-token");
         const response = await fetch("http://localhost:3002/roles/get-all", {
           method: "GET",
           headers: {
@@ -80,7 +78,7 @@ export default function AddEmployeeDialog({
     setIsSubmitting(true);
 
     try {
-      const token = await getCookie("access_token");
+      const token = await CookieManager("get", "access-token");
       const response = await fetch("http://localhost:3002/business/invite", {
         method: "POST",
         headers: {

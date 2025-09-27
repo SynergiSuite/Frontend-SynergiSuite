@@ -6,24 +6,22 @@ import RoleDistribution from "./roledistribution";
 import EmployeeListHeader from "./listheader";
 import EmployeeListFooter from "./listfooter";
 import EmployeeList from "./employeelist";
-import { getCookie } from "cookies-next";
+import { CookieManager } from "@/lib/cookieManager";
 
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [business, setBusiness] = useState("");
   const [totalEmployees, setTotalEmployees] = useState<number>(0);
   const [activeEmployees, setActiveEmployees] = useState<number>(0);
-  const [token, setToken] = useState<string>("");
-  const [employee, setEmployee] = useState<any[]>([]);
+  const [employee, setEmployee] = useState<[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const totalEmployees = async () => {
       setIsLoading(true);
-      const token = getCookie("access_token");
-      setToken(token as string);
+      const token = CookieManager("get", "access-token");
 
-      const business_name = getCookie("business_name");
+      const business_name = CookieManager("get", "business-name");
       setBusiness(business_name as string);
       try {
         const res = await fetch(

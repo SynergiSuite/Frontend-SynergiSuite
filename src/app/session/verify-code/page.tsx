@@ -3,16 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ZodError } from "zod";
-import { deleteCookie, getCookie, setCookie } from "cookies-next";
 import { Button } from "@/global/buttons";
 import { verificationSchema } from "../schema/verificationSchema";
 import { motion } from "framer-motion";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, ChevronLeft } from "lucide-react";
+import { CookieManager } from "@/lib/cookieManager";
 
 export default function VerifyCode() {
   const [error, setError] = useState<string | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState(["", "", "", "", "", ""]);
@@ -22,7 +21,7 @@ export default function VerifyCode() {
 
   // Get email from URL query parameters
   useEffect(() => {
-    const email = getCookie("user_email");
+    const email = CookieManager("get", "user-email");
     setEmail(email as string);
   }, []);
 
@@ -61,7 +60,7 @@ export default function VerifyCode() {
     setIsLoading(true);
     const verificationCode = code.join("");
 
-    const validation = await verificationSchema.safeParse({
+    const validation = verificationSchema.safeParse({
       otp: verificationCode,
     });
     if (!validation.success) {
@@ -72,8 +71,7 @@ export default function VerifyCode() {
     const otp = validation.data;
 
     try {
-      const accessToken = getCookie("access_token");
-      setToken(accessToken as string);
+      const accessToken = CookieManager("get", "access-token");
       const response = await fetch("http://localhost:3002/auth/verify-email", {
         method: "PATCH",
         headers: {
@@ -88,11 +86,8 @@ export default function VerifyCode() {
       if (!response.ok) {
         throw new Error(data.message || "Verification failed");
       }
-      deleteCookie("verify-token");
-      setCookie("register-token", token, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 1,
-      });
+      CookieManager("delete", "verify-token");
+      CookieManager("set", "register-token", accessToken as string);
       router.push("/session/register-business");
     } catch (error) {
       if (error instanceof ZodError) {

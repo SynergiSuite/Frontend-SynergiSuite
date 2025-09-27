@@ -3,13 +3,14 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import { jwtVerify } from "jose";
 import { useRouter } from "next/navigation";
-import { Children, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { deleteCookie, getCookie, getCookies, hasCookie } from "cookies-next";
+import { hasCookie } from "cookies-next";
 import "./globals.css";
 import Sidebar from "../components/ui/sidebar";
 import Navbar from "../components/ui/navbar";
 import LoaderCustom from "../components/ui/loader-custom";
+import { CookieManager } from "@/lib/cookieManager";
 
 const access_secret = new TextEncoder().encode("synergi_user");
 
@@ -23,11 +24,7 @@ const protectedRoutes = [
   "/profile",
 ];
 
-const publicRoutes = [
-  "/login",
-  "/signup",
-  "/forgot-password",
-];
+const publicRoutes = ["/login", "/signup", "/forgot-password"];
 
 const programmaticOnlyRoutes = [
   "/session/verify-code",
@@ -44,8 +41,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,32 +51,31 @@ export default function RootLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
 
-
   useEffect(() => {
     const verifyTokenAndProtectRoutes = async () => {
-      const token = getCookie("access_token");
+      const token = CookieManager("get", "access-token");
 
       const isProtectedPath = protectedRoutes.some(
-        (route) => pathName === route || pathName.startsWith(route + "/")
+        (route) => pathName === route || pathName.startsWith(route + "/"),
       );
       const isPublicPath = publicRoutes.some(
-        (route) => pathName === route || pathName.startsWith(route + "/")
+        (route) => pathName === route || pathName.startsWith(route + "/"),
       );
       const isProgrammaticPath = programmaticOnlyRoutes.some(
-        (route) => pathName === route || pathName.startsWith(route + "/")
+        (route) => pathName === route || pathName.startsWith(route + "/"),
       );
 
       // Programmatic routes
       if (isProgrammaticPath) {
         if (pathName.startsWith("/session/verify-code")) {
-          const codeToken = getCookie("verify-token");
+          const codeToken = CookieManager("get", "verify-token");
           if (!codeToken) {
             router.replace("/session");
             return;
           }
         }
         if (pathName.startsWith("/session/register-business")) {
-          const codeToken = getCookie("register-token");
+          const codeToken = CookieManager("get", "register-token");
           if (!codeToken) {
             router.replace("/session");
             return;
@@ -112,11 +106,11 @@ export default function RootLayout({
         const userBusinessName = hasCookie("business_name");
 
         if (!userBusiness || !userBusinessName) {
-          deleteCookie("access_token");
-          deleteCookie("user_email");
-          deleteCookie("user");
-          deleteCookie("verify-token");
-          deleteCookie("register-token");
+          CookieManager("delete", "access-token");
+          CookieManager("delete", "user-email");
+          CookieManager("delete", "verify-token");
+          CookieManager("delete", "register-token");
+          CookieManager("delete", "user");
           router.replace("/session");
           return;
         }
@@ -127,7 +121,7 @@ export default function RootLayout({
         }
         try {
           const data = await jwtVerify(token, access_secret);
-          const user_email = getCookie("user_email");
+          const user_email = CookieManager("get", "user-email");
           if (data.payload.email != user_email) {
             setShowSidebar(false);
             throw new Error("Invalid token");
@@ -136,12 +130,12 @@ export default function RootLayout({
           setIsLoading(false);
         } catch {
           document.cookie =
-            "access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
-            setShowSidebar(false)
+            "access-token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+          setShowSidebar(false);
           router.replace("/session");
         }
       } else {
-        setShowSidebar(false)
+        setShowSidebar(false);
         setIsLoading(false);
       }
     };
@@ -151,7 +145,9 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
         <div className="flex flex-col min-h-screen">
           {/* Navbar (always on top) */}
           {showSidebar && (
@@ -159,7 +155,7 @@ export default function RootLayout({
               <Navbar />
             </header>
           )}
-  
+
           <div className="flex flex-1">
             {/* Sidebar (left) */}
             {showSidebar && (
@@ -167,19 +163,14 @@ export default function RootLayout({
                 <Sidebar />
               </aside>
             )}
-  
+
             {/* Main content (right) */}
             <main className="flex-1 bg-gray-50 p-10 overflow-y-auto">
-              {isLoading ? (
-                <LoaderCustom />
-              ) : (
-                children
-              )}
+              {isLoading ? <LoaderCustom /> : children}
             </main>
           </div>
         </div>
       </body>
     </html>
   );
-  
 }

@@ -1,22 +1,21 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Plus, Download, Filter } from "lucide-react";
+import { Download, Filter } from "lucide-react";
 import { getCookie } from "cookies-next";
 import { Button } from "@/global/buttons";
 import dynamic from "next/dynamic";
 
 // Dynamically import the dialog to avoid SSR issues with modals
-const AddEmployeeDialog = dynamic(
-  () => import("./AddEmployeeDialog"),
-  { ssr: false }
-);
+const AddEmployeeDialog = dynamic(() => import("./AddEmployeeDialog"), {
+  ssr: false,
+});
 
 export default function UserActions() {
   const [role, setRole] = useState("");
   const allowedRoles = ["Founder", "Manager"];
 
   useEffect(() => {
-    const role  = getCookie("role");
+    const role = getCookie("role");
     setRole(role as string);
   }, []);
 
@@ -44,14 +43,17 @@ export default function UserActions() {
       {/* Add User and Dialog */}
       {allowedRoles.includes(role) ? (
         <>
-          <Button 
-            variant="add" 
-            className="button_primary_lg py-6" 
+          <Button
+            variant="add"
+            className="button_primary_lg py-6"
             onClick={handleAddUser}
           >
             Add User
           </Button>
-          <AddEmployeeDialog isOpen={isDialogOpen} onClose={handleCloseDialog} />
+          <AddEmployeeDialog
+            isOpen={isDialogOpen}
+            onClose={handleCloseDialog}
+          />
         </>
       ) : null}
 

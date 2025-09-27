@@ -10,7 +10,7 @@ import { Button } from "@/global/buttons";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { setCookie } from 'cookies-next';
+import { CookieManager } from "@/lib/cookieManager";
 
 export default function Signup() {
   const [name, setName] = useState("");
@@ -27,7 +27,7 @@ export default function Signup() {
     const data = {
       name,
       email,
-      password_hash: password,
+      password: password,
     };
 
     try {
@@ -47,44 +47,38 @@ export default function Signup() {
       });
 
       const responseData = await res.json();
-
-      setCookie('verify-token', responseData.access_token, { path: '/',
-        maxAge: 60 * 60 * 24 * 1,
-        })
-      
       if (!res.ok) {
-        throw new Error(responseData.message || "Failed to create an account. Try Again later.");
+        throw new Error(
+          responseData.message ||
+            "Failed to create an account. Try Again later.",
+        );
       }
       setError(null);
+      CookieManager("set", "verify-token", responseData.access_token);
 
       // Request email verification
-      const req = await fetch("http://localhost:3002/user/request-verify-email", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${responseData.access_token}`,
-          "Content-Type": "application/json",          
+      const req = await fetch(
+        "http://localhost:3002/user/request-verify-email",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${responseData.access_token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({}),
         },
-        body: JSON.stringify({}),
-      });
+      );
 
       if (req.ok) {
-      setCookie('access-token', responseData.access_token, { path: '/',
-        maxAge: 60 * 60 * 24 * 1,
-        });
-
-      setCookie('user', responseData.user.name, { path: '/',
-        maxAge: 60 * 60 * 24 * 1,
-      });
-
-      setCookie('user_email', responseData.user.email, { path: '/',
-        maxAge: 60 * 60 * 24 * 1,
-      });
-
-      router.push(`/session/verify-code`);
+        CookieManager("set", "access-token", responseData.access_token);
+        CookieManager("set", "user", responseData.name);
+        CookieManager("set", "user-email", responseData.email);
+        router.push(`/session/verify-code`);
       } else {
-        throw new Error("Failed to request email verification. Try Again later.");
+        throw new Error(
+          "Failed to request email verification. Try Again later.",
+        );
       }
-
       setIsLoading(false);
     } catch (error) {
       if (error instanceof ZodError) {
@@ -157,8 +151,8 @@ export default function Signup() {
               name="email"
               value={email}
               onChange={(e) => {
-                setEmail(e.target.value)
-                setError(null)
+                setEmail(e.target.value);
+                setError(null);
               }}
               id="emailSignup"
               className="w-full focus:outline-none text-gray-600"
@@ -178,8 +172,8 @@ export default function Signup() {
               name="password"
               value={password}
               onChange={(e) => {
-                setPassword(e.target.value)
-                setError(null)
+                setPassword(e.target.value);
+                setError(null);
               }}
               id="passwordSignup"
               className="w-full focus:outline-none text-gray-600"
@@ -196,7 +190,11 @@ export default function Signup() {
           </a>
         </div>
 
-        <Button type="submit" disabled={isLoading} className={`button_primary_full ${isLoading ? "bg-gray-600" : ""} mt-5`}>
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className={`button_primary_full ${isLoading ? "bg-gray-600" : ""} mt-5`}
+        >
           Create Account
         </Button>
       </form>

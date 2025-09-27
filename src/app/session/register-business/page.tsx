@@ -8,8 +8,8 @@ import Header from "./header";
 import { motion, AnimatePresence } from "framer-motion";
 import { registerBusinessScheme } from "../schema/registerBusinessSchema";
 import { ZodError } from "zod";
-import { deleteCookie, getCookie, setCookie } from "cookies-next";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { CookieManager } from "@/lib/cookieManager";
 
 interface Category {
   id: string;
@@ -18,7 +18,6 @@ interface Category {
 
 export default function RegisterBusiness() {
   const [selectedOption, setSelectedOption] = useState<string>("");
-  const [accessToken, setAccessToken] = useState<string>("");
   const [data, setData] = useState<Category[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,8 +33,6 @@ export default function RegisterBusiness() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const token = getCookie("access_token");
-        setAccessToken(token as string);
         setIsLoading(true);
         // Replace this URL with your actual API endpoint
         const response = await fetch("http://localhost:3002/category/get-all");
@@ -77,14 +74,14 @@ export default function RegisterBusiness() {
   };
 
   const logout = () => {
-    deleteCookie("access_token");
-    deleteCookie("register-token");
-    deleteCookie("user_email");
-    deleteCookie("user");
+    CookieManager("delete", "access-token");
+    CookieManager("delete", "register-token");
+    CookieManager("delete", "user-email");
+    CookieManager("delete", "user");
   };
 
   const joinBusiness = async () => {
-    const accessToken = getCookie("access_token");
+    const accessToken = CookieManager("get", "access-token");
     try {
       const response = await fetch(
         "http://localhost:3002/business/join-business",
@@ -102,30 +99,20 @@ export default function RegisterBusiness() {
       if (!response.ok) {
         setError(responseData.message);
       } else {
-        setCookie("business_name", responseData.business_name, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("business_id", responseData.business_id, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("role", responseData.role_name, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-
-        deleteCookie("register-token");
-
+        CookieManager("delete", "resgister-token");
+        CookieManager("set", "business-name", responseData.business_name);
+        CookieManager("set", "business-id", responseData.business_id);
+        CookieManager("set", "role", responseData.role_name);
         router.push("/dashboard");
       }
-    } catch (error) {
-      setError(error);
+    } catch (e) {
+      setError(e.message || "Something went wrong");
     }
   };
 
   const registerBusiness = async () => {
     setIsLoading(true);
+    const accessToken = CookieManager("get", "access-token");
     const data = {
       name,
       number_of_employees,
@@ -157,15 +144,9 @@ export default function RegisterBusiness() {
         );
       }
 
-      deleteCookie("register-token");
-      setCookie("business_name", responseData.updated_user.business.name, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 1,
-      });
-      setCookie("business_id", responseData.updated_user.business.business_id, {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 1,
-      });
+      CookieManager("delete", "register-token");
+      CookieManager("set", "business-name", responseData.business_name);
+      CookieManager("set", "business-id", responseData.business_id);
       router.replace("/dashboard");
     } catch (error) {
       if (error instanceof ZodError) {

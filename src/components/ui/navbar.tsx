@@ -2,6 +2,7 @@
 
 import React from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type NavItem = {
   name: string;
@@ -75,7 +76,12 @@ export default function Navbar() {
         <div
           className="w-8 h-8 bg-gray-300 rounded-full cursor-pointer"
           onClick={() => handleClick("profile")}
-        ></div>
+        >
+          <Avatar>
+            <AvatarImage src="https://github.com/shadcn.png" />
+            <AvatarFallback>CN</AvatarFallback>
+          </Avatar>
+        </div>
       </div>
     </header>
   );

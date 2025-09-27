@@ -10,7 +10,7 @@ import PasswordLogo from "@/assets/password-icon.svg";
 import { Button } from "@/global/buttons";
 import { useState } from "react";
 import { ZodError } from "zod";
-import { setCookie } from "cookies-next";
+import { CookieManager } from "@/lib/cookieManager";
 
 export default function Signin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -52,6 +52,10 @@ export default function Signin() {
         );
       }
 
+      CookieManager("set", "access-token", responseData.access_token);
+      CookieManager("set", "user-email", responseData.email);
+      CookieManager("set", "user", responseData.name);
+
       // If user is created and not verified
       if (responseData.verified === false) {
         // Request email verification
@@ -71,68 +75,17 @@ export default function Signin() {
             "Failed to request email verification. Try Again later.",
           );
         }
-
-        setCookie("verify-token", responseData.access_token, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("access_token", responseData.access_token, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("user_email", responseData.email, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("user", responseData.name, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
+        CookieManager("set", "verify-token", responseData.access_token);
         router.push(`/session/verify-code`);
-      } else if (!responseData.business) {
-        setCookie("access_token", responseData.access_token, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("register-token", responseData.access_token, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("user_email", responseData.email, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("user", responseData.name, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
 
+        // If user is verified, but does not have a business
+      } else if (!responseData.business) {
+        CookieManager("set", "register-token", responseData.access_token);
         router.push("/session/register-business");
       } else {
-        setCookie("access_token", responseData.access_token, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("user_email", responseData.email, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("user", responseData.name, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("business_name", responseData.business_name, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("business_id", responseData.business_id, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
-        setCookie("role", responseData.role.name, {
-          path: "/",
-          maxAge: 60 * 60 * 24 * 1,
-        });
+        CookieManager("set", "business-name", responseData.business_name);
+        CookieManager("set", "business-id", responseData.business_id);
+        CookieManager("set", "role", responseData.role.name);
         router.push("/dashboard");
       }
       setError(null);
