@@ -15,7 +15,6 @@ export default function Home() {
     <>
       <Navbar />
        <main className="pt-16">
-        <h1 className="text-4xl font-bold text-center mt-20">Welcome to SynergiSuite</h1>
         <HeroSection />
         <FeaturesSection/>
         <TestimonialsSection/>

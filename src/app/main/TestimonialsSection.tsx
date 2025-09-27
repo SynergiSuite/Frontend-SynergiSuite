@@ -1,4 +1,8 @@
 import React from "react";
+import Image from "next/image";
+import woman1 from "@/assets/testimonialFemale.png"
+import man1 from "@/assets/testimonialMale.png"
+import woman2 from "@/assets/testimonialWoman.png"
 
 export default function TestimonialsSection() {
   return (
@@ -16,17 +20,13 @@ export default function TestimonialsSection() {
             {/* Testimonial 1 */}
           <div className="testimonial-card bg-gray-100 rounded-2xl shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transform transition duration-300">
               <div className="flex items-center mb-4 space-x-4">
-                <img
-                  src=""
-                  alt="Sarah Johnson"
-                  className="w-14 h-14 rounded-full object-cover"
-                />
+                <Image src={woman1} alt="woman"/>
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">Sarah Johnson</h3>
                   <p className="text-sm text-gray-500">Product Manager at TechCorp</p>
                 </div>
               </div>
-              <div className="text-yellow-500 text-lg mb-2">⭐⭐⭐⭐⭐</div>
+              <div className="text-yellow-500 text-lg mb-2">⭐⭐⭐⭐</div>
               <p className="text-gray-700">
                 CollabFlow has transformed how our team works together. The intuitive interface and powerful features make project management a breeze.
               </p>
@@ -35,18 +35,13 @@ export default function TestimonialsSection() {
             {/* Testimonial 2 */}
             <div className="bg-gray-100 rounded-2xl shadow-md p-6 hover:shadow-lg transition duration-300">
               <div className="flex items-center mb-4 space-x-4">
-                <img
-                  src=""
-                  alt="Michael Chen"
-                  className="w-14 h-14 rounded-full object-cover"
-                />
+                <Image src={man1} alt="testimonial" />  
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">Michael Chen</h3>
                   <p className="text-sm text-gray-500">CEO at StartupX</p>
                 </div>
               </div>
-              <div className="text-yellow-500 text-lg mb-2">⭐⭐⭐⭐⭐</div>
-              <p className="text-gray-700">
+              <div className="text-yellow-500 text-lg mb-2">⭐⭐⭐⭐⭐</div><p className="text-gray-700">
                 Since implementing CollabFlow, we've seen a 40% increase in team productivity. It’s become an essential part of our daily operations.
               </p>
             </div>
@@ -54,11 +49,7 @@ export default function TestimonialsSection() {
             {/* Testimonial 3 */}
             <div className="testimonial-card bg-gray-100 rounded-2xl shadow-md p-6 hover:shadow-lg hover:-translate-y-1 transform transition duration-300">
               <div className="flex items-center mb-4 space-x-4">
-                <img
-                  src=""
-                  alt="Emily Davis"
-                  className="w-14 h-14 rounded-full object-cover"
-                />
+                <Image src={woman2} alt="Emily Davis" />
                 <div>
                   <h3 className="text-lg font-semibold text-gray-800">Emily Davis</h3>
                   <p className="text-sm text-gray-500">Design Director at CreativeStudio</p>
@@ -75,3 +66,5 @@ export default function TestimonialsSection() {
     </>
   );
 }
+
+              

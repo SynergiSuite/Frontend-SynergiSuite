@@ -25,7 +25,7 @@ export default function Signin() {
     setIsLoading(true);
     const data = {
       email,
-      password_hash: password,
+      password: password,
     };
 
     try {
@@ -45,41 +45,95 @@ export default function Signin() {
       });
 
       const responseData = await res.json();
-      console.log(responseData)
-      
+
       if (!res.ok) {
-        throw new Error( responseData.message || "Failed to login. Try Again later.");
+        throw new Error(
+          responseData.message || "Failed to login. Try Again later.",
+        );
       }
 
       // If user is created and not verified
       if (responseData.verified === false) {
-        console.log(responseData.verified)
         // Request email verification
-        const req = await fetch("http://localhost:3002/user/request-verify-email", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${responseData.access_token}`,
-            "Content-Type": "application/json",
+        const req = await fetch(
+          "http://localhost:3002/user/request-verify-email",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${responseData.access_token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({}),
           },
-          body: JSON.stringify({}),
-        });
+        );
         if (!req.ok) {
-          throw new Error("Failed to request email verification. Try Again later.");
-        } 
+          throw new Error(
+            "Failed to request email verification. Try Again later.",
+          );
+        }
 
-        setCookie('verify-token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        setCookie('access_token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        setCookie('user_email', responseData.user.email, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        setCookie('user', responseData.user.name, { path: '/', maxAge: 60 * 60 * 24 * 1 });
+        setCookie("verify-token", responseData.access_token, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("access_token", responseData.access_token, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("user_email", responseData.email, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("user", responseData.name, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
         router.push(`/session/verify-code`);
+      } else if (!responseData.business) {
+        setCookie("access_token", responseData.access_token, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("register-token", responseData.access_token, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("user_email", responseData.email, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("user", responseData.name, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+
+        router.push("/session/register-business");
       } else {
-        setCookie('access_token', responseData.access_token, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        setCookie('user_email', responseData.user.email, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        setCookie('user', responseData.user.name, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        setCookie('business_name', responseData.user.business.name, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        setCookie('business_id', responseData.user.business.business_id, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        // setCookie('role', responseData.user.role, { path: '/', maxAge: 60 * 60 * 24 * 1 });
-        router.push('/dashboard');
+        setCookie("access_token", responseData.access_token, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("user_email", responseData.email, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("user", responseData.name, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("business_name", responseData.business_name, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("business_id", responseData.business_id, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        setCookie("role", responseData.role.name, {
+          path: "/",
+          maxAge: 60 * 60 * 24 * 1,
+        });
+        router.push("/dashboard");
       }
       setError(null);
       setIsLoading(false);
@@ -103,7 +157,6 @@ export default function Signin() {
         method="post"
         className="py-4 mt-12 w-[90%] m-auto space-y-4"
       >
-
         {/* Error Alert */}
         {error && (
           <motion.div
@@ -134,8 +187,8 @@ export default function Signin() {
               value={email}
               id="emailLogin"
               onChange={(e) => {
-                setEmail(e.target.value)
-                setError(null)
+                setEmail(e.target.value);
+                setError(null);
               }}
               className="w-full focus:outline-none text-gray-600"
               placeholder="example@gmail.com"
@@ -156,8 +209,8 @@ export default function Signin() {
               id="passwordLogin"
               value={password}
               onChange={(e) => {
-                setPassword(e.target.value)
-                setError(null)
+                setPassword(e.target.value);
+                setError(null);
               }}
               className="w-full focus:outline-none text-gray-600"
               placeholder="•••••••••••"
@@ -174,7 +227,11 @@ export default function Signin() {
           </a>
         </div>
 
-        <Button type="submit" disabled={isLoading} className="button_primary_full mt-5">
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="button_primary_full mt-5"
+        >
           Login
         </Button>
       </form>

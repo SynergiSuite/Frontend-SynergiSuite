@@ -7,7 +7,6 @@ type Employee = {
   role: string;
   department: string;
   status: string;
-  lastActive: string;
 };
 
 type EmployeeListProps = {
@@ -17,14 +16,14 @@ type EmployeeListProps = {
 export default function EmployeeList({ employees }: EmployeeListProps) {
   return (
     <>
-      <table className="w-full border-collapse">
+      <table className="w-full border-collapse max-h-[45vh] overflow-y-auto">
         <thead>
           <tr className="text-left text-gray-600 border-b">
             <th className="px-4 py-2">Name</th>
             <th className="px-4 py-2">Role</th>
             <th className="px-4 py-2">Department</th>
             <th className="px-4 py-2">Status</th>
-            <th className="px-4 py-2">Last Active</th>
+            <th className="px-4 py-2"></th>
             <th className="px-4 py-2">Actions</th>
           </tr>
         </thead>
@@ -45,8 +44,8 @@ export default function EmployeeList({ employees }: EmployeeListProps) {
                   {emp.status}
                 </span>
               </td>
-              <td className="px-4 py-2">{emp.lastActive}</td>
-              <td className="px-4 py-2">⋮</td>
+              <td className="px-4 py-2"></td>
+              <td className="px-4 py-2 text-center">⋮</td>
             </tr>
           ))}
         </tbody>
