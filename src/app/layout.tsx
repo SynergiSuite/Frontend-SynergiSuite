@@ -102,8 +102,8 @@ export default function RootLayout({
 
       // Protected routes
       if (isProtectedPath) {
-        const userBusiness = hasCookie("business_id");
-        const userBusinessName = hasCookie("business_name");
+        const userBusiness = hasCookie("business-id");
+        const userBusinessName = hasCookie("business-name");
 
         if (!userBusiness || !userBusinessName) {
           CookieManager("delete", "access-token");
