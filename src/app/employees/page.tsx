@@ -1,11 +1,12 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import UserActions from "./useraction";
-import StatsCards from "./statecards";
-import RoleDistribution from "./roledistribution";
-import EmployeeListHeader from "./listheader";
-import EmployeeListFooter from "./listfooter";
-import EmployeeList from "./employeelist";
+import UserActions from "./userAction";
+import StatsCards from "./stateCards";
+import RoleDistribution from "./roleDistribution";
+import EmployeeListHeader from "./listHeader";
+import EmployeeListFooter from "./listFooter";
+import EmployeeList from "./employeeList";
+import LoaderCustom from "@/components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
 
 export default function UserManagement() {
@@ -94,13 +95,11 @@ export default function UserManagement() {
   return (
     <div className="flex flex-col">
       {isLoading ? (
-        <div className="flex flex-row justify-center items-center w-full h-screen">
-          <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
+        <LoaderCustom />
       ) : (
         <main className="flex-1 p-6">
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">User Management</h1>
+            <h1 className="text-2xl font-bold">Employees</h1>
             <UserActions />
           </div>
 

@@ -6,7 +6,7 @@ import { Button } from "@/global/buttons";
 import dynamic from "next/dynamic";
 
 // Dynamically import the dialog to avoid SSR issues with modals
-const AddEmployeeDialog = dynamic(() => import("./AddEmployeeDialog"), {
+const AddEmployee = dynamic(() => import("./addEmployee"), {
   ssr: false,
 });
 
@@ -50,10 +50,7 @@ export default function UserActions() {
           >
             Add User
           </Button>
-          <AddEmployeeDialog
-            isOpen={isDialogOpen}
-            onClose={handleCloseDialog}
-          />
+          <AddEmployee isOpen={isDialogOpen} onClose={handleCloseDialog} />
         </>
       ) : null}
 

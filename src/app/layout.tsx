@@ -11,6 +11,7 @@ import Sidebar from "../components/ui/sidebar";
 import Navbar from "../components/ui/navbar";
 import LoaderCustom from "../components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
+import { Toaster } from "@/components/ui/sonner"
 
 const access_secret = new TextEncoder().encode("synergi_user");
 
@@ -22,6 +23,7 @@ const protectedRoutes = [
   "/crm",
   "/team",
   "/profile",
+  "/teams",
 ];
 
 const publicRoutes = ["/login", "/signup", "/forgot-password"];
@@ -168,6 +170,8 @@ export default function RootLayout({
             <main className="flex-1 bg-gray-50 p-10 overflow-y-auto">
               {isLoading ? <LoaderCustom /> : children}
             </main>
+            
+            <Toaster />
           </div>
         </div>
       </body>
