@@ -8,13 +8,11 @@ import {
   LifeBuoy,
   LogOut,
 } from "lucide-react";
-import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { deleteCookie, getCookie } from "cookies-next";
 import { CookieManager } from "@/lib/cookieManager";
+import { toast } from "sonner";
 
 export default function Sidebar() {
-  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleClick = (label: string) => {
@@ -22,7 +20,6 @@ export default function Sidebar() {
   };
 
   const logout = async () => {
-    setIsLoading(true);
     const token = CookieManager("get", "access-token");
     try {
       const res = await fetch("http://localhost:3002/auth/logout", {
@@ -41,13 +38,14 @@ export default function Sidebar() {
       CookieManager("delete", "access-token");
       CookieManager("delete", "user-email");
       CookieManager("delete", "user");
-      deleteCookie("business_name");
-      deleteCookie("business_id");
+      CookieManager("delete", "business-name");
+      CookieManager("delete", "business-id");
       router.replace("/session");
+      toast.success("Logged out successfully");
     } catch (error) {
       console.log(error);
+      toast.error("Failed to logout. Try Again later.");
     }
-    setIsLoading(false);
   };
 
   return (

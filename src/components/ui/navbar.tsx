@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 type NavItem = {
   name: string;
   param: string;
+  route: string;
 };
 
 export default function Navbar() {
@@ -18,15 +19,19 @@ export default function Navbar() {
   const routeNavs: Record<string, NavItem[]> = {
     "/dashboard": [],
     "/employees": [
-      { name: "Employees", param: "employees" },
-      { name: "Teams", param: "teams" },
-      { name: "Projects", param: "" },
-      { name: "Reports", param: "" },
+      { name: "Employees", param: "employees", route: "/employees" },
+      { name: "Teams", param: "teams", route: "/teams" },
+      { name: "Projects", param: "projects", route: "/projects" },
+    ],
+    "/teams": [
+      { name: "Employees", param: "employees", route: "/employees" },
+      { name: "Teams", param: "teams", route: "/teams" },
+      { name: "Projects", param: "projects", route: "/projects" },
     ],
     "/settings": [
-      { name: "Profile", param: "profile" },
-      { name: "Security", param: "security" },
-      { name: "Billing", param: "billing" },
+      { name: "Profile", param: "profile", route: "/settings/profile" },
+      { name: "Security", param: "security", route: "/settings/security" },
+      { name: "Billing", param: "billing", route: "/settings/billing" },
     ],
   };
 
@@ -34,10 +39,12 @@ export default function Navbar() {
   const links = routeNavs[pathname] || [];
 
   // which tab is active (via ?tab=)
-  const activeTab = searchParams.get("tab") || links[0]?.param;
+  const activeTab =
+    links.find((link) => pathname.startsWith(link.route))?.param ||
+    links[0]?.param;
 
-  const handleClick = (param: string) => {
-    router.push(`${pathname}?tab=${param}`);
+  const handleClick = (route: string) => {
+    router.push(route);
   };
 
   return (
@@ -63,7 +70,7 @@ export default function Navbar() {
                     activeTab === item.param
                       ? "text-black font-semibold underline"
                       : "text-gray-700"
-                  }`}
+                  } cursor-pointer`}
                 >
                   {item.name}
                 </button>

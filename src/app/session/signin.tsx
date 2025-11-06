@@ -11,6 +11,7 @@ import { Button } from "@/global/buttons";
 import { useState } from "react";
 import { ZodError } from "zod";
 import { CookieManager } from "@/lib/cookieManager";
+import { toast } from "sonner";
 
 export default function Signin() {
   const [isLoading, setIsLoading] = useState(false);
@@ -77,16 +78,19 @@ export default function Signin() {
         }
         CookieManager("set", "verify-token", responseData.access_token);
         router.push(`/session/verify-code`);
+        toast.success("Logged in successfully, verification required.");
 
         // If user is verified, but does not have a business
       } else if (!responseData.business) {
         CookieManager("set", "register-token", responseData.access_token);
         router.push("/session/register-business");
+        toast.success("Logged in successfully, registration required.");
       } else {
         CookieManager("set", "business-name", responseData.business_name);
         CookieManager("set", "business-id", responseData.business_id);
         CookieManager("set", "role", responseData.role.name);
         router.push("/dashboard");
+        toast.success("Logged in successfully");
       }
       setError(null);
       setIsLoading(false);

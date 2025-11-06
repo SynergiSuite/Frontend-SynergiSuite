@@ -17,7 +17,7 @@ interface Role {
   name: string;
 }
 
-export default function AddEmployeeDialog({
+export default function AddEmployee({
   isOpen,
   onClose,
 }: AddEmployeeDialogProps) {
@@ -67,8 +67,6 @@ export default function AddEmployeeDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    console.log(formData.role_id);
 
     if (!formData.email.trim() || formData.role_id === 0) {
       setError("Please fill in all fields before submitting.");

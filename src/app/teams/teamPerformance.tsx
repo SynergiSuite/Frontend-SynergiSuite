@@ -9,7 +9,7 @@ const data = [
   { name: "Sales", value: 78 },
 ];
 
-const COLORS = ["#60a5fa", "#34d399", "#fbbf24", "#f87171"]; 
+const COLORS = ["#4b4b4b", "#6E6E6E", "#8b8b8b", "#a8a8a8"];
 
 export default function TeamPerformance() {
   return (
@@ -30,14 +30,16 @@ export default function TeamPerformance() {
               paddingAngle={4}
             >
               {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
               ))}
             </Pie>
             <Tooltip />
           </PieChart>
         </ResponsiveContainer>
 
-        
         <div className="flex justify-around mt-4 text-sm text-gray-600">
           {data.map((item, index) => (
             <div key={item.name} className="flex items-center space-x-2">

@@ -83,6 +83,7 @@ body {
   text-align: center;
   white-space: nowrap;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .button_primary_xl {
@@ -100,6 +101,7 @@ body {
   text-align: center;
   white-space: nowrap;
   transition: all 0.3s ease;
+  cursor: pointer;
 }
 
 .button_primary_full {
