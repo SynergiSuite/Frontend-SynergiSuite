@@ -9,7 +9,7 @@ export default function Page() {
 
   return (
     <>
-      <main className="min-h-screen bg-gray-50 p-8">
+      <main className="min-h-screen bg-gray-50">
         <Header filter={filter} setFilter={setFilter} setSearchQuery={setSearchQuery} />
         <ProjectCards filter={filter} searchQuery={searchQuery} />
       </main>

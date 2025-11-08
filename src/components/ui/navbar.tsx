@@ -28,6 +28,11 @@ export default function Navbar() {
       { name: "Teams", param: "teams", route: "/teams" },
       { name: "Projects", param: "projects", route: "/projects" },
     ],
+    "/projects": [
+      { name: "Employees", param: "employees", route: "/employees" },
+      { name: "Teams", param: "teams", route: "/teams" },
+      { name: "Projects", param: "projects", route: "/projects" },
+    ],
     "/settings": [
       { name: "Profile", param: "profile", route: "/settings/profile" },
       { name: "Security", param: "security", route: "/settings/security" },

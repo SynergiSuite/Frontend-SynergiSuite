@@ -16,6 +16,7 @@ export default function UserActions() {
 
   useEffect(() => {
     const role = getCookie("role");
+    console.log(role)
     setRole(role as string);
   }, []);
 

@@ -1,10 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import UserActions from "./userAction";
+import UserActions from "./useraction";
 import StatsCards from "./stateCards";
 import RoleDistribution from "./roleDistribution";
-import EmployeeListHeader from "./listHeader";
-import EmployeeListFooter from "./listFooter";
+import EmployeeListHeader from "./listheader";
+import EmployeeListFooter from "./listfooter";
 import EmployeeList from "./employeeList";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
@@ -13,6 +13,7 @@ export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [business, setBusiness] = useState("");
   const [totalEmployees, setTotalEmployees] = useState<number>(0);
+  const [totalProjects, setTotalProjects] = useState<number>(0);
   const [activeEmployees, setActiveEmployees] = useState<number>(0);
   const [employee, setEmployee] = useState<[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,8 +39,9 @@ export default function UserManagement() {
         );
 
         const data = await res.json();
+        setTotalProjects(data.projectCount);
 
-        const formatted = data.map((emp: any, index: number) => ({
+        const formatted = data.employees.map((emp: any, index: number) => ({
           id: emp.user_id ?? index,
           name: emp.name || "Unknown",
           role: emp.role?.name || "N/A",
@@ -74,7 +76,7 @@ export default function UserManagement() {
       value: activeEmployees,
       change: "+15% from last month",
     },
-    { title: "Business", value: business, change: "" },
+    { title: "Projects", value: totalProjects, change: "+2 this week" },
     { title: "New This Month", value: 8, change: "+2 this week" },
   ];
 
