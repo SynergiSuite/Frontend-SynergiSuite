@@ -28,12 +28,13 @@ export default function AddEmployee({
     email: "",
     role_id: 0,
   });
+  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   useEffect(() => {
     const getRoles = async () => {
       try {
         const token = await CookieManager("get", "access-token");
-        const response = await fetch("http://localhost:3002/roles/get-all", {
+        const response = await fetch(`${requestBaseUrl}/roles/get-all`, {
           method: "GET",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -77,7 +78,7 @@ export default function AddEmployee({
 
     try {
       const token = await CookieManager("get", "access-token");
-      const response = await fetch("http://localhost:3002/business/invite", {
+      const response = await fetch(`${requestBaseUrl}/business/invite`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

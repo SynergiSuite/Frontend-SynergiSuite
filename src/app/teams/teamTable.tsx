@@ -26,11 +26,12 @@ export default function TeamTable({ teams, employees }: TeamProps) {
   const [team, setTeam] = useState<Teams>({} as Teams)
   const [isDelete, setIsDelete] = useState(false)
   const [teamId, setTeamId] = useState<string>("")
+  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   const handleUpdate = async(updatedTeams: Teams) => {
     const accessToken = CookieManager("get", "access-token")
     console.log(updatedTeams)
-    const res = await fetch(`http://localhost:3002/teams/update-team`, {
+    const res = await fetch(`${requestBaseUrl}/teams/update-team`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${accessToken}`,
@@ -50,7 +51,7 @@ export default function TeamTable({ teams, employees }: TeamProps) {
   const handleDelete = async() => {
     const accessToken = CookieManager("get", "access-token")
     const obj = { team_id: teamId}
-    const res = await fetch(`http://localhost:3002/teams/remove-team`, {
+    const res = await fetch(`${requestBaseUrl}/teams/remove-team`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${accessToken}`,
