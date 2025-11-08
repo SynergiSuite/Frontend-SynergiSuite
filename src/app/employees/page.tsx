@@ -1,59 +1,76 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import UserActions from "./userAction";
+import UserActions from "./useraction";
 import StatsCards from "./stateCards";
-import RoleDistribution from "./roleDistribution";
-import EmployeeListHeader from "./listHeader";
-import EmployeeListFooter from "./listFooter";
+import RoleDistribution from "./roledistribution";
+import EmployeeListHeader from "./listheader";
+import EmployeeListFooter from "./listfooter";
 import EmployeeList from "./employeeList";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
+
+type UIEmployee = {
+  id: number;
+  name: string;
+  role: string;
+  department: string;
+  status: "Active" | "Inactive";
+};
 
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [business, setBusiness] = useState("");
   const [totalEmployees, setTotalEmployees] = useState<number>(0);
   const [activeEmployees, setActiveEmployees] = useState<number>(0);
-  const [employee, setEmployee] = useState<[]>([]);
+  const [employee, setEmployee] = useState<UIEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   useEffect(() => {
     const totalEmployees = async () => {
       setIsLoading(true);
-      const token = CookieManager("get", "access-token");
-
-      const business_name = CookieManager("get", "business-name");
-      setBusiness(business_name as string);
       try {
-        const res = await fetch(
-          `http://localhost:3002/business/get-employees`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + token,
-            },
-            body: JSON.stringify({}),
+        const token = CookieManager("get", "access-token");
+        const business_name = CookieManager("get", "business-name");
+        setBusiness((business_name as string) ?? "");
+
+        const res = await fetch(`${requestBaseUrl}/business/get-employees`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
           },
-        );
+          body: JSON.stringify({}),
+        });
 
-        const data = await res.json();
+        // Guard: ensure JSON and OK
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status} ${text}`);
+        }
 
-        const formatted = data.map((emp: any, index: number) => ({
-          id: emp.user_id ?? index,
-          name: emp.name || "Unknown",
-          role: emp.role?.name || "N/A",
-          department: emp.business?.name || "Unknown",
-          status: emp.isExpired === false ? "Active" : "Inactive", // (or derive from backend if you have a field)
+        const data: unknown = await res.json();
+
+        // Normalize possible shapes (prefer data.employees as per your current logic)
+        const employeesArray: any[] = Array.isArray((data as any)?.employees)
+          ? (data as any).employees
+          : Array.isArray(data)
+          ? (data as any)
+          : [];
+
+        const formatted: UIEmployee[] = employeesArray.map((emp: any, index: number) => ({
+          id: emp?.user_id ?? index,
+          name: emp?.name || "Unknown",
+          role: emp?.role?.name || "N/A",
+          department: emp?.business?.name || "Unknown",
+          status: emp?.isExpired === false ? "Active" : "Inactive",
         }));
 
         setEmployee(formatted);
-        setActiveEmployees(
-          formatted.filter((emp: { status: string }) => emp.status === "Active")
-            .length,
-        );
+        setActiveEmployees(formatted.filter((e) => e.status === "Active").length);
         setTotalEmployees(formatted.length);
       } catch (error) {
+        // Keep behavior the same (no UI change), just log
         console.error(error);
       } finally {
         setIsLoading(false);
@@ -78,10 +95,10 @@ export default function UserManagement() {
     { title: "New This Month", value: 8, change: "+2 this week" },
   ];
 
-  const roleCounts = employee.reduce((acc: Record<string, number>, emp) => {
+  const roleCounts = employee.reduce((acc: Record<string, number>, emp: UIEmployee) => {
     acc[emp.role] = (acc[emp.role] || 0) + 1;
     return acc;
-  }, {});
+  }, {} as Record<string, number>);
 
   const roleData = Object.entries(roleCounts).map(([role, count]) => ({
     label: role,
@@ -89,7 +106,7 @@ export default function UserManagement() {
   }));
 
   const filteredEmployees = employee.filter((emp) =>
-    emp.name?.toLowerCase().includes(searchQuery.toLowerCase()),
+    (emp.name ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (

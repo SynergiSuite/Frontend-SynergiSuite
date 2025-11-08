@@ -21,8 +21,9 @@ export default function Sidebar() {
 
   const logout = async () => {
     const token = CookieManager("get", "access-token");
+    const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
     try {
-      const res = await fetch("http://localhost:3002/auth/logout", {
+      const res = await fetch(`${requestBaseUrl}/auth/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

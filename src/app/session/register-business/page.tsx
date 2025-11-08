@@ -28,6 +28,7 @@ export default function RegisterBusiness() {
   const [category_id, setCategoryID] = useState<number>(0);
   const [token, setToken] = useState("");
   const router = useRouter();
+  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   // Category Call
   useEffect(() => {
@@ -35,7 +36,7 @@ export default function RegisterBusiness() {
       try {
         setIsLoading(true);
         // Replace this URL with your actual API endpoint
-        const response = await fetch("http://localhost:3002/category/get-all");
+        const response = await fetch(`${requestBaseUrl}/category/get-all`);
         if (!response.ok) {
           throw new Error("Failed to fetch data");
         }
@@ -84,7 +85,7 @@ export default function RegisterBusiness() {
     const accessToken = CookieManager("get", "access-token");
     try {
       const response = await fetch(
-        "http://localhost:3002/business/join-business",
+        `${requestBaseUrl}/business/join-business`,
         {
           method: "POST",
           headers: {
@@ -106,7 +107,7 @@ export default function RegisterBusiness() {
         router.push("/dashboard");
       }
     } catch (e) {
-      setError(e.message || "Something went wrong");
+      setError(e instanceof Error ? e.message : "Something went wrong");
     }
   };
 
@@ -127,7 +128,7 @@ export default function RegisterBusiness() {
       }
       const userData = JSON.stringify(validation.data);
 
-      const res = await fetch("http://localhost:3002/business/register", {
+      const res = await fetch(`${requestBaseUrl}/business/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
