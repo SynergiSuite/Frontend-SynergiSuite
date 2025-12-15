@@ -1,23 +1,16 @@
 "use client";
 import React from "react";
 
-// Type for individual card
-type StateCardType = {
+// ✅ Export Card type
+export type Card = {
   title: string;
   value: number | string;
   change: string;
-  progress?: number; // optional progress bar (0-100)
+  progress?: number; // optional progress bar
 };
 
-// Sample data
-const cardsData: StateCardType[] = [
-  { title: "Team Members", value: 156, change: "↑ 8% from this month" },
-  { title: "Active Clients", value: 38, change: "↑ 76% retention", progress: 76 },
-  { title: "Open Tasks", value: 284, change: "↓ 4% more than usual" },
-];
-
 // Individual card fragment
-function StateCard({ title, value, change, progress }: StateCardType) {
+function StateCard({ title, value, change, progress }: Card) {
   const isPositive = change.startsWith("↑");
 
   return (
@@ -48,12 +41,12 @@ function StateCard({ title, value, change, progress }: StateCardType) {
   );
 }
 
-// Wrapper component that maps data to StateCard fragments
-export default function StateCards() {
+// Wrapper component with grid layout
+export default function StateCards({ cards }: { cards: Card[] }) {
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-        {cardsData.map((card, index) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+        {cards.map((card, index) => (
           <StateCard
             key={index}
             title={card.title}
@@ -66,3 +59,5 @@ export default function StateCards() {
     </>
   );
 }
+
+
