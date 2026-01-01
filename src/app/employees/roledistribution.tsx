@@ -11,7 +11,7 @@ type Props = {
   roles: Role[];
 };
 
-const COLORS = ["#3B82F6", "#EC4899", "#22C55E", "#EAB308", "#8B5CF6", "#F97316"];
+const COLORS = ["#4b4b4b", "#6E6E6E", "#8b8b8b", "#a8a8a8"];
 
 
 export default function RoleDistribution({ roles }: Props) {

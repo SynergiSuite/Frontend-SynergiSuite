@@ -1,27 +1,21 @@
 "use client";
 import React from "react";
-
-type Employee = {
-  id: number;
-  name: string;
-  role: string;
-  department: string;
-  status: string;
-};
+import { Actions } from "./actions";
+import { Employee } from "./schemas/employee";
 
 type EmployeeListProps = {
   employees: Employee[];
+  currentUserIsFounder: string;
 };
 
-export default function EmployeeList({ employees }: EmployeeListProps) {
+export default function EmployeeList({ employees, currentUserIsFounder }: EmployeeListProps) {
   return (
-    <>
-      <table className="w-full border-collapse max-h-[45vh] overflow-y-auto">
+    <div className="max-h-[45vh] overflow-y-auto">
+      <table className="w-full border-collapse">
         <thead>
           <tr className="text-left text-gray-600 border-b">
             <th className="px-4 py-2">Name</th>
             <th className="px-4 py-2">Role</th>
-            <th className="px-4 py-2">Department</th>
             <th className="px-4 py-2">Status</th>
             <th className="px-4 py-2"></th>
             <th className="px-4 py-2">Actions</th>
@@ -32,7 +26,6 @@ export default function EmployeeList({ employees }: EmployeeListProps) {
             <tr key={emp.id} className="hover:bg-gray-50">
               <td className="px-4 py-2">{emp.name}</td>
               <td className="px-4 py-2">{emp.role}</td>
-              <td className="px-4 py-2">{emp.department}</td>
               <td className="px-4 py-2">
                 <span
                   className={`px-2 py-1 rounded text-xs ${
@@ -45,11 +38,21 @@ export default function EmployeeList({ employees }: EmployeeListProps) {
                 </span>
               </td>
               <td className="px-4 py-2"></td>
-              <td className="px-4 py-2 text-center">⋮</td>
+              <td className="px-4 py-2 text-center">
+                {currentUserIsFounder === 'Founder' || currentUserIsFounder === 'Manager' ? (
+                  <Actions
+                    id={emp.id}
+                    role={emp.role}
+                    name={emp.name}
+                    isFounderUser={currentUserIsFounder === 'Founder'}
+                  />
+                ) : null}
+
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
-    </>
+    </div>
   );
 }

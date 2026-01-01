@@ -1,11 +1,5 @@
-"use client";
 import React from "react";
-
-type StatsCardProps = {
-  title: string;
-  value?: number | string; // 👈 optional
-  change?: string;
-};
+import { StatsCardProps } from "./schemas/stateCard";
 
 function StatsCard({ title, value, change }: StatsCardProps) {
   return (

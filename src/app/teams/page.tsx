@@ -9,7 +9,7 @@ import CreateTeamModal from "./createTeamModal";
 import { Button } from "@/global/buttons";
 import { CookieManager } from "@/lib/cookieManager";
 import LoaderCustom from "@/components/ui/loader-custom";
-import { Team, Teams } from "./schemas/types";
+import { Employee, Team, Teams } from "./schemas/types";
 import { toast } from "sonner"
 
 
@@ -18,7 +18,7 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
   const [teams, setTeams] = useState<Teams[]>([]);
   const [count, setCount] = useState<number>(0);
-  const [employees, setEmployees] = useState<[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
@@ -56,7 +56,15 @@ export default function Page() {
       );
 
       const data = await response.json();
-      setEmployees(data);
+      const normalizedEmployees: Employee[] = Array.isArray(
+        (data as any)?.employees?.employees
+      )
+        ? (data as any).employees.employees
+        : Array.isArray((data as any)?.employees)
+        ? (data as any).employees
+        : [];
+
+      setEmployees(normalizedEmployees);
       setIsLoading(false)
     };
     fetchTeamsData();

@@ -16,6 +16,7 @@ export default function UserActions() {
 
   useEffect(() => {
     const role = getCookie("role");
+    console.log(role)
     setRole(role as string);
   }, []);
 
@@ -32,10 +33,6 @@ export default function UserActions() {
 
   const handleExport = () => {
     console.log("Export clicked");
-  };
-
-  const handleFilter = () => {
-    console.log("Filter clicked");
   };
 
   return (
@@ -60,14 +57,6 @@ export default function UserActions() {
         className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100"
       >
         <Download size={16} /> Export
-      </button>
-
-      {/* Filter */}
-      <button
-        onClick={handleFilter}
-        className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100"
-      >
-        <Filter size={16} /> Filter
       </button>
     </div>
   );

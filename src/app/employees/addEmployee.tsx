@@ -1,26 +1,18 @@
-"use client";
-
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from "lucide-react";
 import { X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/global/buttons";
-import { CookieManager } from "@/lib/cookieManager";
+import { AddEmployeeDialogProps } from "./schemas/addEmployee";
+import { Role } from "./schemas/roles";
+import { fetchRoles } from "./apis/getRoleApi";
+import { inviteEmployee } from "./apis/addEmployeeApi";
 
-type AddEmployeeDialogProps = {
-  isOpen: boolean;
-  onClose: () => void;
-};
 
-interface Role {
-  id: number;
-  name: string;
-}
+export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps) {
+  if (!isOpen) return null;
 
-export default function AddEmployee({
-  isOpen,
-  onClose,
-}: AddEmployeeDialogProps) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -28,33 +20,18 @@ export default function AddEmployee({
     email: "",
     role_id: 0,
   });
-  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   useEffect(() => {
-    const getRoles = async () => {
+    const loadRoles = async() => {
       try {
-        const token = await CookieManager("get", "access-token");
-        const response = await fetch(`${requestBaseUrl}/roles/get-all`, {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(response.statusText);
-        }
-
-        const data: Role[] = await response.json();
-        setRoles(data);
-      } catch (err) {
-        console.error("Failed to fetch roles", err);
+        const rolesData = await fetchRoles();
+        setRoles(rolesData);
+      } catch (error) {
+        console.error("Failed to load roles", error);
       }
     };
-    getRoles();
+    loadRoles();
   }, []);
-
-  if (!isOpen) return null;
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
@@ -75,27 +52,14 @@ export default function AddEmployee({
     }
 
     setIsSubmitting(true);
-
     try {
-      const token = await CookieManager("get", "access-token");
-      const response = await fetch(`${requestBaseUrl}/business/invite`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to add employee");
-      }
-
+      await inviteEmployee(formData);
+      toast.success("Employee invited successfully!");
       onClose();
       setFormData({ email: "", role_id: 0 });
-      alert("Employee added successfully!");
     } catch (err) {
-      console.error("Error adding employee:", err);
+      toast.error("Failed to invite employee");
+      console.error("Error inviting employee:", err);
     } finally {
       setIsSubmitting(false);
     }

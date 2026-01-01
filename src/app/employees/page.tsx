@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { getCookie } from "cookies-next";
 import UserActions from "./useraction";
 import StatsCards from "./statecards";
 import RoleDistribution from "./roledistribution";
@@ -7,91 +8,55 @@ import EmployeeListHeader from "./listheader";
 import EmployeeListFooter from "./listfooter";
 import EmployeeList from "./employeelist";
 import LoaderCustom from "@/components/ui/loader-custom";
-import { CookieManager } from "@/lib/cookieManager";
-
-type UIEmployee = {
-  id: number;
-  name: string;
-  role: string;
-  department: string;
-  status: "Active" | "Inactive";
-};
+import { UIEmployee } from "./schemas/employee";
+import { fetchEmployeesData } from "./apis/getEmployeeApi";
 
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [business, setBusiness] = useState("");
-  const [totalEmployees, setTotalEmployees] = useState<number>(0);
-  const [activeEmployees, setActiveEmployees] = useState<number>(0);
+  const [stat, setStat] = useState({
+    totalEmployees: 0,
+    totalNewReg: 0,
+    totalNewProj: 0,
+    totalProjects: 0,
+    activeEmployees: 0,
+  });
   const [employee, setEmployee] = useState<UIEmployee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+  const [currentUserRole, setCurrentUserRole] = useState("");
 
   useEffect(() => {
-    const totalEmployees = async () => {
+    const loadPage = async() => {
       setIsLoading(true);
       try {
-        const token = CookieManager("get", "access-token");
-        const business_name = CookieManager("get", "business-name");
-        setBusiness((business_name as string) ?? "");
-
-        const res = await fetch(`${requestBaseUrl}/business/get-employees`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: "Bearer " + token,
-          },
-          body: JSON.stringify({}),
-        });
-
-        // Guard: ensure JSON and OK
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(`HTTP ${res.status} ${text}`);
-        }
-
-        const data: unknown = await res.json();
-
-        // Normalize possible shapes (prefer data.employees as per your current logic)
-        const employeesArray: any[] = Array.isArray((data as any)?.employees)
-          ? (data as any).employees
-          : Array.isArray(data)
-          ? (data as any)
-          : [];
-
-        const formatted: UIEmployee[] = employeesArray.map((emp: any, index: number) => ({
-          id: emp?.user_id ?? index,
-          name: emp?.name || "Unknown",
-          role: emp?.role?.name || "N/A",
-          department: emp?.business?.name || "Unknown",
-          status: emp?.isExpired === false ? "Active" : "Inactive",
-        }));
-
-        setEmployee(formatted);
-        setActiveEmployees(formatted.filter((e) => e.status === "Active").length);
-        setTotalEmployees(formatted.length);
+        const {employees, stats} = await fetchEmployeesData();
+        setEmployee(employees);
+        setStat(stats);
       } catch (error) {
-        // Keep behavior the same (no UI change), just log
-        console.error(error);
+        console.error("Failed to load page data:", error);
       } finally {
         setIsLoading(false);
       }
     };
+    loadPage();
+  }, []);
 
-    totalEmployees();
+  useEffect(() => {
+    const role = getCookie("role");
+    setCurrentUserRole((role as string) || "");
   }, []);
 
   const stats = [
     {
       title: "Total Employees",
-      value: totalEmployees,
-      change: "+25% from last month",
+      value: stat.totalEmployees,
+      change: `+${stat.totalNewReg}% from last month`,
     },
     {
       title: "Active Users",
-      value: activeEmployees,
-      change: "+15% from last month",
+      value: stat.activeEmployees,
+      change: "These are users currently active.",
     },
-    { title: "Business", value: business, change: "" },
+    { title: "Projects", value: stat.totalProjects, change: `+${stat.totalNewProj} this month.` },
     { title: "New This Month", value: 8, change: "+2 this week" },
   ];
 
@@ -114,7 +79,7 @@ export default function UserManagement() {
       {isLoading ? (
         <LoaderCustom />
       ) : (
-        <main className="flex-1 p-6">
+        <main className="flex-1 p-6 min-h-screen">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Employees</h1>
             <UserActions />
@@ -125,16 +90,19 @@ export default function UserManagement() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-md">
+            <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-md h-full flex flex-col">
               <EmployeeListHeader onSearch={setSearchQuery} />
-              <EmployeeList employees={filteredEmployees} />
+              <EmployeeList
+                employees={filteredEmployees}
+                currentUserIsFounder={currentUserRole}
+              />
               <EmployeeListFooter
                 showing={filteredEmployees.length}
                 total={employee.length}
               />
             </div>
-
-            <div className="bg-white p-4 rounded-lg shadow-md">
+          
+            <div className="bg-white p-4 rounded-lg shadow-md h-full">
               <RoleDistribution roles={roleData} />
             </div>
           </div>
