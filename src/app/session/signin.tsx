@@ -19,6 +19,7 @@ export default function Signin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   // Upon submit
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -37,7 +38,7 @@ export default function Signin() {
       }
       const userData = validation.data;
 
-      const res = await fetch("http://localhost:3002/auth/login", {
+      const res = await fetch(`${requestBaseUrl}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -61,7 +62,7 @@ export default function Signin() {
       if (responseData.verified === false) {
         // Request email verification
         const req = await fetch(
-          "http://localhost:3002/user/request-verify-email",
+          `${requestBaseUrl}/user/request-verify-email`,
           {
             method: "POST",
             headers: {

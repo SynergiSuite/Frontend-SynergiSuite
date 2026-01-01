@@ -9,7 +9,7 @@ import CreateTeamModal from "./createTeamModal";
 import { Button } from "@/global/buttons";
 import { CookieManager } from "@/lib/cookieManager";
 import LoaderCustom from "@/components/ui/loader-custom";
-import { Team, Teams } from "./schemas/types";
+import { Employee, Team, Teams } from "./schemas/types";
 import { toast } from "sonner"
 
 
@@ -18,8 +18,9 @@ export default function Page() {
   const [isLoading, setIsLoading] = useState(true);
   const [teams, setTeams] = useState<Teams[]>([]);
   const [count, setCount] = useState<number>(0);
-  const [employees, setEmployees] = useState<[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   // Get All Teams
   useEffect(() => {
@@ -27,7 +28,7 @@ export default function Page() {
       setIsLoading(true);
       const accessToken = CookieManager("get", "access-token");
       const response = await fetch(
-        `http://localhost:3002/teams/get-all-teams`,
+        `${requestBaseUrl}/teams/get-all-teams`,
         {
           method: "GET",
           headers: {
@@ -43,7 +44,7 @@ export default function Page() {
     const fetchEmployeesData = async () => {
       const accessToken = CookieManager("get", "access-token");
       const response = await fetch(
-        `http://localhost:3002/business/get-employees`,
+        `${requestBaseUrl}/business/get-employees`,
         {
           method: "POST",
           headers: {
@@ -55,7 +56,15 @@ export default function Page() {
       );
 
       const data = await response.json();
-      setEmployees(data);
+      const normalizedEmployees: Employee[] = Array.isArray(
+        (data as any)?.employees?.employees
+      )
+        ? (data as any).employees.employees
+        : Array.isArray((data as any)?.employees)
+        ? (data as any).employees
+        : [];
+
+      setEmployees(normalizedEmployees);
       setIsLoading(false)
     };
     fetchTeamsData();
@@ -64,7 +73,7 @@ export default function Page() {
 
   const handleSubmitOnCreate = async(formData: Team) => {
     const accessToken = await CookieManager("get", "access-token")
-    const response = await fetch(`http://localhost:3002/teams/create`,
+    const response = await fetch(`${requestBaseUrl}/teams/create`,
       {
         method: 'POST',
         headers: {

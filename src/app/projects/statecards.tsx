@@ -1,145 +1,144 @@
 "use client";
 import React from "react";
-
+import { Projects } from "./schemas/project";
+import { PriorityLevel } from "./schemas/priority.enum";
 interface ProjectCardsProps {
   filter: string;
   searchQuery: string;
+  projects: Projects[];
 }
 
-export default function ProjectCards({ filter, searchQuery }: ProjectCardsProps) {
-  const projects = [
-    {
-      title: "Website Redesign 2024",
-      company: "TechCorp Solutions",
-      intensity: "High",
-      progress: 75,
-      tasks: "15/20",
-      status: "",
-    },
-    {
-      title: "Mobile App Development",
-      company: "Innovation Labs",
-      intensity: "Medium",
-      progress: 45,
-      tasks: "23/50",
-      status: "",
-    },
-    {
-      title: "E-commerce Platform",
-      company: "Global Retail Co",
-      intensity: "High",
-      progress: 90,
-      tasks: "28/30",
-      status: "Completed",
-    },
-    {
-      title: "CRM Integration",
-      company: "Business Solutions Inc",
-      intensity: "Low",
-      progress: 30,
-      tasks: "6/20",
-      status: "On Hold",
-    },
-    {
-      title: "Data Analytics Dashboard",
-      company: "Data Insights Corp",
-      intensity: "Medium",
-      progress: 60,
-      tasks: "12/20",
-      status: "",
-    },
-    {
-      title: "Cloud Migration Project",
-      company: "Tech Solutions Ltd",
-      intensity: "High",
-      progress: 15,
-      tasks: "3/20",
-      status: "At Risk",
-    },
-  ];
+// Helper function to get priority level text
+const getPriorityText = (priority: number): string => {
+  if (priority === 1) return "High";
+  if (priority === 2) return "Medium";
+  return "Low";
+};
 
-  const filteredProjects = projects.filter((p) => {
+// Helper function to calculate completion percentage
+const calculateProgress = (tasks: any[]): number => {
+  if (!tasks || tasks.length === 0) return 0;
+  const completed = tasks.filter(
+    (task) => String(task?.status ?? "").toLowerCase() === "completed"
+  ).length;
+  return Math.round((completed / tasks.length) * 100);
+};
+
+// ✅ Use a hoisted function declaration so it can be called above/below safely
+function getStatus(priority: PriorityLevel): string {
+  switch (priority) {
+    case PriorityLevel.InQueue:
+      return "In Queue";
+    case PriorityLevel.InProgress:
+      return "In Progress";
+    case PriorityLevel.Completed:
+      return "Completed";
+    case PriorityLevel.OnHold:
+      return "On Hold";
+    case PriorityLevel.AtRisk:
+      return "At Risk";
+    default:
+      return "In Queue";
+  }
+}
+
+export default function ProjectCards({ filter, searchQuery, projects }: ProjectCardsProps) {
+  const filteredProjects = projects.filter((project) => {
+    // compute once and compare with normalized values
+    const statusText = getStatus(project.status);
+    const selected = filter || "All";
+
     const matchesFilter =
-      filter === "All" || p.status === filter || (filter === "Active" && !p.status);
-    const matchesSearch = p.title.toLowerCase().includes(searchQuery.toLowerCase());
+      selected === "All" || statusText === selected;
+
+    const q = (searchQuery || "").toLowerCase();
+    const projectName = (project.name || "").toLowerCase();
+    const clientName = (project.client?.name || "").toLowerCase();
+
+    const matchesSearch =
+      projectName.includes(q) || clientName.includes(q);
+
     return matchesFilter && matchesSearch;
   });
 
-  const getIntensityColor = (level: string) => {
-    switch (level) {
-      case "High":
-        return "bg-red-100 text-red-600";
-      case "Medium":
-        return "bg-yellow-100 text-yellow-600";
-      case "Low":
+  const getStatusColor = (status: number) => {
+    switch (status) {
+      case 1:
         return "bg-green-100 text-green-600";
+      case 2:
+        return "bg-green-100 text-green-600";
+      case 3:
+        return "bg-blue-100 text-blue-600";
+      case 4:
+        return "bg-red-100 text-red-600";
       default:
-        return "";
+        return "bg-gray-100 text-gray-600";
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Completed":
-        return "bg-green-100 text-green-600";
-      case "On Hold":
-        return "bg-gray-100 text-gray-600";
-      case "At Risk":
-        return "bg-red-100 text-red-600";
-      default:
-        return "";
-    }
+  // Function to get the first client's name or a default
+  const getClientName = (client: string | undefined): string => {
+    if (!client) return "No Client";
+    return client || "No Client";
   };
 
   return (
-    <>
+    <div className="container mx-auto px-4 py-6">
       {filteredProjects.length === 0 ? (
-        <p className="text-gray-500 text-center mt-10">No projects found.</p>
+        <p className="text-gray-500 text-center mt-10">No projects found matching your criteria.</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((p, index) => (
-            <div
-              key={index}
-              className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-800">{p.title}</h3>
-                <span
-                  className={`text-xs font-medium px-2 py-1 rounded-full ${getIntensityColor(
-                    p.intensity
-                  )}`}
-                >
-                  {p.intensity} Intensity
-                </span>
-              </div>
+          {filteredProjects.map((project) => {
+            const progress = calculateProgress(project.tasks);
+            const priority = project.client?.priority || 1;
+            const intensity = getPriorityText(priority);
+            
+            return (
+              <div
+                key={project.id}
+                className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-800">{project.name}</h3>
+                </div>
 
-              <p className="text-sm text-gray-500 mb-4">{p.company}</p>
+                <p className="text-sm text-gray-500 mb-4">
+                  {getClientName(project.client.name)}
+                </p>
 
-              <div className="mb-2 text-sm text-gray-700">Progress</div>
-              <div className="w-full bg-gray-100 h-2 rounded-full mb-2">
-                <div
-                  className="bg-black h-2 rounded-full"
-                  style={{ width: `${p.progress}%` }}
-                ></div>
-              </div>
-              <div className="flex items-center justify-between text-sm text-gray-600">
-                <span>{p.tasks} Tasks</span>
-                <span>{p.progress}%</span>
-              </div>
+                <div className="mb-2 text-sm text-gray-700">Progress</div>
+                <div className="w-full bg-gray-100 h-2 rounded-full mb-2">
+                  <div
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <span>
+                    {project.tasks?.filter((t: any) => String(t?.status ?? "").toLowerCase() === "completed").length || 0}
+                    /{project.tasks?.length || 0} Tasks
+                  </span>
+                  <span>{progress}%</span>
+                </div>
 
-              {p.status && (
                 <div
                   className={`mt-3 inline-block text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(
-                    p.status
+                    project.status
                   )}`}
                 >
-                  {p.status}
+                  {getStatus(project.status)}
                 </div>
-              )}
-            </div>
-          ))}
+
+                {project.teams && project.teams.length > 0 && (
+                  <div className="mt-3 text-sm text-gray-600">
+                    {project.teams.length} Team assigned
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
-    </>
+    </div>
   );
 }

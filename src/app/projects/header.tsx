@@ -2,15 +2,27 @@
 import React from "react";
 import SearchBar from "./searchbar";
 import NewProjectButton from "./newprojectbttn";
+import { Team } from "./schemas/team";
+import { Client } from "./schemas/client";
 
 interface HeaderProps {
   filter: string;
   setFilter: (value: string) => void;
   setSearchQuery: (value: string) => void;
+  teams: Team[];
+  clients: Client[];
+  onProjectCreated: () => void;
 }
 
-export default function Header({ filter, setFilter, setSearchQuery }: HeaderProps) {
-  const tabs = ["All", "Active", "Completed", "On Hold"];
+export default function Header({
+  filter,
+  setFilter,
+  setSearchQuery,
+  teams,
+  clients,
+  onProjectCreated,
+}: HeaderProps) {
+  const tabs = ["All", "In Queue", "In Progress", "Completed", "On Hold", "At Risk"];
 
   return (
     <>
@@ -22,7 +34,11 @@ export default function Header({ filter, setFilter, setSearchQuery }: HeaderProp
 
         <div className="flex items-center space-x-3">
           <SearchBar setSearchQuery={setSearchQuery} />
-          <NewProjectButton />
+          <NewProjectButton
+            teams={teams}
+            clients={clients}
+            onProjectCreated={onProjectCreated}
+          />
         </div>
       </div>
 
@@ -42,7 +58,6 @@ export default function Header({ filter, setFilter, setSearchQuery }: HeaderProp
           </button>
         ))}
       </div>
-    </>
+    </> 
   );
 }
-

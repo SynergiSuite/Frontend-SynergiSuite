@@ -18,6 +18,7 @@ export default function VerifyCode() {
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(59);
   const inputRefs = useRef<Array<HTMLInputElement | null>>(Array(6).fill(null));
+  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   // Get email from URL query parameters
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function VerifyCode() {
 
     try {
       const accessToken = CookieManager("get", "access-token");
-      const response = await fetch("http://localhost:3002/auth/verify-email", {
+      const response = await fetch(`${requestBaseUrl}/auth/verify-email`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

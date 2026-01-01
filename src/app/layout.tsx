@@ -20,6 +20,7 @@ const protectedRoutes = [
   "/employees",
   "/settings",
   "/projects",
+  "/clients",
   "/crm",
   "/team",
   "/profile",

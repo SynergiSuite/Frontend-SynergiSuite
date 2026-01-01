@@ -7,6 +7,7 @@ import {
   Settings,
   LifeBuoy,
   LogOut,
+  Component,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { CookieManager } from "@/lib/cookieManager";
@@ -21,8 +22,9 @@ export default function Sidebar() {
 
   const logout = async () => {
     const token = CookieManager("get", "access-token");
+    const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
     try {
-      const res = await fetch("http://localhost:3002/auth/logout", {
+      const res = await fetch(`${requestBaseUrl}/auth/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -64,6 +66,13 @@ export default function Sidebar() {
             className="flex items-center gap-2 w-full text-left px-2 py-1 rounded-md hover:bg-gray-100 text-gray-700"
           >
             <Users size={18} /> <span>Employees</span>
+          </button>
+
+          <button
+            onClick={() => handleClick("clients")}
+            className="flex items-center gap-2 w-full text-left px-2 py-1 rounded-md hover:bg-gray-100 text-gray-700"
+          >
+            <Component size={18} /> <span>Clients</span>
           </button>
 
           <button
