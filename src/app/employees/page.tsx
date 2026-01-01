@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import UserActions from "./useraction";
-import StatsCards from "./stateCards";
+import StatsCards from "./statecards";
 import RoleDistribution from "./roledistribution";
 import EmployeeListHeader from "./listheader";
 import EmployeeListFooter from "./listfooter";
-import EmployeeList from "./employeeList";
+import EmployeeList from "./employeelist";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
 
