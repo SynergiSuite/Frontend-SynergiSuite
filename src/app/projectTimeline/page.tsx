@@ -16,7 +16,7 @@ const Page = () => {
         {/* Main Content Area */}
         <div className="flex justify-between px-8 py-6">
 
-          {/* Timeline Section (now includes header inside) */}
+         
           <div className="flex-1 pr-8">
             <TimelineSection />
           </div>
