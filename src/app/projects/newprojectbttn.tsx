@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import NewProjectModal from "./createProjectForm";
 import { Team } from "./schemas/team";
 import { Client } from "./schemas/client";
@@ -69,14 +70,16 @@ export default function NewProjectButton({
         + New Project
       </button>
 
-      {isOpen && (
-        <NewProjectModal
-          onCancel={() => setIsOpen(false)}
-          onSubmit={handleCreateProject}
-          teams={teams}
-          clients={clients}
-        />
-      )}
+      <AnimatePresence>
+        {isOpen && (
+          <NewProjectModal
+            onCancel={() => setIsOpen(false)}
+            onSubmit={handleCreateProject}
+            teams={teams}
+            clients={clients}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

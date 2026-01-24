@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { AnimatePresence, motion } from "framer-motion";
+import { CookieManager } from "@/lib/cookieManager";
 
 type NavItem = {
   name: string;
@@ -14,7 +16,26 @@ export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [name, setName] = useState("")
+  const [email, setEmail] = useState("")
+  const [business, setBusiness] = useState("")
+  const [role, setRole] = useState("")
 
+  useEffect(() => {
+    
+    const getUserData = async() => {
+      const name = CookieManager("get", "user");
+      setName(name as string)
+      const email = CookieManager("get", "user-email");
+      setEmail(email as string)
+      const business = CookieManager("get", "business-name");
+      setBusiness(business as string)
+      const role = CookieManager("get", "role");
+      setRole(role as string)
+    }
+    getUserData()
+  }, [])
   // Define nav items per route
   const routeNavs: Record<string, NavItem[]> = {
     "/dashboard": [],
@@ -32,6 +53,11 @@ export default function Navbar() {
       { name: "Employees", param: "employees", route: "/employees" },
       { name: "Teams", param: "teams", route: "/teams" },
       { name: "Projects", param: "projects", route: "/projects" },
+    ],
+    "/task": [
+      { name: "Tasks", param: "employees", route: "/task" },
+      { name: "Timeline", param: "teams", route: "/timeline" },
+      { name: "Settings", param: "projects", route: "/settings" },
     ],
     "/settings": [
       { name: "Profile", param: "profile", route: "/settings/profile" },
@@ -70,7 +96,7 @@ export default function Navbar() {
               {links.map((item) => (
                 <button
                   key={item.param}
-                  onClick={() => handleClick(item.param)}
+                  onClick={() => handleClick(item.route)}
                   className={`${
                     activeTab === item.param
                       ? "text-black font-semibold underline"
@@ -85,16 +111,69 @@ export default function Navbar() {
         </div>
 
         {/* Profile avatar */}
-        <div
+        <button
+          type="button"
           className="w-8 h-8 bg-gray-300 rounded-full cursor-pointer"
-          onClick={() => handleClick("profile")}
+          onClick={() => setIsProfileOpen(true)}
+          aria-label="Open profile drawer"
         >
           <Avatar>
             <AvatarImage src="https://github.com/shadcn.png" />
             <AvatarFallback>CN</AvatarFallback>
           </Avatar>
-        </div>
+        </button>
       </div>
+      <AnimatePresence>
+        {isProfileOpen && (
+          <motion.div
+            className="fixed inset-0 z-50"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.button
+              type="button"
+              className="absolute inset-0 bg-black/40"
+              aria-label="Close profile drawer"
+              onClick={() => setIsProfileOpen(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            />
+            <motion.div
+              className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white shadow-2xl"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", stiffness: 260, damping: 28 }}
+            >
+              <div className="mx-auto w-full max-w-xl px-6 py-8">
+                <div className="flex justify-center">
+                  <Avatar className="h-24 w-24">
+                    <AvatarImage src="https://github.com/shadcn.png" />
+                    <AvatarFallback>CN</AvatarFallback>
+                  </Avatar>
+                </div>
+                <div className="mt-5 text-center">
+                  <h3 className="text-lg font-semibold text-gray-900">{name}</h3>
+                  <p className="mt-1 text-sm text-gray-600">{email}</p>
+                  <p className="mt-1 text-sm text-gray-600">{role} @ {business}</p>
+                </div>
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    onClick={() => setIsProfileOpen(false)}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </header>
   );
 }

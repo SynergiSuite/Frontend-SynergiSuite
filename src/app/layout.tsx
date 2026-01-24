@@ -12,6 +12,7 @@ import Navbar from "../components/ui/navbar";
 import LoaderCustom from "../components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
 import { Toaster } from "@/components/ui/sonner"
+import RightSidebar from "./task/rightsidebar";
 
 const access_secret = new TextEncoder().encode("synergi_user");
 
@@ -20,11 +21,13 @@ const protectedRoutes = [
   "/employees",
   "/settings",
   "/projects",
+  "/projects/*",
   "/clients",
   "/crm",
   "/team",
   "/profile",
   "/teams",
+  "/task"
 ];
 
 const publicRoutes = ["/login", "/signup", "/forgot-password"];
@@ -53,6 +56,8 @@ export default function RootLayout({
   const pathName = usePathname();
   const [isLoading, setIsLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [showRightSidebar, setShowRightSidebar] = useState(false);
+
 
   useEffect(() => {
     const verifyTokenAndProtectRoutes = async () => {
@@ -118,6 +123,12 @@ export default function RootLayout({
           return;
         }
 
+        if (!pathName.startsWith("/task") && !pathName.startsWith("/projects/")) {
+          CookieManager("delete", "client-name");
+          CookieManager("delete", "project-name");
+          CookieManager("delete", "project-id");
+        }
+
         if (typeof token !== "string") {
           router.replace("/session");
           return;
@@ -128,6 +139,12 @@ export default function RootLayout({
           if (data.payload.email != user_email) {
             setShowSidebar(false);
             throw new Error("Invalid token");
+          }
+
+          if (pathName.startsWith("/task")) {
+            setShowRightSidebar(true);
+          } else {
+            setShowRightSidebar(false);
           }
           setShowSidebar(true);
           setIsLoading(false);
@@ -171,6 +188,13 @@ export default function RootLayout({
             <main className="flex-1 bg-gray-50 p-10 overflow-y-auto">
               {isLoading ? <LoaderCustom /> : children}
             </main>
+            
+            
+            {showRightSidebar && (
+              <aside className="w-80 border-l border-gray-200 bg-white min-h-full">
+                <RightSidebar />
+              </aside>
+            )}
             
             <Toaster />
           </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { AnimatePresence } from "framer-motion";
 import StateCards from "./stateCards";
 import TeamActivitiesChart from "./teamActivities";
 import TeamPerformanceChart from "./teamPerformance";
@@ -142,13 +143,15 @@ export default function Page() {
         </main>
       )}
 
-      {isModalOpen && (
-        <CreateTeamModal
-          onClose={() => setIsModalOpen(false)}
-          onCreate={handleSubmitOnCreate}
-          employees={employees}
-        />
-      )}
+      <AnimatePresence>
+        {isModalOpen && (
+          <CreateTeamModal
+            onClose={() => setIsModalOpen(false)}
+            onCreate={handleSubmitOnCreate}
+            employees={employees}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

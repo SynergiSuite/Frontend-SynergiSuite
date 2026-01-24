@@ -15,7 +15,7 @@ export default function SearchBar({ setSearchQuery }: SearchBarProps) {
           type="text"
           placeholder="Search projects..."
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg w-64 focus:outline-none focus:ring-1 focus:ring-gray-300"
+          className="pl-10 pr-4 py-2 border border-gray-200 bg-white rounded-lg w-64 focus:outline-none focus:ring-1 focus:ring-gray-300"
         />
       </div>
     </>

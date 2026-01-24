@@ -2,7 +2,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Header from "./header";
 import ProjectCards from "./statecards";
-import { CookieManager } from "@/lib/cookieManager";
 import { Projects } from "./schemas/project";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { getProjectsApi } from "./apis/getProjectsApi";

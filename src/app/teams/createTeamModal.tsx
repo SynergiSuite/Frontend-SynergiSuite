@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { motion } from "framer-motion";
 import { 
   Select,
   SelectTrigger,
@@ -87,9 +88,30 @@ export default function CreateTeamModal({
 
   // ====== Render ======
   return (
-    <>
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
-      <div className="bg-white/85 backdrop-blur-md rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col">
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.button
+        type="button"
+        aria-label="Close modal"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.2 }}
+      />
+      <motion.div
+        className="bg-white/85 backdrop-blur-md rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col relative"
+        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 12, scale: 0.98 }}
+        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+      >
         {/* Header */}
         <div className="flex items-center justify-between border-b px-6 py-4">
           <div>
@@ -109,9 +131,9 @@ export default function CreateTeamModal({
           </button>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1">
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
             {/* Team Info */}
             <header className="space-y-4">
               <div>
@@ -233,27 +255,26 @@ export default function CreateTeamModal({
                 </SelectContent>
               </Select>
             </div>
+          </div>
 
-            {/* Footer */}
-            <div className="border-t pt-4 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-100"
-              >
-                Cancel
-              </button>
-              <Button
-                className="button_primary_lg px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                type="submit"
-              >
-                Create Team
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div></>
+          {/* Footer */}
+          <div className="border-t px-5 py-4 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 border rounded-md text-gray-600 hover:bg-gray-100"
+            >
+              Cancel
+            </button>
+            <Button
+              className="button_primary_lg px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              type="submit"
+            >
+              Create Team
+            </Button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
   );
 }
-
