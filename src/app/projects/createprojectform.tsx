@@ -1,6 +1,6 @@
 "use client";
 import React, { useState } from "react";
-import ModalFooter from "./createProjectFormFooter";
+import ModalFooter from "./createprojectformfooter";
 import { Team } from "./schemas/team";
 import { Client } from "./schemas/client";
 import { PriorityLevel } from "./schemas/priority.enum";
