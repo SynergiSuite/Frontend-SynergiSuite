@@ -1,7 +1,10 @@
 "use client";
 import React from "react";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { Projects } from "./schemas/project";
 import { PriorityLevel } from "./schemas/priority.enum";
+import { CookieManager } from "@/lib/cookieManager";
 interface ProjectCardsProps {
   filter: string;
   searchQuery: string;
@@ -42,7 +45,12 @@ function getStatus(priority: PriorityLevel): string {
   }
 }
 
+const handleProjectDetail = (projectName: string) => {
+  
+};
+
 export default function ProjectCards({ filter, searchQuery, projects }: ProjectCardsProps) {
+  const router = useRouter();
   const filteredProjects = projects.filter((project) => {
     // compute once and compare with normalized values
     const statusText = getStatus(project.status);
@@ -82,62 +90,95 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
     return client || "No Client";
   };
 
+  const handleProjectDetail = (projectName: string, clientName: string, projectID: string) => {
+    const safeName = encodeURIComponent(projectName || "");
+    CookieManager("set", "client-name", clientName);
+    CookieManager("set", "project-id", projectID);
+    router.push(`/projects/${safeName}`);
+  };
+
+  const gridKey = `${filter || "all"}-${searchQuery || ""}`;
+
   return (
     <div className="container mx-auto px-4 py-6">
       {filteredProjects.length === 0 ? (
         <p className="text-gray-500 text-center mt-10">No projects found matching your criteria.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => {
-            const progress = calculateProgress(project.tasks);
-            const priority = project.client?.priority || 1;
-            const intensity = getPriorityText(priority);
-            
-            return (
-              <div
-                key={project.id}
-                className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-gray-800">{project.name}</h3>
-                </div>
+        <AnimatePresence mode="sync">
+          <motion.div
+            key={gridKey}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial="hidden"
+            animate="show"
+            exit="hidden"
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.06, delayChildren: 0.05 },
+              },
+            }}
+          >
+            {filteredProjects.map((project) => {
+              const progress = calculateProgress(project.tasks);
 
-                <p className="text-sm text-gray-500 mb-4">
-                  {getClientName(project.client.name)}
-                </p>
-
-                <div className="mb-2 text-sm text-gray-700">Progress</div>
-                <div className="w-full bg-gray-100 h-2 rounded-full mb-2">
-                  <div
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <div className="flex items-center justify-between text-sm text-gray-600">
-                  <span>
-                    {project.tasks?.filter((t: any) => String(t?.status ?? "").toLowerCase() === "completed").length || 0}
-                    /{project.tasks?.length || 0} Tasks
-                  </span>
-                  <span>{progress}%</span>
-                </div>
-
-                <div
-                  className={`mt-3 inline-block text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(
-                    project.status
-                  )}`}
+              return (
+                <motion.div
+                  key={project.id}
+                  onClick={() => handleProjectDetail(project.name, project.client?.name || "No Client", project.id)}
+                  className="bg-white cursor-pointer border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition"
+                  whileHover={{ y: -4 }}
+                  transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                  variants={{
+                    hidden: { opacity: 0, y: 12 },
+                    show: {
+                      opacity: 1,
+                      y: 0,
+                      transition: { duration: 0.25, ease: "easeOut" },
+                    },
+                  }}
                 >
-                  {getStatus(project.status)}
-                </div>
-
-                {project.teams && project.teams.length > 0 && (
-                  <div className="mt-3 text-sm text-gray-600">
-                    {project.teams.length} Team assigned
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-800">{project.name}</h3>
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
+
+                  <p className="text-sm text-gray-500 mb-4">
+                    {getClientName(project.client.name)}
+                  </p>
+
+                  <div className="mb-2 text-sm text-gray-700">Progress</div>
+                  <div className="w-full bg-gray-100 h-2 rounded-full mb-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-sm text-gray-600">
+                    <span>
+                      {project.tasks?.filter((t: any) => String(t?.status ?? "").toLowerCase() === "completed").length || 0}
+                      /{project.tasks?.length || 0} Tasks
+                    </span>
+                    <span>{progress}%</span>
+                  </div>
+
+                  <div
+                    className={`mt-3 inline-block text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(
+                      project.status
+                    )}`}
+                  >
+                    {getStatus(project.status)}
+                  </div>
+
+                  {project.teams && project.teams.length > 0 && (
+                    <div className="mt-3 text-sm text-gray-600">
+                      {project.teams.length} Team assigned
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </motion.div>
+        </AnimatePresence>
       )}
     </div>
   );

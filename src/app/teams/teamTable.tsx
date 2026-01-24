@@ -1,5 +1,6 @@
 
 import React, { useState } from "react";
+import { AnimatePresence } from "framer-motion";
 import { Trash, PencilRuler } from "lucide-react"
 import { AlertDialog,
   AlertDialogAction,
@@ -110,7 +111,16 @@ export default function TeamTable({ teams, employees }: TeamProps) {
         </tbody>
       </table>
 
-      {isEdit ? <EditTeamModal onClose={() => setIsEdit(false)} onUpdate={handleUpdate} employees={employees} team={team}/> : null}
+      <AnimatePresence>
+        {isEdit ? (
+          <EditTeamModal
+            onClose={() => setIsEdit(false)}
+            onUpdate={handleUpdate}
+            employees={employees}
+            team={team}
+          />
+        ) : null}
+      </AnimatePresence>
 
       <AlertDialog open={isDelete} onOpenChange={setIsDelete}>
         <AlertDialogContent>
