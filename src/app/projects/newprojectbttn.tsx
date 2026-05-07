@@ -20,34 +20,38 @@ export default function NewProjectButton({
 
   const structureData = (
     clientId: string,
-    teamId: string,
+    teamIds: string[],
     projectName: string,
     projectStatus: number,
-    projectDescription?: string
+    duration: string,
+    projectDescription?: string,
   ) => {
     const obj = {
       name: projectName,
       description: projectDescription,
       status: projectStatus,
-      teams: [teamId],
+      teams: teamIds,
       client: clientId,
+      duration: duration,
     };
     return obj;
   };
 
   const handleCreateProject = async (data: {
     clientId: string;
-    teamId: string;
+    teamIds: string[];
     name: string;
     status: number;
+    duration: string;
     description?: string;
   }) => {
     const payload = structureData(
       data.clientId,
-      data.teamId,
+      data.teamIds,
       data.name,
       data.status,
-      data.description
+      data.duration,
+      data.description,
     );
 
     try {
