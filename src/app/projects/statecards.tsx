@@ -94,7 +94,7 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
     const safeName = encodeURIComponent(projectName || "");
     CookieManager("set", "client-name", clientName);
     CookieManager("set", "project-id", projectID);
-    router.push(`/projects/${safeName}`);
+    router.push(`/projects/${safeName}/overview`);
   };
 
   const gridKey = `${filter || "all"}-${searchQuery || ""}`;

@@ -12,7 +12,7 @@ import Navbar from "../components/ui/navbar";
 import LoaderCustom from "../components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
 import { Toaster } from "@/components/ui/sonner"
-import RightSidebar from "./task/rightsidebar";
+import RightSidebar from "./projects/[projectName]/timeline/rightsidebar";
 
 const access_secret = new TextEncoder().encode("synergi_user");
 

@@ -19,8 +19,9 @@ interface NewProjectModalProps {
     name: string;
     description?: string;
     clientId: string;
-    teamId: string;
+    teamIds: string[];
     status: number;
+    duration: string;
   }) => void;
   teams: Team[];
   clients: Client[];
@@ -33,10 +34,11 @@ export default function NewProjectModal({
   clients,
 }: NewProjectModalProps) {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
-  const [selectedTeamId, setSelectedTeamId] = useState<string>("");
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [statusValue, setStatusValue] = useState<string>(""); // FIX
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
+  const [duration, setDuration] = useState("");
 
   const priorityOptions = Object.entries(PriorityLevel)
     .filter((entry): entry is [string, number] => typeof entry[1] === "number")
@@ -48,8 +50,17 @@ export default function NewProjectModal({
   const isFormValid =
     projectName.trim().length > 0 &&
     selectedClientId !== "" &&
-    selectedTeamId !== "" &&
-    statusValue !== "";
+    selectedTeamIds.length > 0 &&
+    statusValue !== "" &&
+    duration !== "";
+
+  const toggleTeamId = (teamId: string) => {
+    setSelectedTeamIds((prev) =>
+      prev.includes(teamId)
+        ? prev.filter((id) => id !== teamId)
+        : [...prev, teamId],
+    );
+  };
 
   return (
     <motion.div
@@ -128,25 +139,37 @@ export default function NewProjectModal({
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Select Teams
             </label>
-            <Select
-              value={selectedTeamId}
-              onValueChange={setSelectedTeamId}
-            >
-              <SelectTrigger className="w-full border_primary bg-white cursor-pointer">
-                <SelectValue placeholder="Select Teams" />
-              </SelectTrigger>
-              <SelectContent>
-                {teams.map((team) => (
-                  <SelectItem
-                    key={team.id}
-                    value={team.id}
-                    className="cursor-pointer"
-                  >
-                    {team.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="rounded-md border border-gray-300 bg-white p-2">
+              <div className="flex flex-wrap gap-2">
+                {teams.map((team) => {
+                  const isSelected = selectedTeamIds.includes(team.id);
+                  return (
+                    <label
+                      key={team.id}
+                      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition ${
+                        isSelected
+                          ? "border-gray-900 bg-gray-100 text-gray-900"
+                          : "border-gray-300 bg-white text-gray-700"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 accent-black"
+                        checked={isSelected}
+                        onChange={() => toggleTeamId(team.id)}
+                      />
+                      {team.name}
+                    </label>
+                  );
+                })}
+              </div>
+              {selectedTeamIds.length > 0 && (
+                <div className="mt-2 text-xs text-gray-500">
+                  {selectedTeamIds.length} team
+                  {selectedTeamIds.length === 1 ? "" : "s"} selected
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Status + Description */}
@@ -176,6 +199,18 @@ export default function NewProjectModal({
 
             <div className="mt-4">
               <label className="block text-sm font-medium text-gray-700 mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              />
+            </div>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Project Description
               </label>
               <textarea
@@ -198,8 +233,9 @@ export default function NewProjectModal({
                 name: projectName.trim(),
                 description: projectDescription.trim() || undefined,
                 clientId: selectedClientId,
-                teamId: selectedTeamId,
+                teamIds: selectedTeamIds,
                 status: Number(statusValue),
+                duration: duration,
               });
             }}
           />

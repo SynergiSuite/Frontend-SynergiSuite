@@ -12,6 +12,7 @@ import { CookieManager } from "@/lib/cookieManager";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { Employee, Team, Teams } from "./schemas/types";
 import { toast } from "sonner"
+import { getTeamsApi } from "./apis/getTeamsApi";
 
 
 export default function Page() {
@@ -27,17 +28,7 @@ export default function Page() {
   useEffect(() => {
     const fetchTeamsData = async () => {
       setIsLoading(true);
-      const accessToken = CookieManager("get", "access-token");
-      const response = await fetch(
-        `${requestBaseUrl}/teams/get-all-teams`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-      const data = await response.json();
+      const data = await getTeamsApi();
       setTeams(data.teams);
       setCount(data.count);
     };

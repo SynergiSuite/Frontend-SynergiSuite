@@ -4,5 +4,6 @@ export type Team = {
     id: string;
     name: string;
     description?: string;
-    leader: User 
+    leader: User;
+    members: User[]; 
 }

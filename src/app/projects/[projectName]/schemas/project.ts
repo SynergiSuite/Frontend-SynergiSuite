@@ -1,0 +1,13 @@
+import { Team } from "../../schemas/team";
+import { Task } from "../task/schemas/task";
+
+export interface Project {
+    id: string;
+    name: string;
+    description: string;
+    status: string;
+    tasks: Task[];
+    teams: Team[];
+    created_at: string;
+    duration: string;
+}
