@@ -16,7 +16,6 @@ export default function UserActions() {
 
   useEffect(() => {
     const role = getCookie("role");
-    console.log(role)
     setRole(role as string);
   }, []);
 
@@ -31,9 +30,7 @@ export default function UserActions() {
     setIsDialogOpen(false);
   };
 
-  const handleExport = () => {
-    console.log("Export clicked");
-  };
+  const handleExport = () => {};
 
   return (
     <div className="flex justify-end items-center space-x-3">

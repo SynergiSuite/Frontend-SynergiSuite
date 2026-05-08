@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { motion } from "framer-motion";
 import {
   Select,
@@ -9,6 +9,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Project } from "../schemas/project";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalOverlayClass,
+  modalShellClass,
+  modalTitleClass,
+} from "@/lib/modalStyles";
 
 export type NewMilestonePayload = {
   name: string;
@@ -35,14 +43,7 @@ export default function CreateMilestoneModal({
   const [endDate, setEndDate] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [taskIds, setTaskIds] = useState<string[]>([]);
-  const [projectId, setProjectId] = useState<string>("");
-
-  useEffect(() => {
-    const projectId = projectDetail?.id;
-    if (projectId) {
-      setProjectId(projectId);
-    }
-  }, [projectDetail]);
+  const projectId = projectDetail?.id;
 
   const availableTasks = projectDetail?.tasks ?? [];
   const taskTitle = (task: any) =>
@@ -63,7 +64,7 @@ export default function CreateMilestoneModal({
   };
 
   const isFormValid =
-    name.trim().length > 0 && endDate !== "" && taskIds.length > 0;
+    name.trim().length > 0 && endDate !== "" && Boolean(projectId);
 
   return (
     <motion.div
@@ -76,7 +77,7 @@ export default function CreateMilestoneModal({
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="absolute inset-0 bg-black/40"
+        className={modalOverlayClass}
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -84,19 +85,19 @@ export default function CreateMilestoneModal({
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] relative flex flex-col"
+        className={`${modalShellClass} max-w-2xl`}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
-        <div className="px-6 pt-6 pb-2 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">
+        <div className={modalHeaderClass}>
+          <h2 className={modalTitleClass}>
             Milestone Details
           </h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className={modalBodyClass}>
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Name
@@ -153,6 +154,7 @@ export default function CreateMilestoneModal({
               <button
                 type="button"
                 onClick={addItem}
+                disabled={availableTasks.length === 0}
                 className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
               >
                 Add
@@ -181,7 +183,7 @@ export default function CreateMilestoneModal({
               </div>
             ) : (
               <p className="mt-2 text-xs text-gray-500">
-                Add at least one list item.
+                Tasks are optional.
               </p>
             )}
           </div>
@@ -200,9 +202,15 @@ export default function CreateMilestoneModal({
               />
             </div>
           ) : null}
+
+          {!projectId ? (
+            <p className="text-xs text-red-500">
+              A project is required to create this milestone.
+            </p>
+          ) : null}
         </div>
 
-        <div className="flex justify-end space-x-3 border-t px-6 py-3">
+        <div className={`${modalFooterClass} flex justify-end space-x-3`}>
           <button
             type="button"
             onClick={onCancel}
@@ -222,8 +230,8 @@ export default function CreateMilestoneModal({
                 name: name.trim(),
                 endDate,
                 taskIds,
-                projectId: projectId || undefined,
-                projectName,
+                projectId,
+                projectName: projectName || undefined,
               });
             }}
             disabled={!isFormValid}

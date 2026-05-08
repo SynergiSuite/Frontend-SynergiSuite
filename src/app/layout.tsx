@@ -47,6 +47,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+type WindowWithPatchedFetch = Window & {
+  __ngrokFetchPatched?: boolean;
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -58,6 +62,41 @@ export default function RootLayout({
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
 
+  useEffect(() => {
+    const patchedWindow = window as WindowWithPatchedFetch;
+
+    if (patchedWindow.__ngrokFetchPatched) {
+      return;
+    }
+
+    const originalFetch = window.fetch.bind(window);
+
+    window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const isRequestObject = input instanceof Request;
+      const requestHeaders = isRequestObject ? input.headers : undefined;
+      const mergedHeaders = new Headers(init?.headers ?? requestHeaders);
+
+      if (!mergedHeaders.has("ngrok-skip-browser-warning")) {
+        mergedHeaders.set("ngrok-skip-browser-warning", "1");
+      }
+
+      if (isRequestObject) {
+        const nextRequest = new Request(input, {
+          ...init,
+          headers: mergedHeaders,
+        });
+
+        return originalFetch(nextRequest);
+      }
+
+      return originalFetch(input, {
+        ...init,
+        headers: mergedHeaders,
+      });
+    };
+
+    patchedWindow.__ngrokFetchPatched = true;
+  }, []);
 
   useEffect(() => {
     const verifyTokenAndProtectRoutes = async () => {

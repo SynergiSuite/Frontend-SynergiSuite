@@ -13,6 +13,8 @@ type TaskGridProps = {
   tasks: Task[];
   onUpdateTask: (payload: TaskViewEditPayload) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void> | void;
+  canEditTasks: boolean;
+  canDeleteTasks: boolean;
   statusOptions?: string[];
 };
 
@@ -23,6 +25,8 @@ export default function TaskGrid({
   tasks,
   onUpdateTask,
   onDeleteTask,
+  canEditTasks,
+  canDeleteTasks,
   statusOptions = TASK_STATUS_OPTIONS,
 }: TaskGridProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -75,15 +79,18 @@ export default function TaskGrid({
                 priority={task.priority}
                 status={task.status}
                 assigned_to={task.teams.map(team => team.name)}
-                onClick={() => setSelectedTask(task)}
-                onDeleteClick={(taskId) => setDeleteTaskId(taskId)}
+                onClick={canEditTasks ? () => setSelectedTask(task) : undefined}
+                onDeleteClick={
+                  canDeleteTasks ? (taskId) => setDeleteTaskId(taskId) : undefined
+                }
+                canDelete={canDeleteTasks}
               />
             </motion.div>
           ))}
         </motion.div>
       </AnimatePresence>
       <AnimatePresence>
-        {selectedTask && (
+        {selectedTask && canEditTasks ? (
           <ViewAndEditModal
             data={{
               id: selectedTask.id,
@@ -101,21 +108,23 @@ export default function TaskGrid({
             }}
             statusOptions={statusOptions}
           />
-        )}
+        ) : null}
       </AnimatePresence>
-      <DeleteTaskModal
-        open={deleteTaskId !== null}
-        taskId={deleteTaskId}
-        onOpenChange={(open) => {
-          if (!open) {
+      {canDeleteTasks ? (
+        <DeleteTaskModal
+          open={deleteTaskId !== null}
+          taskId={deleteTaskId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteTaskId(null);
+            }
+          }}
+          onConfirm={(taskId) => {
+            onDeleteTask(taskId);
             setDeleteTaskId(null);
-          }
-        }}
-        onConfirm={(taskId) => {
-          onDeleteTask(taskId);
-          setDeleteTaskId(null);
-        }}
-      />
+          }}
+        />
+      ) : null}
     </>
   );
 }

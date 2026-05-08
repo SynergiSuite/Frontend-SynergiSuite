@@ -21,6 +21,8 @@ type TaskKanbanProps = {
     options?: { showSuccessToast?: boolean }
   ) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void> | void;
+  canEditTasks: boolean;
+  canDeleteTasks: boolean;
   statusOptions?: string[];
 };
 
@@ -31,6 +33,8 @@ export default function TaskKanban({
   tasks,
   onUpdateTask,
   onDeleteTask,
+  canEditTasks,
+  canDeleteTasks,
   statusOptions = TASK_STATUS_OPTIONS,
 }: TaskKanbanProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -64,6 +68,10 @@ export default function TaskKanban({
   const boardKey = `${statusFilter}-${dueFilter}-${searchQuery}`;
 
   const handleDrop = async (targetStatus: string, taskId?: string) => {
+    if (!canEditTasks) {
+      return;
+    }
+
     const activeTaskId = taskId ?? draggedTaskId;
     if (!activeTaskId) {
       return;
@@ -189,9 +197,14 @@ export default function TaskKanban({
                           priority={task.priority}
                           status={task.status}
                           assigned_to={task.teams.map((team) => team.name)}
-                          onClick={() => setSelectedTask(task)}
-                          onDeleteClick={(taskId) => setDeleteTaskId(taskId)}
-                          draggable={!pendingTaskIds.includes(task.id)}
+                          onClick={canEditTasks ? () => setSelectedTask(task) : undefined}
+                          onDeleteClick={
+                            canDeleteTasks
+                              ? (taskId) => setDeleteTaskId(taskId)
+                              : undefined
+                          }
+                          canDelete={canDeleteTasks}
+                          draggable={canEditTasks && !pendingTaskIds.includes(task.id)}
                           onDragStart={(event) => {
                             event.dataTransfer.effectAllowed = "move";
                             event.dataTransfer.setData("text/plain", task.id);
@@ -217,7 +230,7 @@ export default function TaskKanban({
       </AnimatePresence>
 
       <AnimatePresence>
-        {selectedTask && (
+        {selectedTask && canEditTasks ? (
           <ViewAndEditModal
             data={{
               id: selectedTask.id,
@@ -235,22 +248,24 @@ export default function TaskKanban({
             }}
             statusOptions={statusOptions}
           />
-        )}
+        ) : null}
       </AnimatePresence>
 
-      <DeleteTaskModal
-        open={deleteTaskId !== null}
-        taskId={deleteTaskId}
-        onOpenChange={(open) => {
-          if (!open) {
+      {canDeleteTasks ? (
+        <DeleteTaskModal
+          open={deleteTaskId !== null}
+          taskId={deleteTaskId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteTaskId(null);
+            }
+          }}
+          onConfirm={(taskId) => {
+            onDeleteTask(taskId);
             setDeleteTaskId(null);
-          }
-        }}
-        onConfirm={(taskId) => {
-          onDeleteTask(taskId);
-          setDeleteTaskId(null);
-        }}
-      />
+          }}
+        />
+      ) : null}
     </>
   );
 }

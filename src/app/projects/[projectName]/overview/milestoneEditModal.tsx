@@ -1,7 +1,23 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Milestone, MilestoneUpdate } from "../schemas/milestone";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Task } from "../task/schemas/task";
+import { MilestoneUpdate } from "../schemas/milestone";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalOverlayClass,
+  modalShellClass,
+  modalTitleClass,
+} from "@/lib/modalStyles";
 
 type MilestoneEditModalProps = {
   onCancel: () => void;
@@ -9,6 +25,9 @@ type MilestoneEditModalProps = {
   milestoneId: string;
   initialName?: string;
   initialEndDate?: string;
+  initialTaskIds?: string[];
+  availableTasks: Task[];
+  isSubmitting?: boolean;
   title?: string;
 };
 
@@ -18,10 +37,15 @@ export default function MilestoneEditModal({
   milestoneId,
   initialName = "",
   initialEndDate = "",
+  initialTaskIds = [],
+  availableTasks,
+  isSubmitting = false,
   title = "Edit Milestone",
 }: MilestoneEditModalProps) {
   const [name, setName] = useState(initialName);
   const [endDate, setEndDate] = useState(initialEndDate);
+  const [selectedTaskId, setSelectedTaskId] = useState("");
+  const [taskIds, setTaskIds] = useState<string[]>(initialTaskIds);
 
   useEffect(() => {
     setName(initialName);
@@ -30,6 +54,27 @@ export default function MilestoneEditModal({
   useEffect(() => {
     setEndDate(initialEndDate);
   }, [initialEndDate]);
+
+  useEffect(() => {
+    setTaskIds(initialTaskIds);
+  }, [initialTaskIds]);
+
+  const taskTitle = (task: Task) => task.title || "Untitled task";
+
+  const addTask = () => {
+    if (!selectedTaskId) {
+      return;
+    }
+
+    setTaskIds((prev) =>
+      prev.includes(selectedTaskId) ? prev : [...prev, selectedTaskId]
+    );
+    setSelectedTaskId("");
+  };
+
+  const removeTask = (index: number) => {
+    setTaskIds((prev) => prev.filter((_, taskIndex) => taskIndex !== index));
+  };
 
   const isFormValid = name.trim().length > 0 && endDate !== "";
 
@@ -44,7 +89,7 @@ export default function MilestoneEditModal({
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="absolute inset-0 bg-black/40"
+        className={modalOverlayClass}
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -52,17 +97,17 @@ export default function MilestoneEditModal({
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="bg-white rounded-xl shadow-lg w-full max-w-lg max-h-[90vh] relative flex flex-col"
+        className={`${modalShellClass} max-w-lg`}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
-        <div className="px-6 pt-6 pb-2 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">{title}</h2>
+        <div className={modalHeaderClass}>
+          <h2 className={modalTitleClass}>{title}</h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className={modalBodyClass}>
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Name
@@ -88,13 +133,80 @@ export default function MilestoneEditModal({
             />
             <p className="mt-1 text-xs text-gray-500">Format: 2025-11-20</p>
           </div>
+
+          <div className="mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tasks
+            </label>
+            <div className="flex gap-2">
+              <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
+                <SelectTrigger className="flex-1 border_primary bg-white cursor-pointer">
+                  <SelectValue placeholder="Select task" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTasks.length > 0 ? (
+                    availableTasks.map((task) => (
+                      <SelectItem
+                        key={task.id}
+                        value={task.id}
+                        className="cursor-pointer"
+                      >
+                        {taskTitle(task)}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="no-tasks" disabled>
+                      No tasks available
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <button
+                type="button"
+                onClick={addTask}
+                disabled={availableTasks.length === 0 || isSubmitting}
+                className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Add
+              </button>
+            </div>
+            {taskIds.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {taskIds.map((taskId, index) => {
+                  const task = availableTasks.find((item) => item.id === taskId);
+
+                  return (
+                    <div
+                      key={`${taskId}-${index}`}
+                      className="flex items-center justify-between rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700"
+                    >
+                      <span>{task ? taskTitle(task) : "Unknown task"}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeTask(index)}
+                        disabled={isSubmitting}
+                        className="text-gray-500 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-gray-500">
+                Tasks are optional.
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="flex justify-end space-x-3 border-t px-6 py-3">
+        <div className={`${modalFooterClass} flex justify-end space-x-3`}>
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+            disabled={isSubmitting}
+            className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Cancel
           </button>
@@ -102,23 +214,25 @@ export default function MilestoneEditModal({
           <button
             type="button"
             onClick={() => {
-              if (!isFormValid) {
+              if (!isFormValid || isSubmitting) {
                 return;
               }
+
               onSubmit({
                 id: milestoneId,
                 name: name.trim(),
-                endDate: endDate.toString()
+                end_date: endDate,
+                taskIds,
               });
             }}
-            disabled={!isFormValid}
+            disabled={!isFormValid || isSubmitting}
             className={`px-4 py-2 rounded-md text-white transition ${
-              isFormValid
+              isFormValid && !isSubmitting
                 ? "bg-black hover:bg-gray-800"
                 : "bg-gray-400 cursor-not-allowed"
             }`}
           >
-            Save Changes
+            {isSubmitting ? "Saving..." : "Save Changes"}
           </button>
         </div>
       </motion.div>

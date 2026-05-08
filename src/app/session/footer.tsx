@@ -9,7 +9,7 @@ type Props = {
 export default function Footer({form, setForm}: Props){
     return(
         <>
-        <div className="w-[90%] sm:w-[70%] md:w-[50%] lg:w-[30%] my-6 px-1">
+        <div className="mt-4 w-[90%] px-1 sm:w-[70%] md:w-[50%] lg:w-[30%]">
           <div className="relative flex bg-gray-200 py-1 rounded-[8px] p-1">
             {/* Animated sliding pill */}
             <motion.div

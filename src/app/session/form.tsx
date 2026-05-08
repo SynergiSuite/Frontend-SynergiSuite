@@ -2,6 +2,7 @@ import React from "react";
 import Signup from "./signup";
 import Signin from "./signin";
 import { AnimatePresence, motion } from "framer-motion";
+import Header from "./header";
 
 type Props = {
     text: {
@@ -17,19 +18,23 @@ type Props = {
 export default function Form({form, text}: Props){
     return(
         <>
-          <div className="border_primary transform transition-transform w-[90%] sm:w-[70%] md:w-[60%] lg:w-[40%] xl:w-[30%] py-8 px-4 sm:px-6 rounded-lg         mx-auto">
+          <div className="border_primary transform transition-transform w-[90%] sm:w-[70%] md:w-[60%] lg:w-[40%] xl:w-[30%] rounded-lg px-4 py-6 sm:px-6 sm:py-7 mx-auto">
+            <div className="mb-2 flex justify-center">
+              <Header />
+            </div>
+
             {/* Header Text */}
-            <div className="flex flex-col justify-center items-center text-center">
+            <div className="flex flex-col items-center justify-center text-center">
               <h3 className="component_heading">
                 {form === 'signup' ? text.headSignup : text.headSignin}
               </h3>
-              <p className="under_heading pt-4">
+              <p className="under_heading pt-2">
                 {form === 'signup' ? text.subSignup : text.subSignin}
               </p>
             </div>
         
             {/* Animated Form */}
-            <div className="relative w-full flex justify-center items-center mt-6">
+            <div className="relative mt-4 flex w-full items-center justify-center">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={form}

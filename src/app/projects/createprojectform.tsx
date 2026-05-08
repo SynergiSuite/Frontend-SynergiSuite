@@ -12,6 +12,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  modalBodyClass,
+  modalHeaderClass,
+  modalOverlayClass,
+  modalShellClass,
+  modalTitleClass,
+} from "@/lib/modalStyles";
 
 interface NewProjectModalProps {
   onCancel: () => void;
@@ -73,7 +80,7 @@ export default function NewProjectModal({
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="absolute inset-0 bg-black/40"
+        className={modalOverlayClass}
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -81,19 +88,19 @@ export default function NewProjectModal({
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] relative flex flex-col"
+        className={`${modalShellClass} max-w-2xl`}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
-        <div className="px-6 pt-6 pb-2 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">
+        <div className={modalHeaderClass}>
+          <h2 className={modalTitleClass}>
             Project Details
           </h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className={modalBodyClass}>
           {/* Project Name */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -224,7 +231,7 @@ export default function NewProjectModal({
           </div>
         </div>
 
-        <div className="px-6 py-3 border-t">
+        <div className="border-t border-gray-200/80 px-6 py-4 sm:px-8">
           <ModalFooter
             onCancel={onCancel}
             isSubmitDisabled={!isFormValid}

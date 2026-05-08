@@ -8,6 +8,16 @@ import { AddEmployeeDialogProps } from "./schemas/addEmployee";
 import { Role } from "./schemas/roles";
 import { fetchRoles } from "./apis/getRoleApi";
 import { inviteEmployee } from "./apis/addEmployeeApi";
+import {
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalOverlayClass,
+  modalShellClass,
+  modalSubtitleClass,
+  modalTitleClass,
+} from "@/lib/modalStyles";
 
 
 export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps) {
@@ -66,13 +76,23 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-3xl bg-white rounded-lg shadow-xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
+      <button
+        type="button"
+        aria-label="Close add employee modal"
+        className={modalOverlayClass}
+        onClick={() => {
+          setError("");
+          onClose();
+          setFormData({ email: "", role_id: 0 });
+        }}
+      />
+      <div className={`${modalShellClass} max-w-3xl`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b">
+        <div className={`${modalHeaderClass} flex items-start justify-between gap-4`}>
           <div>
-            <h2 className="text-xl font-semibold">Add New Employee</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className={modalTitleClass}>Add New Employee</h2>
+            <p className={modalSubtitleClass}>
               Send invitation to new team members with their roles.
             </p>
           </div>
@@ -82,14 +102,14 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
               onClose();
               setFormData({ email: "", role_id: 0 });
             }}
-            className="text-gray-500 hover:text-gray-700"
+            className={modalCloseButtonClass}
             aria-label="Close"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="px-2 py-4">
+        <div className="px-6 pt-4 sm:px-8">
           {error ? (
             <Alert variant="destructive" className="border-red-400">
               <Terminal />
@@ -101,7 +121,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
           ) : null}
         </div>
 
-        <div className="px-6">
+        <div className="px-6 sm:px-8">
           <p className="text-sm text-muted-foreground">
             Make sure the invited person has an account with SynergiSuite. If
             they don't, they can sign up for a free trial. Once they've signed
@@ -114,7 +134,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
         {/* Form */}
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-6 max-h-[80vh] overflow-y-auto"
+          className={`${modalBodyClass} space-y-6`}
         >
           {/* Personal Info */}
           <div className="space-y-1">
@@ -154,7 +174,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end space-x-3 pt-4 border-t">
+          <div className={`${modalFooterClass} -mx-6 -mb-6 mt-4 flex justify-end space-x-3 pt-4 sm:-mx-8 sm:-mb-6`}>
             <Button
               className="text-gray-800"
               type="button"

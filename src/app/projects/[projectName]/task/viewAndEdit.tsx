@@ -9,6 +9,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { formatTaskLabel, TASK_STATUS_OPTIONS } from "./task-utils";
+import {
+  modalBodyClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalOverlayClass,
+  modalShellClass,
+  modalTitleClass,
+} from "@/lib/modalStyles";
 
 type TeamMember = {
   user_id: number;
@@ -125,7 +133,7 @@ export default function ViewAndEditModal({
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="absolute inset-0 bg-black/40"
+        className={modalOverlayClass}
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -133,19 +141,19 @@ export default function ViewAndEditModal({
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="bg-white rounded-xl shadow-lg w-full max-w-2xl max-h-[90vh] relative flex flex-col"
+        className={`${modalShellClass} max-w-2xl`}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
-        <div className="px-6 pt-6 pb-2 border-b">
-          <h2 className="text-xl font-semibold text-gray-800">
+        <div className={modalHeaderClass}>
+          <h2 className={modalTitleClass}>
             View & Edit Task
           </h2>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className={modalBodyClass}>
         <div className="mb-6">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Title
@@ -297,7 +305,7 @@ export default function ViewAndEditModal({
         </div>
         </div>
 
-        <div className="flex justify-end space-x-3 border-t px-6 py-3">
+        <div className={`${modalFooterClass} flex justify-end space-x-3`}>
           <button
             type="button"
             onClick={onCancel}

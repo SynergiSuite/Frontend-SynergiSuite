@@ -62,9 +62,10 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
     const q = (searchQuery || "").toLowerCase();
     const projectName = (project.name || "").toLowerCase();
     const clientName = (project.client?.name || "").toLowerCase();
+    const clientCompany = (project.client?.company || "").toLowerCase();
 
     const matchesSearch =
-      projectName.includes(q) || clientName.includes(q);
+      projectName.includes(q) || clientName.includes(q) || clientCompany.includes(q);
 
     return matchesFilter && matchesSearch;
   });
@@ -84,10 +85,9 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
     }
   };
 
-  // Function to get the first client's name or a default
-  const getClientName = (client: string | undefined): string => {
-    if (!client) return "No Client";
-    return client || "No Client";
+  const getClientCompany = (company: string | undefined): string => {
+    if (!company) return "No Client Company";
+    return company || "No Client Company";
   };
 
   const handleProjectDetail = (projectName: string, clientName: string, projectID: string) => {
@@ -143,14 +143,16 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                   </div>
 
                   <p className="text-sm text-gray-500 mb-4">
-                    {getClientName(project.client.name)}
+                    {getClientCompany(project.client?.company)}
                   </p>
 
                   <div className="mb-2 text-sm text-gray-700">Progress</div>
-                  <div className="w-full bg-gray-100 h-2 rounded-full mb-2">
-                    <div
-                      className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${progress}%` }}
+                  <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                    <motion.div
+                      className="h-2 rounded-full bg-slate-800"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${progress}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut" }}
                     />
                   </div>
                   <div className="flex items-center justify-between text-sm text-gray-600">

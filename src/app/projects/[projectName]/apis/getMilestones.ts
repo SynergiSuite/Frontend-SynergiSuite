@@ -18,12 +18,14 @@ export async function getMilestone(id: string) {
     });
 
     if (!req.ok) {
-      throw new Error("Failed to fetch milestones.");
+      const errorText = await req.text();
+      throw new Error(errorText || "Failed to fetch milestones.");
     }
 
     const data = await req.json();
     return data;
   } catch (error) {
-    throw new Error("Something went wrong.");
+    console.error("Error fetching milestones:", error);
+    throw error;
   }
 }

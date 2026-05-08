@@ -1,196 +1,264 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/global/buttons";
+import React, { useEffect, useMemo, useState } from "react";
+import { AnimatePresence } from "framer-motion";
 
-type ClientForm = {
+import SidebarForm from "./sidebarClientAddForm";
+import SubHeader from "./subHeadingSearchbar";
+import StatsCards from "./statesCards";
+import ClientsTable from "./clientTable";
+import Pagination from "./footer";
+import { getClientsApi } from "../projects/apis/getAllClients";
+import { createClientApi } from "./apis/createClient";
+import { editClientApi } from "./apis/editClient";
+import { deleteClientApi } from "./apis/deleteClient";
+import { GetAllClientsResponseDto } from "./dtos/getAllClientsResponse.dto";
+import LoaderCustom from "@/components/ui/loader-custom";
+import { toast } from "sonner";
+import { ClientPriority } from "../enums/clientPriority.enum";
+import { CreateClientDto } from "./dtos/createClient.dto";
+import { EditClientDto } from "./dtos/editClient.dto";
+import EditClientModal from "./editClientModal";
+import DeleteClientModal from "./deleteClientModal";
+import { CookieManager } from "@/lib/cookieManager";
+import ClientDetailModal from "./clientDetail";
+
+export type ClientType = {
+  id: string;
   name: string;
   email: string;
   phone: string;
   company: string;
-  status: 'active' | 'inactive' | 'lead';
-  notes: string;
+  address: string;
+  priority: number;
+  image: string;
 };
 
-export default function ClientsPage() {
-  const [formData, setFormData] = useState<ClientForm>({
-    name: '',
-    email: '',
-    phone: '',
-    company: '',
-    status: 'lead',
-    notes: '',
-  });
+const mapClientResponse = (
+  client: GetAllClientsResponseDto,
+  index: number,
+  fallbackId?: string
+): ClientType => ({
+  id: client.id ?? fallbackId ?? String(index + 1),
+  name: client.name ?? "",
+  email: client.email ?? "",
+  phone: client.phoneNumber ?? client.phone ?? "",
+  company: client.company ?? "",
+  address: client.address ?? "",
+  priority: client.priority ?? ClientPriority.MEDIUM,
+  image: `https://i.pravatar.cc/100?u=${client.email ?? client.name ?? index}`,
+});
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const ClientManagementPage = () => {
+  // ✅ DYNAMIC STATE
+  const [clients, setClients] =
+    useState<ClientType[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<ClientType | null>(null);
+  const [detailClient, setDetailClient] = useState<ClientType | null>(null);
+  const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
+  const [role, setRole] = useState("");
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  // ✅ SEARCH STATE
+  const [search, setSearch] = useState("");
+
+  // ✅ PAGINATION STATE
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 4;
+  const allowedRoles = ["manager", "founder", "admin"];
+  const normalizedRole = role.trim().toLowerCase();
+  const canManageClients = allowedRoles.includes(normalizedRole);
+
+  // ✅ FILTERED CLIENTS
+  const filteredClients = useMemo(() => {
+    return clients.filter((client) =>
+      [client.name, client.email, client.company, client.phone, client.address]
+        .join(" ")
+        .toLowerCase()
+        .includes(search.toLowerCase())
+    );
+  }, [clients, search]);
+
+  useEffect(() => {
+    const cookieRole = CookieManager("get", "role");
+    setRole((cookieRole as string) ?? "");
+  }, []);
+
+  useEffect(() => {
+    const loadClients = async () => {
+      setIsLoading(true);
+      try {
+        const response = await getClientsApi();
+        const mappedClients = response.map((client, index) =>
+          mapClientResponse(client, index)
+        );
+        setClients(mappedClients);
+      } catch (error) {
+        toast.error("Failed to fetch clients" + error);
+        setClients([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadClients();
+  }, []);
+
+  useEffect(() => {
+    if (!canManageClients) {
+      setSelectedClient(null);
+      setDeleteClientId(null);
+    }
+  }, [canManageClients]);
+
+  // ✅ PAGINATION LOGIC
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredClients.length / itemsPerPage)
+  );
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+
+  const currentClients = filteredClients.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  // ✅ ADD CLIENT FUNCTION
+  const addClient = async (payload: CreateClientDto) => {
+    try {
+      const response = await createClientApi(payload);
+      const mappedClient = mapClientResponse(
+        response as GetAllClientsResponseDto,
+        Date.now()
+      );
+      setClients((prev) => [mappedClient, ...prev]);
+      toast.success("Client created successfully");
+    } catch (error) {
+      toast.error("Failed to create client" + error);
+      throw error;
+    }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-
+  // ✅ DELETE CLIENT
+  const deleteClient = async (id: string) => {
     try {
-      // TODO: Replace with actual API call
-      console.log('Form submitted:', formData);
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // Reset form after successful submission
-      setFormData({
-        name: '',
-        email: '',
-        phone: '',
-        company: '',
-        status: 'lead',
-        notes: '',
-      });
-    } catch (err) {
-      setError('Failed to submit form. Please try again.');
-      console.error('Form submission error:', err);
-    } finally {
-      setIsSubmitting(false);
+      await deleteClientApi(id);
+      setClients((prev) =>
+        prev.filter((client) => client.id !== id)
+      );
+      toast.success("Client deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete client" + error);
+      throw error;
+    }
+  };
+
+  const handleEditClient = async (id: string, payload: EditClientDto) => {
+    try {
+      const response = await editClientApi(id, payload);
+      const mappedClient = mapClientResponse(
+        response as GetAllClientsResponseDto,
+        0,
+        id
+      );
+
+      setClients((prev) =>
+        prev.map((client) =>
+          client.id === id
+            ? {
+                ...client,
+                ...mappedClient,
+              }
+            : client
+        )
+      );
+      toast.success("Client updated successfully");
+    } catch (error) {
+      toast.error("Failed to update client" + error);
+      throw error;
     }
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold mb-6">Add New Client</h1>
-      
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+    <>
+      {isLoading ? (
+        <LoaderCustom />
+      ) : (
+        <div className="h-[calc(100vh-140px)]">
+          <div
+            className={`grid h-full grid-cols-1 items-stretch gap-8 ${
+              canManageClients
+                ? "lg:grid-cols-[minmax(420px,1.2fr)_minmax(0,0.8fr)]"
+                : ""
+            }`}
+          >
+              <div className="flex h-full flex-col">
+                <SubHeader
+                  search={search}
+                  setSearch={setSearch}
+                />
+
+                <StatsCards clients={clients} />
+
+                <div className="min-h-0 flex-1">
+                  <ClientsTable
+                    clients={currentClients}
+                    deleteClient={setDeleteClientId}
+                    onSelectClient={setDetailClient}
+                    onEditClient={setSelectedClient}
+                    canManageClients={canManageClients}
+                  />
+                </div>
+
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                />
+              </div>
+              
+              {canManageClients ? (
+                <div className="h-full">
+                  <SidebarForm addClient={addClient} />
+                </div>
+              ) : null}
+          </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="form-group">
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-              Full Name *
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email *
-            </label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-              Phone
-            </label>
-            <input
-              type="tel"
-              id="phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-1">
-              Company
-            </label>
-            <input
-              type="text"
-              id="company"
-              name="company"
-              value={formData.company}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              id="status"
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="lead">Lead</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
-            Notes
-          </label>
-          <textarea
-            id="notes"
-            name="notes"
-            rows={4}
-            value={formData.notes}
-            onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      <AnimatePresence>
+        {selectedClient && canManageClients ? (
+          <EditClientModal
+            client={selectedClient}
+            onClose={() => setSelectedClient(null)}
+            onSave={handleEditClient}
           />
-        </div>
+        ) : null}
+      </AnimatePresence>
 
-        <div className="flex justify-end space-x-4 pt-4">
-          <button
-            type="button"
-            className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-            onClick={() => {
-              // Reset form
-              setFormData({
-                name: '',
-                email: '',
-                phone: '',
-                company: '',
-                status: 'lead',
-                notes: '',
-              });
-              setError(null);
-            }}
-            disabled={isSubmitting}
-          >
-            Reset
-          </button>
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            className="px-4 py-2"
-          >
-            {isSubmitting ? 'Saving...' : 'Save Client'}
-          </Button>
-        </div>
-      </form>
-    </div>
+      <ClientDetailModal
+        client={detailClient}
+        open={detailClient !== null}
+        onClose={() => setDetailClient(null)}
+      />
+
+      <DeleteClientModal
+        open={deleteClientId !== null && canManageClients}
+        clientId={deleteClientId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteClientId(null);
+          }
+        }}
+        onConfirm={async (clientId) => {
+          await deleteClient(clientId);
+          setDeleteClientId(null);
+        }}
+      />
+    </>
   );
-}
+};
+
+export default ClientManagementPage;

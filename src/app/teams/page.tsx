@@ -13,6 +13,7 @@ import LoaderCustom from "@/components/ui/loader-custom";
 import { Employee, Team, Teams } from "./schemas/types";
 import { toast } from "sonner"
 import { getTeamsApi } from "./apis/getTeamsApi";
+import { canManageTeams } from "@/lib/rolePermissions";
 
 
 export default function Page() {
@@ -22,10 +23,15 @@ export default function Page() {
   const [count, setCount] = useState<number>(0);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [role, setRole] = useState("");
   const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+  const canManageTeamActions = canManageTeams(role);
 
   // Get All Teams
   useEffect(() => {
+    const cookieRole = CookieManager("get", "role");
+    setRole((cookieRole as string) ?? "");
+
     const fetchTeamsData = async () => {
       setIsLoading(true);
       const data = await getTeamsApi();
@@ -64,6 +70,11 @@ export default function Page() {
   }, [reload]);
 
   const handleSubmitOnCreate = async(formData: Team) => {
+    if (!canManageTeamActions) {
+      toast.error("You do not have permission to create teams.");
+      return;
+    }
+
     const accessToken = await CookieManager("get", "access-token")
     const response = await fetch(`${requestBaseUrl}/teams/create`,
       {
@@ -81,6 +92,7 @@ export default function Page() {
       return
     }
     setIsModalOpen(false);
+    setReload((prev) => !prev);
     toast.success("Team created successfully")
   };
 
@@ -118,30 +130,37 @@ export default function Page() {
                 <span className="text-gray-500 text-sm">({count})</span>
               </h2>
 
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                className="button_primary_lg"
-                variant="none"
-              >
-                Create New Team
-              </Button>
+              {canManageTeamActions ? (
+                <Button
+                  onClick={() => setIsModalOpen(true)}
+                  className="button_primary_lg"
+                  variant="none"
+                >
+                  Create New Team
+                </Button>
+              ) : null}
             </div>
 
             <div className="overflow-x-auto">
-              <TeamTable teams={teams} employees={employees} />
+              <TeamTable
+                teams={teams}
+                employees={employees}
+                canManageTeams={canManageTeamActions}
+                onRefresh={() => setReload((prev) => !prev)}
+              />
             </div>
           </div>
         </main>
       )}
 
       <AnimatePresence>
-        {isModalOpen && (
+        {isModalOpen && canManageTeamActions ? (
           <CreateTeamModal
             onClose={() => setIsModalOpen(false)}
             onCreate={handleSubmitOnCreate}
             employees={employees}
           />
-        )}
+        ) : null}
       </AnimatePresence>
     </>
   );

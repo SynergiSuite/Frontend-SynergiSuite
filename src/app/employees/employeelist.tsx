@@ -1,16 +1,21 @@
 "use client";
 import React from "react";
 import { Actions } from "./actions";
-import { Employee } from "./schemas/employee";
+import { UIEmployee } from "./schemas/employee";
 
 type EmployeeListProps = {
-  employees: Employee[];
+  employees: UIEmployee[];
   currentUserIsFounder: string;
+  onSelectEmployee: (employee: UIEmployee) => void;
 };
 
-export default function EmployeeList({ employees, currentUserIsFounder }: EmployeeListProps) {
+export default function EmployeeList({
+  employees,
+  currentUserIsFounder,
+  onSelectEmployee,
+}: EmployeeListProps) {
   return (
-    <div className="max-h-[45vh] overflow-y-auto">
+    <div className="flex-1">
       <table className="w-full border-collapse">
         <thead>
           <tr className="text-left text-gray-600 border-b">
@@ -23,7 +28,11 @@ export default function EmployeeList({ employees, currentUserIsFounder }: Employ
         </thead>
         <tbody>
           {employees.map((emp) => (
-            <tr key={emp.id} className="hover:bg-gray-50">
+            <tr
+              key={emp.id}
+              className="cursor-pointer hover:bg-gray-50"
+              onClick={() => onSelectEmployee(emp)}
+            >
               <td className="px-4 py-2">{emp.name}</td>
               <td className="px-4 py-2">{emp.role}</td>
               <td className="px-4 py-2">
@@ -40,12 +49,14 @@ export default function EmployeeList({ employees, currentUserIsFounder }: Employ
               <td className="px-4 py-2"></td>
               <td className="px-4 py-2 text-center">
                 {currentUserIsFounder === 'Founder' || currentUserIsFounder === 'Manager' ? (
-                  <Actions
-                    id={emp.id}
-                    role={emp.role}
-                    name={emp.name}
-                    isFounderUser={currentUserIsFounder === 'Founder'}
-                  />
+                  <div onClick={(event) => event.stopPropagation()}>
+                    <Actions
+                      id={emp.id}
+                      role={emp.role}
+                      name={emp.name}
+                      isFounderUser={currentUserIsFounder === 'Founder'}
+                    />
+                  </div>
                 ) : null}
 
               </td>

@@ -11,7 +11,7 @@ export default function EmployeeListFooter({
   total,
 }: EmployeeListFooterProps) {
   return (
-    <div className="flex flex-col justify-between items-end mt-20 text-sm text-gray-600">
+    <div className="mt-4 flex items-center justify-end border-t border-gray-200 pt-4 text-sm text-gray-600">
       <p>
         Showing {showing} of {total} entries
       </p>

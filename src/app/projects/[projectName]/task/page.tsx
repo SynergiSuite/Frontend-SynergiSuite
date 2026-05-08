@@ -20,6 +20,7 @@ import { Milestone } from "../schemas/milestone";
 import { CookieManager } from "@/lib/cookieManager";
 import TaskKanban from "./taskkanban";
 import { TASK_STATUS_OPTIONS } from "./task-utils";
+import { GetProjectDetails } from "../apis/getProjectDetails";
 
 export default function TaskPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -30,27 +31,30 @@ export default function TaskPage() {
   const [teams, setTeams] = useState<Team[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [milestones, setMilestones] = useState<Milestone[]>([])
+  const [projectId, setProjectId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
+  const [role, setRole] = useState("");
 
   const projectName = useParams().projectName as string;
+  const canEditTasks = true;
+  const canDeleteTask = true;
 
-  const getTasks = async() => {
+  const getTasks = async(resolvedProjectId: string) => {
     try {
-      const res = await fetchTaskApi()
+      const res = await fetchTaskApi(resolvedProjectId)
       setTasks(res)
     } catch (error) {
       toast.error("Failed to fetch tasks" + error)
     }
   }
 
-  const getMilestones = async() => {
-    const projectId = CookieManager("get", "project-id");
-    if (!projectId) {
+  const getMilestones = async(resolvedProjectId: string) => {
+    if (!resolvedProjectId) {
       setMilestones([]);
       return;
     }
     try {
-      const res = await getMilestone(String(projectId));
+      const res = await getMilestone(String(resolvedProjectId));
       setMilestones(res);
     } catch (error) {
       toast.error("Failed to fetch milestones" + error);
@@ -58,10 +62,27 @@ export default function TaskPage() {
   }
 
   useEffect(() => {
+    const cookieRole = CookieManager("get", "role");
+    setRole((cookieRole as string) ?? "");
+
     const getTeams = async() => {
       try {
-        const res = await getProjectTeams()
+        const details = await GetProjectDetails(projectName);
+        const resolvedProjectId = details?.id;
+
+        if (!resolvedProjectId) {
+          throw new Error("Project id not found.");
+        }
+
+        CookieManager("set", "project-id", resolvedProjectId);
+        setProjectId(resolvedProjectId);
+
+        const res = await getProjectTeams(resolvedProjectId)
         setTeams(res)
+        await Promise.all([
+          getTasks(resolvedProjectId),
+          getMilestones(resolvedProjectId),
+        ]);
       } catch (error) {
         toast.error("Failed to fetch teams" + error)
       }
@@ -70,14 +91,14 @@ export default function TaskPage() {
     const load = async() => {
       setIsLoading(true);
       try {
-        await Promise.all([getTasks(), getTeams(), getMilestones()]);
+        await getTeams();
       } finally {
         setIsLoading(false);
       }
     };
 
     load();
-  },[])
+  }, [projectName])
 
   useEffect(() => {
     const handleOpenCreate = () => {
@@ -93,9 +114,9 @@ export default function TaskPage() {
   const handleCreateTask = async(data: NewTaskPayload) => {
     try {
       setIsLoading(true);
-        await createTaskApi(data)
+        await createTaskApi({ ...data, projectId })
         toast.success("Task created successfully")
-        await getTasks()
+        await getTasks(projectId)
     } catch (error) {
         toast.error("Failed to create task" + error)
     } finally {
@@ -181,6 +202,7 @@ export default function TaskPage() {
                   teams={teams}
                   viewMode={viewMode}
                   onViewModeChange={setViewMode}
+                  canManageTasks={canEditTasks}
                   statusOptions={TASK_STATUS_OPTIONS}
                 />
                 {viewMode === "kanban" ? (
@@ -191,6 +213,8 @@ export default function TaskPage() {
                     tasks={tasks}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
+                    canEditTasks={canEditTasks}
+                    canDeleteTasks={canDeleteTask}
                     statusOptions={TASK_STATUS_OPTIONS}
                   />
                 ) : (
@@ -201,6 +225,8 @@ export default function TaskPage() {
                     tasks={tasks}
                     onUpdateTask={handleUpdateTask}
                     onDeleteTask={handleDeleteTask}
+                    canEditTasks={canEditTasks}
+                    canDeleteTasks={canDeleteTask}
                     statusOptions={TASK_STATUS_OPTIONS}
                   />
                 )}
@@ -208,7 +234,7 @@ export default function TaskPage() {
             </div>
           </div>
           <AnimatePresence>
-            {isCreateOpen && (
+            {isCreateOpen && canEditTasks && (
               <NewTaskModal
                 onCancel={() => setIsCreateOpen(false)}
                 onSubmit={handleCreateTask}
