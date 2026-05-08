@@ -100,7 +100,7 @@ export default function Signup() {
         onSubmit={handleSubmit}
         action=""
         method="post"
-        className="py-4 mt-12 w-[90%] m-auto space-y-4"
+        className="mx-auto w-[90%] space-y-3 py-2"
       >
         {/* Error Alert */}
         {error && (
@@ -121,11 +121,11 @@ export default function Signup() {
         )}
 
         {/* User Input */}
-        <div className="text-[#09090B]">
-          <label htmlFor="name" className="text-sm mb-3">
+        <div className="space-y-1.5 text-[#09090B]">
+          <label htmlFor="name" className="text-sm">
             Full name
           </label>
-          <div className="border_primary flex flex-row items-center h-10 px-4 space-x-2">
+          <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
             <Image src={EmailLogo} alt="Email" width={20} />
             <input
               type="text"
@@ -142,11 +142,11 @@ export default function Signup() {
           </div>
         </div>
 
-        <div className="text-[#09090B]">
-          <label htmlFor="email" className="text-sm mb-3">
+        <div className="space-y-1.5 text-[#09090B]">
+          <label htmlFor="email" className="text-sm">
             Email
           </label>
-          <div className="border_primary flex flex-row items-center h-10 px-4 space-x-2">
+          <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
             <Image src={EmailLogo} alt="Email" width={20} />
             <input
               type="email"
@@ -163,11 +163,11 @@ export default function Signup() {
           </div>
         </div>
 
-        <div className="text-[#09090B]">
-          <label htmlFor="password" className="text-sm mb-3">
+        <div className="space-y-1.5 text-[#09090B]">
+          <label htmlFor="password" className="text-sm">
             Password
           </label>
-          <div className="border_primary flex flex-row items-center h-10 px-4 space-x-2">
+          <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
             <Image src={PasswordLogo} alt="Password" width={20} />
             <input
               type="password"
@@ -184,7 +184,7 @@ export default function Signup() {
           </div>
         </div>
 
-        <div className="text-end">
+        <div className="pt-1 text-end">
           <a href="">
             <p className="underline text-[#09090B] font-medium text-sm">
               Forgot Password?
@@ -195,7 +195,7 @@ export default function Signup() {
         <Button
           type="submit"
           disabled={isLoading}
-          className={`button_primary_full ${isLoading ? "bg-gray-600" : ""} mt-5`}
+          className={`button_primary_full ${isLoading ? "bg-gray-600" : ""} mt-3`}
         >
           Create Account
         </Button>

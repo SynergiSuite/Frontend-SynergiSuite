@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AnimatePresence, motion } from "framer-motion";
@@ -8,6 +9,7 @@ import { CookieManager } from "@/lib/cookieManager";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
 import { LogOut } from "lucide-react";
+import Logo from "@/assets/Logo.png";
 
 type NavItem = {
   name: string;
@@ -50,8 +52,7 @@ export default function Navbar() {
       CookieManager("delete", "business-id");
       router.replace("/session");
       toast.success("Logged out successfully");
-    } catch (error) {
-      console.log(error);
+    } catch {
       toast.error("Failed to logout. Try Again later.");
     }
   };
@@ -126,12 +127,25 @@ export default function Navbar() {
       <div className="flex justify-between items-center py-3 px-6">
         {/* Brand */}
         <div className="flex items-center space-x-10">
-          <h2
-            className="font-bold text-lg cursor-pointer"
-            onClick={() => router.push("/dashboard")}
-          >
-            SynergiSuite
-          </h2>
+          <div className="border border-black rounded-full px-1 py-1">
+            <button
+              type="button"
+              className="flex items-center gap-3 cursor-pointer"
+              onClick={() => router.push("/dashboard")}
+            >
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black">
+                <Image
+                  src={Logo}
+                  alt="SynergiSuite"
+                  width={36}
+                  height={36}
+                  className="h-7 w-7 object-contain"
+                  priority
+                />
+              </div>
+              <span className="font-bold text-lg pr-1">SynergiSuite</span>
+            </button>
+          </div>
 
           {/* Show route-specific navs */}
           {links.length > 0 && (

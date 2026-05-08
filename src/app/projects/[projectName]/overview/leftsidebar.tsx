@@ -10,6 +10,7 @@ interface LeftSidebarProps {
   completionStatus: number;
   projectDetail?: Project;
   teams?: Team[];
+  canManageTeams?: boolean;
   onSaveTeams?: (teamIds: string[]) => void;
 }
 
@@ -30,7 +31,13 @@ const formatDate = (date?: string) => {
   });
 };
 
-const LeftSidebar = ({ completionStatus, projectDetail, teams, onSaveTeams }: LeftSidebarProps) => {
+const LeftSidebar = ({
+  completionStatus,
+  projectDetail,
+  teams,
+  canManageTeams = false,
+  onSaveTeams,
+}: LeftSidebarProps) => {
   const normalizeStatus = (status: string) =>
     status.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
@@ -53,12 +60,14 @@ const LeftSidebar = ({ completionStatus, projectDetail, teams, onSaveTeams }: Le
       <div className="w-full space-y-4 lg:w-1/4">
         <ProjectStatus
           progress={completionStatus}
+          managedBy={projectDetail?.client?.name}
           startDate={formatDate(projectDetail?.created_at)}
           dueDate={formatDate(projectDetail?.duration)}
         />
         <TeamMembers
           selectedTeams={projectDetail?.teams ?? []}
           allTeams={teams ?? []}
+          canManageTeams={canManageTeams}
           onSaveTeams={onSaveTeams}
         />
         <QuickStats stats={stats} />

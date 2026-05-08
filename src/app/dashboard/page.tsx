@@ -1,5 +1,5 @@
 import React from "react";
-import StateCards, { Card }  from "./statecards";
+import StateCards, { Card }  from "./stateCard";
 import ProjectOverview from "./projectoverview";
 import TeamPerformance from "./teamperformance";
 import RecentActivities from "./recentactivities";

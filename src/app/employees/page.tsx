@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { getCookie } from "cookies-next";
 import UserActions from "./useraction";
-import StatsCards from "./stateCards";
+import StatsCards from "./statecards";
 import RoleDistribution from "./roledistribution";
 import EmployeeListHeader from "./listheader";
 import EmployeeListFooter from "./listfooter";
@@ -10,6 +10,7 @@ import EmployeeList from "./employeeList";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { UIEmployee } from "./schemas/employee";
 import { fetchEmployeesData } from "./apis/getEmployeeApi";
+import EmployeeDetailModal from "./employeeDetail";
 
 export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,6 +22,7 @@ export default function UserManagement() {
     activeEmployees: 0,
   });
   const [employee, setEmployee] = useState<UIEmployee[]>([]);
+  const [selectedEmployee, setSelectedEmployee] = useState<UIEmployee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentUserRole, setCurrentUserRole] = useState("");
 
@@ -75,11 +77,11 @@ export default function UserManagement() {
   );
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       {isLoading ? (
         <LoaderCustom />
       ) : (
-        <main className="flex-1 p-6 min-h-screen">
+        <main className="flex flex-1 flex-col p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Employees</h1>
             <UserActions />
@@ -89,12 +91,13 @@ export default function UserManagement() {
             <StatsCards stats={stats} />
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 bg-white p-4 rounded-lg shadow-md h-full flex flex-col">
+          <div className="grid flex-1 grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="flex h-full min-h-[540px] flex-col rounded-lg bg-white p-4 shadow-md lg:col-span-2">
               <EmployeeListHeader onSearch={setSearchQuery} />
               <EmployeeList
                 employees={filteredEmployees}
                 currentUserIsFounder={currentUserRole}
+                onSelectEmployee={setSelectedEmployee}
               />
               <EmployeeListFooter
                 showing={filteredEmployees.length}
@@ -102,12 +105,18 @@ export default function UserManagement() {
               />
             </div>
           
-            <div className="bg-white p-4 rounded-lg shadow-md h-full">
+            <div className="h-full rounded-lg bg-white p-4 shadow-md">
               <RoleDistribution roles={roleData} />
             </div>
           </div>
         </main>
       )}
+
+      <EmployeeDetailModal
+        employee={selectedEmployee}
+        open={selectedEmployee !== null}
+        onClose={() => setSelectedEmployee(null)}
+      />
     </div>
   );
 }

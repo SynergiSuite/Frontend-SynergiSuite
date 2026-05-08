@@ -12,6 +12,7 @@ export default function TaskCard({
   assigned_to,
   onClick,
   onDeleteClick,
+  canDelete,
   draggable,
   onDragStart,
   onDragEnd,
@@ -25,6 +26,7 @@ export default function TaskCard({
   assigned_to: string[];
   onClick?: () => void;
   onDeleteClick?: (taskId: string) => void;
+  canDelete?: boolean;
   draggable?: boolean;
   onDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void;
@@ -74,23 +76,25 @@ export default function TaskCard({
             >
               {status}
             </span>
-            <button
-              type="button"
-              aria-pressed={isTrashActive}
-              aria-label={isTrashActive ? "Trash marked" : "Mark as trash"}
-              className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
-                isTrashActive
-                  ? "border-red-500 text-red-600"
-                  : "border-gray-200 text-gray-500 hover:border-red-500 hover:text-red-600"
-              }`}
-              onClick={(event) => {
-                event.stopPropagation();
-                setIsTrashActive((prev) => !prev);
-                onDeleteClick?.(id);
-              }}
-            >
-              <Trash className="h-4 w-4" aria-hidden="true" />
-            </button>
+            {canDelete ? (
+              <button
+                type="button"
+                aria-pressed={isTrashActive}
+                aria-label={isTrashActive ? "Trash marked" : "Mark as trash"}
+                className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
+                  isTrashActive
+                    ? "border-red-500 text-red-600"
+                    : "border-gray-200 text-gray-500 hover:border-red-500 hover:text-red-600"
+                }`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsTrashActive((prev) => !prev);
+                  onDeleteClick?.(id);
+                }}
+              >
+                <Trash className="h-4 w-4" aria-hidden="true" />
+              </button>
+            ) : null}
           </div>
         </div>
 

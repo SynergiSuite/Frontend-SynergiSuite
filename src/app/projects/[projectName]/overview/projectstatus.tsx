@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useRef, useState } from "react";
 
-const ProjectStatus = ({ progress, startDate, dueDate }: any) => {
+const ProjectStatus = ({ progress, startDate, dueDate, managedBy }: any) => {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const prevProgressRef = useRef(0);
 
@@ -38,7 +38,13 @@ const ProjectStatus = ({ progress, startDate, dueDate }: any) => {
       <div className="overview-card p-4">
         <h3 className="font-semibold mb-2">Project Status</h3>
         <p className="text-2xl font-bold">{animatedProgress}%</p>
-        <p className="text-sm mt-2">Start: {startDate}</p>
+        <p className="text-sm font-medium text-gray-700 pt-4">
+          Managed by:{" "}
+          <span className="font-semibold text-gray-900">
+            {managedBy || "No Client"}
+          </span>
+        </p>
+        <p className="text-sm mt-1">Start: {startDate}</p>
         <p className="text-sm">Due: {dueDate}</p>
       </div>
     </>

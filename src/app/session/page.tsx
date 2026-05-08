@@ -1,7 +1,6 @@
 "use client"
 import { Suspense } from "react";
 import React, { useEffect } from "react";
-import Header from "./header";
 import Form from "./form";
 import Footer from "./footer";
 import { useState } from "react";
@@ -31,8 +30,7 @@ export default function Session(){
     return(
         <>
         <Suspense fallback={<Loader />}>
-        <div className="flex flex-col justify-center items-center">
-            <Header/>
+        <div className="flex min-h-screen flex-col items-center justify-center px-4 py-8">
             <Form text={text} form = {form} />
             <Footer form = {form} setForm = {setForm} />
 

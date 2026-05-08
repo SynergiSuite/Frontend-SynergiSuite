@@ -11,6 +11,16 @@ import { X } from "lucide-react";
 import { Button } from "@/global/buttons";
 import { Employee, Teams } from "./schemas/types";
 import { toast } from "sonner";
+import {
+  modalBodyClass,
+  modalCloseButtonClass,
+  modalFooterClass,
+  modalHeaderClass,
+  modalOverlayClass,
+  modalShellClass,
+  modalSubtitleClass,
+  modalTitleClass,
+} from "@/lib/modalStyles";
 
 type EditTeamModalProps = {
   onClose: () => void;
@@ -169,7 +179,7 @@ export default function EditTeamModal({
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className={modalOverlayClass}
         onClick={onClose}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -177,32 +187,32 @@ export default function EditTeamModal({
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className="bg-white/90 backdrop-blur-md rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] flex flex-col relative"
+        className={`${modalShellClass} max-w-2xl`}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
         transition={{ type: "spring", stiffness: 260, damping: 24 }}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b px-6 py-4">
+        <div className={`${modalHeaderClass} flex items-start justify-between gap-4`}>
           <div>
-            <h2 className="text-xl font-semibold text-gray-800">Edit Team</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className={modalTitleClass}>Edit Team</h2>
+            <p className={modalSubtitleClass}>
               Update team details and manage members
             </p>
           </div>
           <button
             onClick={onClose}
             type="button"
-            className="text-gray-500 hover:text-gray-800 cursor-pointer"
+            className={modalCloseButtonClass}
           >
-            <X size={20} />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1">
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+          <div className={`${modalBodyClass} space-y-6`}>
             {/* Team Info */}
             <header className="space-y-4">
               <div>
@@ -337,7 +347,7 @@ export default function EditTeamModal({
           </div>
 
           {/* Footer */}
-          <div className="border-t px-5 py-4 flex justify-end gap-3">
+          <div className={`${modalFooterClass} flex justify-end gap-3`}>
             <button
               type="button"
               onClick={onClose}

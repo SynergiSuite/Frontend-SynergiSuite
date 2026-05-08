@@ -17,17 +17,24 @@ import { Team } from "../../schemas/team";
 import editTeams from "../apis/editTeams";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { toast } from "sonner";
+import { CookieManager } from "@/lib/cookieManager";
+import { canManageMilestones } from "@/lib/rolePermissions";
 
 const Page = () => {
   const projectName = useParams().projectName as string;
   const [projectDetail, setProjectDetail] = useState<Project>();
   const [teams, setTeams] = useState<Team[]>();
+  const [role, setRole] = useState("");
   const [isCreateMilestoneOpen, setIsCreateMilestoneOpen] = useState(false);
   const [milestoneRefreshKey, setMilestoneRefreshKey] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const canEditMilestones = canManageMilestones(role);
   
   // Fetch project details
   useEffect(() => {
+    const cookieRole = CookieManager("get", "role");
+    setRole((cookieRole as string) ?? "");
+
     const fetchProjectDetails = async () => {
       try {
         setIsLoading(true)
@@ -61,10 +68,13 @@ const Page = () => {
   }
   
   const handleCreateMilestone = async (payload: NewMilestonePayload) => {
-    console.log("Create milestone payload:", payload);
+    if (!canEditMilestones) {
+      toast.error("You do not have permission to create milestones.");
+      return;
+    }
+
     try {
-      const res = await CreateNewMilestone(payload);
-      console.log("Milestone created:", res);
+      await CreateNewMilestone(payload);
       toast.success("Milestone created successfully.");
       setMilestoneRefreshKey((prev) => prev + 1);
       setIsCreateMilestoneOpen(false);
@@ -108,12 +118,14 @@ const Page = () => {
               Track progress, tasks, and upcoming milestones in one place
             </p>
           </div>
-          <Button
-            className="button_primary_xl w-full sm:w-auto"
-            onClick={() => setIsCreateMilestoneOpen(true)}
-          >
-            Create new Milestone
-          </Button>
+          {canEditMilestones ? (
+            <Button
+              className="button_primary_xl w-full sm:w-auto"
+              onClick={() => setIsCreateMilestoneOpen(true)}
+            >
+              Create new Milestone
+            </Button>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
@@ -121,10 +133,13 @@ const Page = () => {
             completionStatus={completionStatus()}
             projectDetail={projectDetail}
             teams={teams}
+            canManageTeams={canEditMilestones}
             onSaveTeams={handleSaveTeams}
           />
           <MiddleSection
             projectId={projectDetail?.id}
+            availableTasks={projectDetail?.tasks ?? []}
+            canManageMilestones={canEditMilestones}
             refreshKey={milestoneRefreshKey}
           />
           <RightSidebar tasks={projectDetail?.tasks || []} />
@@ -132,7 +147,7 @@ const Page = () => {
       </div>
       )}
       <AnimatePresence>
-        {isCreateMilestoneOpen ? (
+        {isCreateMilestoneOpen && canEditMilestones ? (
           <CreateMilestoneModal
             onCancel={() => setIsCreateMilestoneOpen(false)}
             onSubmit={handleCreateMilestone}

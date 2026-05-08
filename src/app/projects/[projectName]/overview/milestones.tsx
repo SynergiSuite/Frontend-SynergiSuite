@@ -5,9 +5,13 @@ import { Milestone, MilestoneUpdate } from "../schemas/milestone";
 import MilestoneEditModal from "./milestoneEditModal";
 import { UpdateMilestone } from "../apis/updateMilestone";
 import DeleteMilestoneModal from "./deleteModal";
+import { Task } from "../task/schemas/task";
+import { toast } from "sonner";
 
 type MilestonesProps = {
   milestones: Milestone[];
+  availableTasks: Task[];
+  canManageMilestones: boolean;
   onRefresh?: () => Promise<void> | void;
 };
 
@@ -29,17 +33,26 @@ const getMonthsRemaining = (dateValue: string) => {
   return Math.max(0, months);
 };
 
-const Milestones = ({ milestones, onRefresh }: MilestonesProps) => {
+const Milestones = ({
+  milestones,
+  availableTasks,
+  canManageMilestones,
+  onRefresh,
+}: MilestonesProps) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [activeMilestone, setActiveMilestone] = useState<Milestone | null>(
     null
   );
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
   const [deleteMilestoneId, setDeleteMilestoneId] = useState<string | null>(
     null
   );
   const listKey = milestones.map((milestone) => milestone.id).join("-");
 
   const openEditModal = (milestone: Milestone) => {
+    if (!canManageMilestones) {
+      return;
+    }
     setActiveMilestone(milestone);
     setIsEditOpen(true);
   };
@@ -50,17 +63,32 @@ const Milestones = ({ milestones, onRefresh }: MilestonesProps) => {
   };
 
   const handleSubmit = async (payload: MilestoneUpdate) => {
+    if (!canManageMilestones) {
+      toast.error("You do not have permission to edit milestones.");
+      return;
+    }
+
     try {
+      setIsSubmittingEdit(true);
       await UpdateMilestone(payload);
       await onRefresh?.();
+      toast.success("Milestone updated successfully.");
       setIsEditOpen(false);
       setActiveMilestone(null);
     } catch (error) {
       console.error("Error updating milestone:", error);
+      toast.error("Unable to update milestone.");
+    } finally {
+      setIsSubmittingEdit(false);
     }
   };
 
   const handleDeleteConfirm = async (milestoneId: string) => {
+    if (!canManageMilestones) {
+      toast.error("You do not have permission to delete milestones.");
+      return;
+    }
+
     setDeleteMilestoneId(null);
     setActiveMilestone(null);
     try {
@@ -107,22 +135,26 @@ const Milestones = ({ milestones, onRefresh }: MilestonesProps) => {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <p className="flex items-center gap-2 text-sm font-semibold sm:text-base">
                   {milestone.name}
-                  <button
-                    type="button"
-                    aria-label="Edit milestone"
-                    onClick={() => openEditModal(milestone)}
-                    className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-white"
-                  >
-                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="Delete milestone"
-                    onClick={() => setDeleteMilestoneId(milestone.id)}
-                    className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-white"
-                  >
-                    <Trash className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
+                  {canManageMilestones ? (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Edit milestone"
+                        onClick={() => openEditModal(milestone)}
+                        className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-white"
+                      >
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Delete milestone"
+                        onClick={() => setDeleteMilestoneId(milestone.id)}
+                        className="inline-flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 transition-colors hover:bg-white"
+                      >
+                        <Trash className="h-3.5 w-3.5" aria-hidden="true" />
+                      </button>
+                    </>
+                  ) : null}
                 </p>
                 <p className="text-xs text-slate-500 sm:text-sm">
                   {(() => {
@@ -159,19 +191,24 @@ const Milestones = ({ milestones, onRefresh }: MilestonesProps) => {
           milestoneId={activeMilestone.id}
           initialName={activeMilestone.name}
           initialEndDate={activeMilestone.end_date}
+          initialTaskIds={activeMilestone.tasks.map((task) => task.id)}
+          availableTasks={availableTasks}
+          isSubmitting={isSubmittingEdit}
         />
       ) : null}
 
-      <DeleteMilestoneModal
-        open={Boolean(deleteMilestoneId)}
-        milestoneId={deleteMilestoneId}
-        onOpenChange={(open) => {
-          if (!open) {
-            setDeleteMilestoneId(null);
-          }
-        }}
-        onConfirm={handleDeleteConfirm}
-      />
+      {canManageMilestones ? (
+        <DeleteMilestoneModal
+          open={Boolean(deleteMilestoneId)}
+          milestoneId={deleteMilestoneId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeleteMilestoneId(null);
+            }
+          }}
+          onConfirm={handleDeleteConfirm}
+        />
+      ) : null}
     </>
   );
 };

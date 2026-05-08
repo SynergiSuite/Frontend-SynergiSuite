@@ -24,6 +24,7 @@ type FiltersBarProps = {
   teams: Team[];
   viewMode: TaskViewMode;
   onViewModeChange: (value: TaskViewMode) => void;
+  canManageTasks: boolean;
   statusOptions: string[];
 };
 
@@ -38,6 +39,7 @@ export default function FiltersBar({
   teams,
   viewMode,
   onViewModeChange,
+  canManageTasks,
   statusOptions,
 }: FiltersBarProps) {
   return (
@@ -96,7 +98,7 @@ export default function FiltersBar({
           </Button>
         </div>
 
-        <Button onClick={onAddTask}>+ Add New Task</Button>
+        {canManageTasks ? <Button onClick={onAddTask}>+ Add New Task</Button> : null}
       </div>
     </>
   );

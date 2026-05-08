@@ -60,7 +60,6 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
     : baseRoles
 
   const handleDelete = () => {
-    console.log("Delete user with ID:", id);
     // Add actual delete logic here
     setShowNewDialog(false);
   };
@@ -135,8 +134,9 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>Update the role or select a manager.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1">
+          <div className="px-6 pb-2 pt-1 sm:px-8">
+            <div className="space-y-5">
+              <div className="space-y-2">
               <label htmlFor="name" className="block text-sm font-medium">
                 Name
               </label>
@@ -145,11 +145,11 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
                 name="name"
                 type="text"
                 value={name}
-                className="w-full border rounded-md px-3 py-2"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3.5 py-2 text-sm"
                 readOnly
               />
-            </div>
-            <div className="space-y-1">
+              </div>
+              <div className="space-y-2">
               <label htmlFor="manager" className="block text-sm font-medium">
                 Designation
               </label>
@@ -160,7 +160,7 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
                   setRoleValue(value)
                 }}
               >
-                <SelectTrigger id="manager" className="w-full border_primary bg-white cursor-pointer">
+                <SelectTrigger id="manager" className="h-11 w-full rounded-xl border border-gray-200 bg-white cursor-pointer px-3.5">
                   <SelectValue placeholder="Select a manager" />
                 </SelectTrigger>
                 <SelectContent>
@@ -171,6 +171,7 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
                   ))}
                 </SelectContent>
               </Select>
+              </div>
             </div>
           </div>
           <DialogFooter>

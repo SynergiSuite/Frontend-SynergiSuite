@@ -7,10 +7,16 @@ import EditTeamsModal from "./addTeamsModal";
 type TeamMembersProps = {
   selectedTeams: Team[];
   allTeams: Team[];
+  canManageTeams?: boolean;
   onSaveTeams?: (teamIds: string[]) => void;
 };
 
-const TeamMembers = ({ selectedTeams, allTeams, onSaveTeams }: TeamMembersProps) => {
+const TeamMembers = ({
+  selectedTeams,
+  allTeams,
+  canManageTeams = false,
+  onSaveTeams,
+}: TeamMembersProps) => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const selectedTeamIds = selectedTeams.map((team) => team.id)
 
@@ -21,17 +27,19 @@ const TeamMembers = ({ selectedTeams, allTeams, onSaveTeams }: TeamMembersProps)
         {selectedTeams.map((team: Team, index: number) => (
           <p key={index} className="text-sm">{team.name}</p>
         ))}
-        <button
-          type="button"
-          onClick={() => setIsEditOpen(true)}
-          className="mt-2 text-blue-500"
-        >
-          + Edit Teams
-        </button>
+        {canManageTeams ? (
+          <button
+            type="button"
+            onClick={() => setIsEditOpen(true)}
+            className="mt-2 text-blue-500"
+          >
+            + Edit Teams
+          </button>
+        ) : null}
       </div>
 
       <AnimatePresence>
-        {isEditOpen ? (
+        {isEditOpen && canManageTeams ? (
           <EditTeamsModal
             teams={allTeams}
             initialSelectedTeamIds={selectedTeamIds}

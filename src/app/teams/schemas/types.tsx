@@ -3,6 +3,7 @@ export type Employee = {
     name: string;
     email: string;
     user?: any
+    id?: string;
 }
 
 export type Team = {
@@ -19,6 +20,7 @@ export type Teams = {
     members: Employee[];
     leader_id: number;
     leader?: any;
+    teamMembers?: any[];
 }
 
 export type editTeamsForm = {
