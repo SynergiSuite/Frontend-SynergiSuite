@@ -1,39 +1,106 @@
 "use client";
 
-import React from "react";
-
-import Header from "./Header";
-import Sidebar from "./RightBar";
+import React, { useEffect, useState } from "react";
+import RightBar from "./RightBar";
 import ChatArea from "./ChatArea";
+import { CookieManager } from "@/lib/cookieManager";
+import { getUserSessionIds, UserSessionIdsResponse } from "./apis/getUserSessionIds";
+
+const getUniqueSessionIds = (sessionIds: string[]) => [...new Set(sessionIds)];
+const getSessionItems = (
+  sessionIds: string[],
+  items: UserSessionIdsResponse["items"],
+) =>
+  sessionIds.map((id) => {
+    const matchedItem = items.find((item) => item.session_id === id);
+
+    return {
+      session_id: id,
+      last_bot_message: matchedItem?.last_bot_message || "New conversation",
+    };
+  });
 
 const Page = () => {
+  const [sessionId, setSessionId] = useState("");
+  const [sessionIds, setSessionIds] = useState<string[]>([]);
+  const [sessionItems, setSessionItems] = useState<UserSessionIdsResponse["items"]>([]);
+  const [chatResetKey, setChatResetKey] = useState(0);
+
+  useEffect(() => {
+    const fetchSessionIds = async () => {
+      try {
+        const response = await getUserSessionIds();
+        const fetchedSessionIds = getUniqueSessionIds(response.session_ids);
+        const activeSessionId = fetchedSessionIds[0] ?? "";
+
+        setSessionIds(fetchedSessionIds);
+        setSessionItems(getSessionItems(fetchedSessionIds, response.items || []));
+        setSessionId(activeSessionId);
+
+        if (activeSessionId) {
+          CookieManager("set", "session-id", activeSessionId);
+        } else {
+          CookieManager("delete", "session-id");
+        }
+      } catch (error) {
+        console.error("Session ids API error:", error);
+        setSessionIds([]);
+        setSessionItems([]);
+        setSessionId("");
+        CookieManager("delete", "session-id");
+      }
+    };
+
+    fetchSessionIds();
+  }, []);
+
+  const handleNewConversation = () => {
+    const newSessionId = crypto.randomUUID();
+    setSessionId(newSessionId);
+    setSessionIds((prev) => getUniqueSessionIds([newSessionId, ...prev]));
+    setSessionItems((prev) => [
+      {
+        session_id: newSessionId,
+        last_bot_message: "New conversation",
+      },
+      ...prev.filter((item) => item.session_id !== newSessionId),
+    ]);
+    CookieManager("set", "session-id", newSessionId);
+    setChatResetKey((prev) => prev + 1);
+  };
+
+  const handleSelectSession = (selectedSessionId: string) => {
+    if (!selectedSessionId || selectedSessionId === sessionId) {
+      return;
+    }
+
+    CookieManager("delete", "session-id");
+    CookieManager("set", "session-id", selectedSessionId);
+    setSessionId(selectedSessionId);
+    setSessionIds((prev) =>
+      getUniqueSessionIds([selectedSessionId, ...prev.filter((id) => id !== selectedSessionId)]),
+    );
+    setSessionItems((prev) => {
+      const selectedItem = prev.find((item) => item.session_id === selectedSessionId);
+      const remainingItems = prev.filter((item) => item.session_id !== selectedSessionId);
+
+      return selectedItem ? [selectedItem, ...remainingItems] : remainingItems;
+    });
+    setChatResetKey((prev) => prev + 1);
+  };
+
   return (
-    <>
-      <div className="w-full min-h-screen bg-[#eaeaea] p-6">
-        <div
-          className="
-            w-full
-            h-[calc(100vh-48px)]
-            bg-white
-            rounded-3xl
-            overflow-hidden
-            border
-            border-gray-200
-            shadow-sm
-            flex
-            flex-col
-          "
-        >
-          <Header />
-
-          <div className="flex flex-1 overflow-hidden">
-            <ChatArea />
-
-            <Sidebar />
-          </div>
-        </div>
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <div className="flex h-full min-h-0 overflow-hidden rounded-3xl bg-white shadow-sm">
+        <ChatArea key={chatResetKey} sessionId={sessionId} />
+        <RightBar
+          activeSessionId={sessionId}
+          onNewConversation={handleNewConversation}
+          onSelectSession={handleSelectSession}
+          sessionItems={sessionItems}
+        />
       </div>
-    </>
+    </div>
   );
 };
 
