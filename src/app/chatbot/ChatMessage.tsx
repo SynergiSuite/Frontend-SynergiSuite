@@ -3,7 +3,7 @@
 import React from "react";
 
 import { motion } from "framer-motion";
-import { Bot } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 import { MessageType } from "./ChatArea";
 
@@ -60,7 +60,7 @@ const ChatMessage = ({ message }: Props) => {
                 shrink-0
               "
             >
-              <Bot className="w-5 h-5 text-white" />
+              <Sparkles className="w-5 h-5 text-white" />
             </motion.div>
           )}
 
@@ -78,7 +78,7 @@ const ChatMessage = ({ message }: Props) => {
                 damping: 24,
                 delay: isUserMessage ? 0.04 : 0,
               }}
-              className={`px-5 py-4 rounded-2xl shadow-sm ${
+              className={`p-5 rounded-2xl shadow-sm ${
                 isUserMessage
                   ? "bg-white text-black border border-gray-200 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
                   : "bg-black text-white shadow-[0_14px_34px_rgba(15,23,42,0.24)]"

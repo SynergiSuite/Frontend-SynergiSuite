@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import ChatMessage from "../ChatBot/ChatMessage";
-import MessageInput from "../ChatBot/MessageInput";
-import { ChatApiResponse, chatWithUser } from "../ChatBot/apis/chatWithUser";
+import React, { useEffect, useRef, useState } from "react";
+import ChatMessage from "./ChatMessage";
+import MessageInput from "./MessageInput";
+import { ChatApiResponse, chatWithUser } from "./apis/chatWithUser";
 import {
   getSessionHistory,
   SessionHistoryResponse,
-} from "../ChatBot/apis/getSessionHistory";
+} from "./apis/getSessionHistory";
 
 export interface MessageType {
   id: number;
@@ -50,6 +50,14 @@ const mapSessionHistoryToMessages = (
 const ChatArea = ({ sessionId }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<MessageType[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "end",
+    });
+  }, [messages]);
 
   useEffect(() => {
     if (!sessionId) {
@@ -125,13 +133,14 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
   };
 
   return (
-    <main className="flex flex-col flex-1 h-full min-h-0 overflow-hidden">
+    <main className="flex flex-col flex-1 h-full min-h-0 p-4 overflow-hidden">
 
       {/* MESSAGES AREA (FIXED SCROLL) */}
       <div className="flex-1 min-h-0 overflow-y-auto pr-6 space-y-6">
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* INPUT AREA (FIXED - NO OVERLAP) */}

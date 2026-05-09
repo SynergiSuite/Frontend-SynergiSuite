@@ -1,13 +1,14 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import RightBar from "../ChatBot/RightBar";
-import ChatArea from "../ChatBot/ChatArea";
+import RightBar from "./RightBar";
+import ChatArea from "./ChatArea";
 import { CookieManager } from "@/lib/cookieManager";
 import {
   getUserSessionIds,
   UserSessionIdsResponse,
-} from "../ChatBot/apis/getUserSessionIds";
+} from "./apis/getUserSessionIds";
+import { deleteSession } from "./apis/deleteSession";
 
 const getUniqueSessionIds = (sessionIds: string[]) => [...new Set(sessionIds)];
 const getSessionItems = (
@@ -85,12 +86,44 @@ const Page = () => {
     setChatResetKey((prev) => prev + 1);
   };
 
+  const handleDeleteSession = async (selectedSessionId: string) => {
+    try {
+      const response = await deleteSession(selectedSessionId);
+
+      if (!response.deleted) {
+        throw new Error("Session was not deleted");
+      }
+
+      const remainingItems = sessionItems.filter(
+        (item) => item.session_id !== selectedSessionId,
+      );
+      const nextActiveSessionId =
+        sessionId === selectedSessionId
+          ? (remainingItems[0]?.session_id ?? "")
+          : sessionId;
+
+      setSessionItems(remainingItems);
+      setSessionId(nextActiveSessionId);
+
+      CookieManager("delete", "session-id");
+
+      if (nextActiveSessionId) {
+        CookieManager("set", "session-id", nextActiveSessionId);
+      }
+
+      setChatResetKey((prev) => prev + 1);
+    } catch (error) {
+      console.error("Delete session API error:", error);
+    }
+  };
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       <div className="flex h-full min-h-0 overflow-hidden rounded-3xl bg-white shadow-sm">
         <ChatArea key={chatResetKey} sessionId={sessionId} />
         <RightBar
           activeSessionId={sessionId}
+          onDeleteSession={handleDeleteSession}
           onNewConversation={handleNewConversation}
           onSelectSession={handleSelectSession}
           sessionItems={sessionItems}

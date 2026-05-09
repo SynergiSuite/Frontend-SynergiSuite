@@ -9,7 +9,8 @@ import {
   LifeBuoy,
   Component,
   UserRoundCog,
-  MessageSquare,
+  BrainCircuit,
+  Orbit,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -29,7 +30,8 @@ export default function Sidebar() {
     { label: "Teams", route: "/teams", icon: UserRoundCog },
     { label: "Projects", route: "/projects", icon: FolderKanban },
     { label: "Clients", route: "/clients", icon: Component },
-    { label: "Chatbot", route: "/chatbot", icon: MessageSquare },
+    { label: "AI Assistant", route: "/chatbot", icon: BrainCircuit },
+    { label: "Collab Station", route: "/collab-station", icon: Orbit },
     { label: "Analytics", route: "/analytics", icon: BarChart3 },
     { label: "Reports", route: "/reports", icon: FileText },
     { label: "Settings", route: "/settings", icon: Settings },
