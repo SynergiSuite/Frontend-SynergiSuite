@@ -22,7 +22,6 @@ const getSessionItems = (
 
 const Page = () => {
   const [sessionId, setSessionId] = useState("");
-  const [sessionIds, setSessionIds] = useState<string[]>([]);
   const [sessionItems, setSessionItems] = useState<UserSessionIdsResponse["items"]>([]);
   const [chatResetKey, setChatResetKey] = useState(0);
 
@@ -33,7 +32,6 @@ const Page = () => {
         const fetchedSessionIds = getUniqueSessionIds(response.session_ids);
         const activeSessionId = fetchedSessionIds[0] ?? "";
 
-        setSessionIds(fetchedSessionIds);
         setSessionItems(getSessionItems(fetchedSessionIds, response.items || []));
         setSessionId(activeSessionId);
 
@@ -44,7 +42,6 @@ const Page = () => {
         }
       } catch (error) {
         console.error("Session ids API error:", error);
-        setSessionIds([]);
         setSessionItems([]);
         setSessionId("");
         CookieManager("delete", "session-id");
@@ -57,7 +54,6 @@ const Page = () => {
   const handleNewConversation = () => {
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
-    setSessionIds((prev) => getUniqueSessionIds([newSessionId, ...prev]));
     setSessionItems((prev) => [
       {
         session_id: newSessionId,
@@ -77,9 +73,6 @@ const Page = () => {
     CookieManager("delete", "session-id");
     CookieManager("set", "session-id", selectedSessionId);
     setSessionId(selectedSessionId);
-    setSessionIds((prev) =>
-      getUniqueSessionIds([selectedSessionId, ...prev.filter((id) => id !== selectedSessionId)]),
-    );
     setSessionItems((prev) => {
       const selectedItem = prev.find((item) => item.session_id === selectedSessionId);
       const remainingItems = prev.filter((item) => item.session_id !== selectedSessionId);
