@@ -18,33 +18,35 @@ type ChatAreaProps = {
   sessionId: string;
 };
 
+const formatMessageTime = (value?: string) =>
+  new Date(value ?? Date.now()).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+
+const mapApiHistoryToMessages = (
+  history: NonNullable<ChatApiResponse["history"]>,
+) =>
+  history.map((item, index) => ({
+    id: Date.now() + index,
+    sender: item.role === "assistant" ? "bot" : "user",
+    text: item.content,
+    time: formatMessageTime(),
+  })) as MessageType[];
+
+const mapSessionHistoryToMessages = (
+  history: SessionHistoryResponse["history"],
+) =>
+  history.map((item, index) => ({
+    id: Date.now() + index,
+    sender: item.role === "assistant" ? "bot" : "user",
+    text: item.content,
+    time: formatMessageTime(item.ts),
+  })) as MessageType[];
+
 const ChatArea = ({ sessionId }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<MessageType[]>([]);
-
-  const formatTime = (value?: string) =>
-    new Date(value ?? Date.now()).toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-
-  const mapApiHistoryToMessages = (history: NonNullable<ChatApiResponse["history"]>) =>
-    history.map((item, index) => ({
-      id: Date.now() + index,
-      sender: item.role === "assistant" ? "bot" : "user",
-      text: item.content,
-      time: formatTime(),
-    })) as MessageType[];
-
-  const mapSessionHistoryToMessages = (
-    history: SessionHistoryResponse["history"],
-  ) =>
-    history.map((item, index) => ({
-      id: Date.now() + index,
-      sender: item.role === "assistant" ? "bot" : "user",
-      text: item.content,
-      time: formatTime(item.ts),
-    })) as MessageType[];
 
   useEffect(() => {
     if (!sessionId) {
@@ -76,7 +78,7 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
       id: Date.now(),
       sender: "user",
       text: trimmedInput,
-      time: formatTime(),
+      time: formatMessageTime(),
     };
 
     setMessages((prev) => [
@@ -109,7 +111,7 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
             id: Date.now() + 2,
             sender: "bot",
             text: replyText,
-            time: formatTime(),
+            time: formatMessageTime(),
           },
         ]);
       }
