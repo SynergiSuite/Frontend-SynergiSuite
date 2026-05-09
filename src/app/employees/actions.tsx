@@ -60,6 +60,7 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
     : baseRoles
 
   const handleDelete = () => {
+    console.log("Delete user", id);
     // Add actual delete logic here
     setShowNewDialog(false);
   };

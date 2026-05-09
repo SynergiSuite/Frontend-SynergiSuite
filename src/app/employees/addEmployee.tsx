@@ -21,8 +21,6 @@ import {
 
 
 export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps) {
-  if (!isOpen) return null;
-
   const [roles, setRoles] = useState<Role[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -76,6 +74,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
   };
 
   return (
+    isOpen ? (
     <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
       <button
         type="button"
@@ -124,9 +123,9 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
         <div className="px-6 sm:px-8">
           <p className="text-sm text-muted-foreground">
             Make sure the invited person has an account with SynergiSuite. If
-            they don't, they can sign up for a free trial. Once they've signed
-            up, they'll be able to access SynergiSuite and start collaborating
-            with you. Once they've signed up, they'll be able to access
+            they don&apos;t, they can sign up for a free trial. Once they&apos;ve signed
+            up, they&apos;ll be able to access SynergiSuite and start collaborating
+            with you. Once they&apos;ve signed up, they&apos;ll be able to access
             SynergiSuite and start collaborating with you.
           </p>
         </div>
@@ -201,5 +200,6 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
         </form>
       </div>
     </div>
+    ) : null
   );
 }

@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import RightBar from "./RightBar";
-import ChatArea from "./ChatArea";
+import RightBar from "../ChatBot/RightBar";
+import ChatArea from "../ChatBot/ChatArea";
 import { CookieManager } from "@/lib/cookieManager";
-import { getUserSessionIds, UserSessionIdsResponse } from "./apis/getUserSessionIds";
+import {
+  getUserSessionIds,
+  UserSessionIdsResponse,
+} from "../ChatBot/apis/getUserSessionIds";
 
 const getUniqueSessionIds = (sessionIds: string[]) => [...new Set(sessionIds)];
 const getSessionItems = (

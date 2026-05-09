@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Download, Filter } from "lucide-react";
+import { Download } from "lucide-react";
 import { getCookie } from "cookies-next";
 import { Button } from "@/global/buttons";
 import dynamic from "next/dynamic";

@@ -2,9 +2,10 @@
 
 import React from "react";
 import { ClientPriority } from "../enums/clientPriority.enum";
+import { ClientType } from "./page";
 
 type Props = {
-  clients: any[];
+  clients: ClientType[];
 };
 
 const StatsCards = ({ clients }: Props) => {

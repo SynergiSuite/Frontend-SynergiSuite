@@ -3,12 +3,13 @@
 import React from "react";
 import { Pencil, Trash } from "lucide-react";
 import { ClientPriority } from "../enums/clientPriority.enum";
+import { ClientType } from "./page";
 
 type Props = {
-  client: any;
+  client: ClientType;
   deleteClient: (id: string) => void;
-  onSelectClient: (client: any) => void;
-  onEditClient: (client: any) => void;
+  onSelectClient: (client: ClientType) => void;
+  onEditClient: (client: ClientType) => void;
   canManageClients: boolean;
 };
 

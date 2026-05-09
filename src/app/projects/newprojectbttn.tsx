@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { AnimatePresence } from "framer-motion";
-import NewProjectModal from "./createProjectForm";
+import NewProjectModal from "./createprojectform";
 import { Team } from "./schemas/team";
 import { Client } from "./schemas/client";
 import { CreateNewProject } from "./apis/createNewProject";

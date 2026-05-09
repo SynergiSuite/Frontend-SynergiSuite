@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button } from "@/global/buttons";0
+import { Button } from "@/global/buttons";
 import { useRouter } from "next/navigation";
 
 export default function Navbar() {

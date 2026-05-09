@@ -50,7 +50,7 @@ export default function FeaturesSection() {
             <div className="feature-card bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition duration-300 text-center cursor-pointer" onClick={() => handleClick("Reports & Analytics")}>
               <div className="text-4xl mb-10"><Image src={reportImage} alt="report" /></div>
               <h3 className="text-xl font-semibold text-gray-800 mb-2">Reports & Analytics</h3>
-              <p className="text-gray-600">Get insights into your team's performance with detailed reports</p>
+              <p className="text-gray-600">Get insights into your team&apos;s performance with detailed reports</p>
             </div>
 
             <div className="feature-card bg-white p-6 rounded-2xl shadow-md hover:shadow-lg transition duration-300 text-center cursor-pointer" onClick={() => handleClick("Integrations")}>

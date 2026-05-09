@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import ChatMessage from "./ChatMessage";
-import MessageInput from "./MessageInput";
-import { ChatApiResponse, chatWithUser } from "./apis/chatWithUser";
-import { getSessionHistory, SessionHistoryResponse } from "./apis/getSessionHistory";
+import ChatMessage from "../ChatBot/ChatMessage";
+import MessageInput from "../ChatBot/MessageInput";
+import { ChatApiResponse, chatWithUser } from "../ChatBot/apis/chatWithUser";
+import {
+  getSessionHistory,
+  SessionHistoryResponse,
+} from "../ChatBot/apis/getSessionHistory";
 
 export interface MessageType {
   id: number;

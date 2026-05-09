@@ -3,13 +3,17 @@
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { MessageSquarePlus } from "lucide-react";
-import { UserSessionIdsResponse } from "./apis/getUserSessionIds";
+
+type SessionItem = {
+  session_id: string;
+  last_bot_message?: string;
+};
 
 type SidebarProps = {
   activeSessionId: string;
   onNewConversation: () => void;
   onSelectSession: (sessionId: string) => void;
-  sessionItems: UserSessionIdsResponse["items"];
+  sessionItems: SessionItem[];
 };
 
 const Sidebar = ({

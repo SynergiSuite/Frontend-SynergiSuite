@@ -1,6 +1,6 @@
 import { CookieManager } from "@/lib/cookieManager";
 import { UIEmployee } from "../schemas/employee";
-import { Response, MainPageData, Stats } from "../schemas/apiResponse";
+import { Response, MainPageData, EmployeeApiRecord } from "../schemas/apiResponse";
 
 const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
@@ -26,17 +26,23 @@ export async function fetchEmployeesData(): Promise<MainPageData> {
     }
 
     const data: Response = await res.json();
+    const employeesRoot = data?.employees;
+    const nestedEmployeesRoot = data?.data?.employees;
 
     // Normalize employee list shape
     const potentialLists = [
-        (data as any)?.employees?.employees,
-        (data as any)?.employees,
-        (data as any)?.data?.employees?.employees,
-        (data as any)?.data?.employees,
+        Array.isArray(employeesRoot) ? employeesRoot : employeesRoot?.employees,
+        employeesRoot,
+        Array.isArray(nestedEmployeesRoot)
+          ? nestedEmployeesRoot
+          : nestedEmployeesRoot?.employees,
+        nestedEmployeesRoot,
         Array.isArray(data) ? data : null,
     ];
 
-    const employeesArray: any[] = (potentialLists.find((entry) => Array.isArray(entry)) as any[]) ?? [];
+    const employeesArray =
+      (potentialLists.find((entry): entry is EmployeeApiRecord[] => Array.isArray(entry)) ??
+        []) as EmployeeApiRecord[];
 
     const employees: UIEmployee[] = employeesArray.map((emp, index) => ({
         id: emp?.user_id ?? index,

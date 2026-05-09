@@ -18,7 +18,7 @@ export default function HeroSection() {
           {/* Left Side Content */}
           <div className="w-full lg:w-1/2 text-center lg:text-left mt-10 lg:mt-0">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-800 mb-4">
-              Streamline Your Team's Workflow
+              Streamline Your Team&apos;s Workflow
             </h1>
             <p className="text-gray-600 text-lg mb-6">
               All-in-one collaboration platform for modern teams to manage projects, track time, and boost productivity.

@@ -20,7 +20,7 @@ export default function Footer() {
               <li><a href="#" className="hover:text-orange-500">Features</a></li>
               <li><a href="#" className="hover:text-orange-500">Integrations</a></li>
               <li><a href="#" className="hover:text-orange-500">Pricing</a></li>
-              <li><a href="#" className="hover:text-orange-500">What's New</a></li>
+              <li><a href="#" className="hover:text-orange-500">What&apos;s New</a></li>
             </ul>
           </div>
 

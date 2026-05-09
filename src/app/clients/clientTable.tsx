@@ -4,12 +4,13 @@ import React from "react";
 
 import TableHeader from "./clientTableHeader";
 import ClientRow from "./clientTableRows";
+import { ClientType } from "./page";
 
 type Props = {
-  clients: any[];
+  clients: ClientType[];
   deleteClient: (id: string) => void;
-  onSelectClient: (client: any) => void;
-  onEditClient: (client: any) => void;
+  onSelectClient: (client: ClientType) => void;
+  onEditClient: (client: ClientType) => void;
   canManageClients: boolean;
 };
 

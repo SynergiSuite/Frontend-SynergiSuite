@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import SearchBar from "./listSearch";
+import SearchBar from "./listsearch";
 
 interface EmployeeListHeaderProps {
   onSearch: (query: string) => void;

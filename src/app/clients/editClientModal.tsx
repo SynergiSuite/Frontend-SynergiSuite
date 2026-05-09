@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import {
-  ClientPriority,
   CLIENT_PRIORITY_OPTIONS,
 } from "../enums/clientPriority.enum";
 import { EditClientDto } from "./dtos/editClient.dto";

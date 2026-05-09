@@ -42,7 +42,7 @@ export default function TestimonialsSection() {
                 </div>
               </div>
               <div className="text-yellow-500 text-lg mb-2">⭐⭐⭐⭐⭐</div><p className="text-gray-700">
-                Since implementing CollabFlow, we've seen a 40% increase in team productivity. It’s become an essential part of our daily operations.
+                Since implementing CollabFlow, we&apos;ve seen a 40% increase in team productivity. It&apos;s become an essential part of our daily operations.
               </p>
             </div>
 
