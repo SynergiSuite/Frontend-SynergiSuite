@@ -54,6 +54,7 @@ export default function Signin() {
         );
       }
 
+      CookieManager("set", "user-id", responseData.user_id);
       CookieManager("set", "access-token", responseData.access_token);
       CookieManager("set", "user-email", responseData.email);
       CookieManager("set", "user", responseData.name);

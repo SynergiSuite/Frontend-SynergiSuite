@@ -72,6 +72,7 @@ export default function Signup() {
       );
 
       if (req.ok) {
+        CookieManager("set", "user-id", responseData.user_id);
         CookieManager("set", "access-token", responseData.access_token);
         CookieManager("set", "user", responseData.name);
         CookieManager("set", "user-email", responseData.email);

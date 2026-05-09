@@ -23,6 +23,7 @@ const protectedRoutes = [
   "/projects",
   "/projects/*",
   "/clients",
+  "/chatbot",
   "/crm",
   "/team",
   "/profile",
@@ -61,6 +62,7 @@ export default function RootLayout({
   const [isLoading, setIsLoading] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
   const [showRightSidebar, setShowRightSidebar] = useState(false);
+  const isChatbotRoute = pathName.startsWith("/chatbot");
 
   useEffect(() => {
     const patchedWindow = window as WindowWithPatchedFetch;
@@ -207,7 +209,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <div className="flex flex-col min-h-screen">
+        <div className="flex h-screen flex-col overflow-hidden">
           {/* Navbar (always on top) */}
           {showSidebar && (
             <header className="border-b border-gray-200 bg-white">
@@ -215,7 +217,7 @@ export default function RootLayout({
             </header>
           )}
 
-          <div className="flex flex-1">
+          <div className="flex flex-1 min-h-0">
             {/* Sidebar (left) */}
             {showSidebar && (
               <aside className="w-64 border-r border-gray-200 bg-white">
@@ -224,7 +226,11 @@ export default function RootLayout({
             )}
 
             {/* Main content (right) */}
-            <main className="flex-1 bg-gray-50 p-10 overflow-y-auto">
+            <main
+              className={`flex-1 bg-gray-50 p-10 min-h-0 ${
+                isChatbotRoute ? "overflow-hidden" : "overflow-y-auto"
+              }`}
+            >
               {isLoading ? <LoaderCustom /> : children}
             </main>
             

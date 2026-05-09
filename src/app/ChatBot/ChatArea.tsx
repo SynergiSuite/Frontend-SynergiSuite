@@ -1,70 +1,129 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import ChatMessage from "./ChatMessage";
 import MessageInput from "./MessageInput";
+import { ChatApiResponse, chatWithUser } from "./apis/chatWithUser";
+import { getSessionHistory, SessionHistoryResponse } from "./apis/getSessionHistory";
 
 export interface MessageType {
   id: number;
   sender: "user" | "bot";
   text: string;
   time: string;
+  isTyping?: boolean;
 }
 
-const ChatArea = () => {
+type ChatAreaProps = {
+  sessionId: string;
+};
+
+const ChatArea = ({ sessionId }: ChatAreaProps) => {
   const [input, setInput] = useState("");
+  const [messages, setMessages] = useState<MessageType[]>([]);
 
-  const [messages, setMessages] = useState<MessageType[]>([
-    {
-      id: 1,
-      sender: "bot",
-      text: "Hello! How can I assist you today?",
-      time: "9:30 AM",
-    },
-    {
-      id: 2,
-      sender: "user",
-      text: "I need help planning a new project timeline.",
-      time: "9:31 AM",
-    },
-    {
-      id: 3,
-      sender: "bot",
-      text: "I would be happy to help you with project planning.",
-      time: "9:32 AM",
-    },
-  ]);
+  const formatTime = (value?: string) =>
+    new Date(value ?? Date.now()).toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit",
+    });
 
-  const sendMessage = () => {
-    if (!input.trim()) return;
+  const mapApiHistoryToMessages = (history: NonNullable<ChatApiResponse["history"]>) =>
+    history.map((item, index) => ({
+      id: Date.now() + index,
+      sender: item.role === "assistant" ? "bot" : "user",
+      text: item.content,
+      time: formatTime(),
+    })) as MessageType[];
+
+  const mapSessionHistoryToMessages = (
+    history: SessionHistoryResponse["history"],
+  ) =>
+    history.map((item, index) => ({
+      id: Date.now() + index,
+      sender: item.role === "assistant" ? "bot" : "user",
+      text: item.content,
+      time: formatTime(item.ts),
+    })) as MessageType[];
+
+  useEffect(() => {
+    if (!sessionId) {
+      setMessages([]);
+      return;
+    }
+
+    const fetchSessionHistory = async () => {
+      try {
+        const response = await getSessionHistory();
+        setMessages(mapSessionHistoryToMessages(response.history));
+      } catch (error) {
+        console.error("Session history API error:", error);
+        setMessages([]);
+      }
+    };
+
+    fetchSessionHistory();
+  }, [sessionId]);
+
+  const sendMessage = async () => {
+    const trimmedInput = input.trim();
+
+    if (!trimmedInput) return;
+
+    const typingMessageId = Date.now() + 1;
 
     const newMessage: MessageType = {
       id: Date.now(),
       sender: "user",
-      text: input,
-      time: "Now",
+      text: trimmedInput,
+      time: formatTime(),
     };
 
-    setMessages((prev) => [...prev, newMessage]);
+    setMessages((prev) => [
+      ...prev,
+      newMessage,
+      {
+        id: typingMessageId,
+        sender: "bot",
+        text: "",
+        time: "",
+        isTyping: true,
+      },
+    ]);
     setInput("");
 
-    setTimeout(() => {
-      const botReply: MessageType = {
-        id: Date.now() + 1,
-        sender: "bot",
-        text: "This is a sample AI response.",
-        time: "Now",
-      };
+    try {
+      const response = await chatWithUser(trimmedInput, sessionId);
+      console.log("Chat API response:", response);
 
-      setMessages((prev) => [...prev, botReply]);
-    }, 1000);
+      if (response.history?.length) {
+        setMessages(mapApiHistoryToMessages(response.history));
+        return;
+      }
+
+      const replyText = response.response?.trim();
+      if (replyText) {
+        setMessages((prev) => [
+          ...prev.filter((message) => message.id !== typingMessageId),
+          {
+            id: Date.now() + 2,
+            sender: "bot",
+            text: replyText,
+            time: formatTime(),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Chat API error:", error);
+      setMessages((prev) => prev.filter((message) => message.id !== typingMessageId));
+    }
   };
 
   return (
-    <main className="flex flex-col flex-1 h-full bg-[#f5f5f5]">
+    <main className="flex flex-col flex-1 h-full min-h-0 overflow-hidden">
 
       {/* MESSAGES AREA (FIXED SCROLL) */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-8 space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-6 space-y-6">
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}

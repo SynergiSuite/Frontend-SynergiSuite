@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 
 import {
   Paperclip,
@@ -14,7 +14,7 @@ interface Props {
     React.SetStateAction<string>
   >;
 
-  sendMessage: () => void;
+  sendMessage: () => void | Promise<void>;
 }
 
 const MessageInput = ({
@@ -22,9 +22,22 @@ const MessageInput = ({
   setInput,
   sendMessage,
 }: Props) => {
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "0px";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+  }, [input]);
+
   return (
     <>
-      <div className="w-full border-t border-gray-200 bg-white p-5">
+      <div className="w-full border-t border-gray-200 bg-white px-5 py-4">
         <div
           className="
             w-full
@@ -32,19 +45,22 @@ const MessageInput = ({
             border-gray-300
             rounded-2xl
             px-4
-            py-4
+            py-3
             flex
-            items-center
+            items-end
             justify-between
             gap-3
             bg-white
+            transition-all
+            duration-200
           "
         >
           <div className="flex items-center gap-3 w-full">
             <button
+              type="button"
               className="
-                w-10
-                h-10
+                w-9
+                h-9
                 rounded-full
                 hover:bg-gray-100
                 flex
@@ -59,11 +75,18 @@ const MessageInput = ({
             </button>
 
             <textarea
+              ref={textareaRef}
               placeholder="Type your message..."
               value={input}
               onChange={(e) =>
                 setInput(e.target.value)
               }
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  sendMessage();
+                }
+              }}
               className="
                 w-full
                 resize-none
@@ -72,17 +95,20 @@ const MessageInput = ({
                 text-sm
                 text-black
                 placeholder:text-gray-400
+                leading-6
                 min-h-[24px]
                 max-h-[120px]
+                overflow-y-auto
               "
             />
           </div>
 
           <button
+            type="button"
             onClick={sendMessage}
             className="
-              w-12
-              h-12
+              w-10
+              h-10
               rounded-full
               bg-black
               flex
