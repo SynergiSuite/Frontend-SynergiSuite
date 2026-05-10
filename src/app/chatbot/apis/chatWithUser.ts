@@ -1,4 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
+import { getChatApiHeaders } from "./getChatApiHeaders";
 
 type ChatPayload = {
   user_id: string;
@@ -34,9 +35,7 @@ export async function chatWithUser(message: string, sessionId: string) {
 
     const response = await fetch(`${chatUrl}/api/users/chat`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getChatApiHeaders(),
       body: JSON.stringify(payload),
     });
 

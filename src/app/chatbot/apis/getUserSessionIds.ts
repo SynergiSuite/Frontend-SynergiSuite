@@ -1,4 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
+import { getChatApiHeaders } from "./getChatApiHeaders";
 
 export type UserSessionIdsResponse = {
   user_id: string;
@@ -22,9 +23,7 @@ export async function getUserSessionIds() {
 
     const response = await fetch(`${chatUrl}/api/users/${userId}/session-ids`, {
       method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: getChatApiHeaders(),
     });
 
     if (!response.ok) {

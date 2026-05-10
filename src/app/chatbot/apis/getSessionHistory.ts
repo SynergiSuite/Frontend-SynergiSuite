@@ -1,4 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
+import { getChatApiHeaders } from "./getChatApiHeaders";
 
 export type SessionHistoryResponse = {
   user_id: string;
@@ -30,9 +31,7 @@ export async function getSessionHistory() {
       `${chatUrl}/api/users/${userId}/sessions/${sessionId}/history`,
       {
         method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getChatApiHeaders(),
       },
     );
 

@@ -6,7 +6,7 @@ import StatsCards from "./statecards";
 import RoleDistribution from "./roledistribution";
 import EmployeeListHeader from "./listheader";
 import EmployeeListFooter from "./listfooter";
-import EmployeeList from "./employeelist";
+import EmployeeList from "./employeesList";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { UIEmployee } from "./schemas/employee";
 import { fetchEmployeesData } from "./apis/getEmployeeApi";

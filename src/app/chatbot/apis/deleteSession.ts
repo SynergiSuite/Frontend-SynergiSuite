@@ -1,4 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
+import { getChatApiHeaders } from "./getChatApiHeaders";
 
 export type DeleteSessionResponse = {
   deleted: boolean;
@@ -37,9 +38,7 @@ export async function deleteSession(sessionId: string) {
       `${chatUrl}/api/users/${userId}/sessions/${sessionId}`,
       {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: getChatApiHeaders(),
       },
     );
 
