@@ -1,14 +1,11 @@
 import React from "react";
 import { signupScheme } from "./schema/signupSchema";
 import { ZodError } from "zod";
-import EmailLogo from "@/assets/email-icon.svg";
-import PasswordLogo from "@/assets/password-icon.svg";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { LockKeyhole, Mail, Terminal, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/global/buttons";
 import { useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CookieManager } from "@/lib/cookieManager";
 
@@ -127,7 +124,7 @@ export default function Signup() {
             Full name
           </label>
           <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
-            <Image src={EmailLogo} alt="Email" width={20} />
+            <UserRound size={18} className="text-gray-500" aria-hidden="true" />
             <input
               type="text"
               name="name"
@@ -148,7 +145,7 @@ export default function Signup() {
             Email
           </label>
           <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
-            <Image src={EmailLogo} alt="Email" width={20} />
+            <Mail size={18} className="text-gray-500" aria-hidden="true" />
             <input
               type="email"
               name="email"
@@ -169,7 +166,7 @@ export default function Signup() {
             Password
           </label>
           <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
-            <Image src={PasswordLogo} alt="Password" width={20} />
+            <LockKeyhole size={18} className="text-gray-500" aria-hidden="true" />
             <input
               type="password"
               name="password"

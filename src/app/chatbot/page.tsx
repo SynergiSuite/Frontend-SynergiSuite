@@ -30,6 +30,7 @@ const Page = () => {
   const [sessionItems, setSessionItems] = useState<UserSessionIdsResponse["items"]>([]);
   const [chatResetKey, setChatResetKey] = useState(0);
   const [isMobileRightBarOpen, setIsMobileRightBarOpen] = useState(false);
+  const [selectedModel, setSelectedModel] = useState<"llama" | "gpt" | "gemma">("llama");
 
   useEffect(() => {
     const fetchSessionIds = async () => {
@@ -150,7 +151,7 @@ const Page = () => {
           {isMobileRightBarOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
 
-        <ChatArea key={chatResetKey} sessionId={sessionId} />
+        <ChatArea key={chatResetKey} sessionId={sessionId} model={selectedModel} />
 
         {isMobileRightBarOpen && (
           <div className="fixed inset-0 z-20 bg-black/30 lg:hidden">
@@ -166,6 +167,8 @@ const Page = () => {
         <RightBar
           activeSessionId={sessionId}
           isMobileOpen={isMobileRightBarOpen}
+          model={selectedModel}
+          onModelChange={setSelectedModel}
           onDeleteSession={handleDeleteSession}
           onNewConversation={handleNewConversation}
           onSelectSession={handleSelectSession}

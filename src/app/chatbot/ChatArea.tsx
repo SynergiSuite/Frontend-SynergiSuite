@@ -19,6 +19,7 @@ export interface MessageType {
 
 type ChatAreaProps = {
   sessionId: string;
+  model: "llama" | "gpt" | "gemma";
 };
 
 const formatMessageTime = (value?: string) =>
@@ -47,7 +48,7 @@ const mapSessionHistoryToMessages = (
     time: formatMessageTime(item.ts),
   })) as MessageType[];
 
-const ChatArea = ({ sessionId }: ChatAreaProps) => {
+const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<MessageType[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -106,7 +107,7 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
     setInput("");
 
     try {
-      const response = await chatWithUser(trimmedInput, sessionId);
+      const response = await chatWithUser(trimmedInput, sessionId, model);
       console.log("Chat API response:", response);
 
       if (response.history?.length) {

@@ -1,12 +1,9 @@
 import React from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { loginSchema } from "./schema/loginSchema";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { LockKeyhole, Mail, Terminal } from "lucide-react";
 import { motion } from "framer-motion";
-import EmailLogo from "@/assets/email-icon.svg";
-import PasswordLogo from "@/assets/password-icon.svg";
 import { Button } from "@/global/buttons";
 import { useState } from "react";
 import { ZodError } from "zod";
@@ -139,7 +136,7 @@ export default function Signin() {
             Email
           </label>
           <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
-            <Image src={EmailLogo} alt="Email" width={20} />
+            <Mail size={18} className="text-gray-500" aria-hidden="true" />
             <input
               type="email"
               name="email"
@@ -161,7 +158,7 @@ export default function Signin() {
             Password
           </label>
           <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
-            <Image src={PasswordLogo} alt="Password" width={20} />
+            <LockKeyhole size={18} className="text-gray-500" aria-hidden="true" />
             <input
               type="password"
               name="password"

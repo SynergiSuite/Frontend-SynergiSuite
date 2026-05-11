@@ -2,7 +2,7 @@
 
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { MessageSquarePlus, Trash2 } from "lucide-react";
+import { ChevronDown, MessageSquarePlus, Sparkles, Trash2 } from "lucide-react";
 
 type SessionItem = {
   session_id: string;
@@ -12,6 +12,8 @@ type SessionItem = {
 type SidebarProps = {
   activeSessionId: string;
   isMobileOpen: boolean;
+  model: "llama" | "gpt" | "gemma";
+  onModelChange: (model: "llama" | "gpt" | "gemma") => void;
   onDeleteSession: (sessionId: string) => void;
   onNewConversation: () => void;
   onSelectSession: (sessionId: string) => void;
@@ -21,6 +23,8 @@ type SidebarProps = {
 const Sidebar = ({
   activeSessionId,
   isMobileOpen,
+  model,
+  onModelChange,
   onDeleteSession,
   onNewConversation,
   onSelectSession,
@@ -36,6 +40,39 @@ const Sidebar = ({
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
           Recent Chats
         </h2>
+      </div>
+
+      <div className="shrink-0 px-3 pt-3 sm:px-4 sm:pt-4">
+        <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+          <div className="mb-2 flex items-center gap-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black text-white">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Model
+              </p>
+              <p className="text-sm font-medium text-black">
+                Select assistant engine
+              </p>
+            </div>
+          </div>
+
+          <div className="relative">
+            <select
+              value={model}
+              onChange={(event) =>
+                onModelChange(event.target.value as "llama" | "gpt" | "gemma")
+              }
+              className="h-12 w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 pr-11 text-sm font-medium text-black outline-none transition focus:border-black"
+            >
+              <option value="llama">Llama 7b</option>
+              <option value="gpt">GPT 20b</option>
+              <option value="gemma">Gemma</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          </div>
+        </div>
       </div>
 
       {/* TOP BUTTON */}

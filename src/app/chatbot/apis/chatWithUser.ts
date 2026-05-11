@@ -5,6 +5,7 @@ type ChatPayload = {
   user_id: string;
   message: string;
   session_id: string;
+  model: "llama" | "gpt" | "gemma";
 };
 
 export type ChatApiResponse = {
@@ -19,7 +20,11 @@ export type ChatApiResponse = {
 
 const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_CHATBOT_BASE_URL;
 
-export async function chatWithUser(message: string, sessionId: string) {
+export async function chatWithUser(
+  message: string,
+  sessionId: string,
+  model: "llama" | "gpt" | "gemma",
+) {
   try {
     const userId = CookieManager("get", "user-id");
 
@@ -31,6 +36,7 @@ export async function chatWithUser(message: string, sessionId: string) {
       user_id: userId,
       message,
       session_id: sessionId,
+      model,
     };
 
     const response = await fetch(`${requestBaseUrl}/api/users/chat`, {
