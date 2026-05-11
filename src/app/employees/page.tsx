@@ -81,8 +81,8 @@ export default function UserManagement() {
       {isLoading ? (
         <LoaderCustom />
       ) : (
-        <main className="flex flex-1 flex-col p-6">
-          <div className="flex justify-between items-center mb-6">
+        <main className="flex flex-1 flex-col p-4 sm:p-6">
+          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <h1 className="text-2xl font-bold">Employees</h1>
             <UserActions />
           </div>

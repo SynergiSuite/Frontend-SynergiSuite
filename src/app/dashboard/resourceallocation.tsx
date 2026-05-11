@@ -10,7 +10,7 @@ const resources = [
 export default function ResourceAllocation() {
   return (
     <>
-      <div className="bg-white border rounded-lg p-4">
+      <div className="rounded-lg border bg-white p-4">
         <h2 className="font-semibold mb-4">Resource Allocation</h2>
 
         <div className="space-y-3 text-sm">
@@ -33,4 +33,3 @@ export default function ResourceAllocation() {
     </>
   );
 }
-

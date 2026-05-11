@@ -1,5 +1,4 @@
-const chatApiAuthKey =
-  process.env.NEXT_PUBLIC_SECRET_KEY ?? process.env["Secret key"];
+const chatApiAuthKey = process.env.NEXT_PUBLIC_SECRET_KEY;
 
 export function getChatApiHeaders() {
   if (!chatApiAuthKey) {

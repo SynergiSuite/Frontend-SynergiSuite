@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { AnimatePresence, motion } from "framer-motion";
 import { CookieManager } from "@/lib/cookieManager";
@@ -20,7 +20,6 @@ type NavItem = {
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
@@ -124,62 +123,66 @@ export default function Navbar() {
   return (
     <>
     <header className="w-full border-b border-gray-300">
-      <div className="flex justify-between items-center py-3 px-6">
-        {/* Brand */}
-        <div className="flex items-center space-x-10">
-          <div className="border border-black rounded-full px-1 py-1">
-            <button
-              type="button"
-              className="flex items-center gap-3 cursor-pointer"
-              onClick={() => router.push("/dashboard")}
-            >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black">
-                <Image
-                  src={Logo}
-                  alt="SynergiSuite"
-                  width={36}
-                  height={36}
-                  className="h-7 w-7 object-contain"
-                  priority
-                />
-              </div>
-              <span className="font-bold text-lg pr-1">SynergiSuite</span>
-            </button>
+      <div className="px-4 py-3 sm:px-6">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="inline-flex max-w-full rounded-full border border-black px-1 py-1">
+              <button
+                type="button"
+                className="flex min-w-0 cursor-pointer items-center gap-2 sm:gap-3"
+                onClick={() => router.push("/dashboard")}
+              >
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-black">
+                  <Image
+                    src={Logo}
+                    alt="SynergiSuite"
+                    width={36}
+                    height={36}
+                    className="h-7 w-7 object-contain"
+                    priority
+                  />
+                </div>
+                <span className="truncate pr-2 text-base font-bold sm:pr-1 sm:text-lg">
+                  SynergiSuite
+                </span>
+              </button>
+            </div>
           </div>
 
-          {/* Show route-specific navs */}
-          {links.length > 0 && (
-            <nav className="flex space-x-6 text-sm">
-              {links.map((item) => (
-                <button
-                  key={item.param}
-                  onClick={() => handleClick(item.route)}
-                  className={`${
-                    activeTab === item.param
-                      ? "text-black font-semibold underline"
-                      : "text-gray-700"
-                  } cursor-pointer`}
-                >
-                  {item.name}
-                </button>
-              ))}
-            </nav>
-          )}
+          <button
+            type="button"
+            className="h-8 w-8 shrink-0 cursor-pointer rounded-full bg-gray-300"
+            onClick={() => setIsProfileOpen(true)}
+            aria-label="Open profile drawer"
+          >
+            <Avatar>
+              <AvatarImage src="https://github.com/shadcn.png" />
+              <AvatarFallback>CN</AvatarFallback>
+            </Avatar>
+          </button>
         </div>
-
-        {/* Profile avatar */}
-        <button
-          type="button"
-          className="w-8 h-8 bg-gray-300 rounded-full cursor-pointer"
-          onClick={() => setIsProfileOpen(true)}
-          aria-label="Open profile drawer"
-        >
-          <Avatar>
-            <AvatarImage src="https://github.com/shadcn.png" />
-            <AvatarFallback>CN</AvatarFallback>
-          </Avatar>
-        </button>
       </div>
+
+      {links.length > 0 && (
+        <div className="border-t border-gray-200/80 px-4 py-2 sm:px-6">
+          <nav className="-mx-1 flex gap-4 overflow-x-auto px-1 text-sm whitespace-nowrap">
+            {links.map((item) => (
+              <button
+                key={item.param}
+                onClick={() => handleClick(item.route)}
+                className={`shrink-0 pb-1 ${
+                  activeTab === item.param
+                    ? "font-semibold text-black underline"
+                    : "text-gray-700"
+                } cursor-pointer`}
+              >
+                {item.name}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
+
       <AnimatePresence>
         {isProfileOpen && (
           <motion.div

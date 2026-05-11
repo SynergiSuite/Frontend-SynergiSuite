@@ -40,7 +40,7 @@ export default function TeamPerformance() {
           </PieChart>
         </ResponsiveContainer>
 
-        <div className="flex justify-around mt-4 text-sm text-gray-600">
+        <div className="mt-4 flex flex-wrap justify-center gap-3 text-sm text-gray-600 sm:justify-around">
           {data.map((item, index) => (
             <div key={item.name} className="flex items-center space-x-2">
               <span

@@ -186,15 +186,15 @@ const ClientManagementPage = () => {
       {isLoading ? (
         <LoaderCustom />
       ) : (
-        <div className="h-[calc(100vh-140px)]">
+        <div className="min-h-0">
           <div
-            className={`grid h-full grid-cols-1 items-stretch gap-8 ${
+            className={`grid grid-cols-1 items-stretch gap-6 lg:min-h-[calc(100vh-140px)] lg:gap-8 ${
               canManageClients
                 ? "lg:grid-cols-[minmax(420px,1.2fr)_minmax(0,0.8fr)]"
                 : ""
             }`}
           >
-              <div className="flex h-full flex-col">
+              <div className="flex min-h-0 flex-col">
                 <SubHeader
                   search={search}
                   setSearch={setSearch}
@@ -220,7 +220,7 @@ const ClientManagementPage = () => {
               </div>
               
               {canManageClients ? (
-                <div className="h-full">
+                <div className="min-h-0">
                   <SidebarForm addClient={addClient} />
                 </div>
               ) : null}

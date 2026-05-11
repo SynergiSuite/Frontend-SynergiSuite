@@ -108,13 +108,13 @@ export default function Page() {
       {isLoading ? (
         <LoaderCustom />
       ) : (
-        <main className="p-6 space-y-6">
-          <div className="flex justify-between items-center mb-6">
+        <main className="space-y-6 p-4 sm:p-6">
+          <div className="mb-6 flex items-center justify-between gap-3">
             <h1 className="text-2xl font-bold">Teams</h1>
           </div>
           <StateCards states={states} />
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <TeamActivitiesChart />
             </div>
@@ -123,8 +123,8 @@ export default function Page() {
             </div>
           </div>
 
-          <div className="bg-white p-6 border border_primary rounded-lg shadow-md space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="space-y-4 rounded-lg border border_primary bg-white p-4 shadow-md sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold text-gray-800">
                 All Teams{" "}
                 <span className="text-gray-500 text-sm">({count})</span>
@@ -133,15 +133,15 @@ export default function Page() {
               {canManageTeamActions ? (
                 <Button
                   onClick={() => setIsModalOpen(true)}
-                  className="button_primary_lg"
-                  variant="none"
+                  className="button_primary_lg w-full sm:w-auto"
+                  variant="add"
                 >
                   Create New Team
                 </Button>
               ) : null}
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-hidden">
               <TeamTable
                 teams={teams}
                 employees={employees}

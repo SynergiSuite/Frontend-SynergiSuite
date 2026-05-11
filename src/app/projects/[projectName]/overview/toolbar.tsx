@@ -9,7 +9,7 @@ const Toolbar = () => {
           <p></p>
         </div>
         <Button className="button_primary_xl">
-          + Add Task
+          Add Task
         </Button>
       </div>
     </>

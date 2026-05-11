@@ -64,7 +64,7 @@ const AddClientSidebar = ({
 
   return (
     <>
-      <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-6">
+      <div className="flex h-full flex-col rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
 
         {/* Heading */}
         <h2 className="mb-6 text-lg font-semibold text-black">
@@ -193,7 +193,7 @@ const AddClientSidebar = ({
             </div>
           </div>
 
-          <div className="mt-auto space-y-3 pt-6">
+          <div className="mt-6 space-y-3 pt-2 lg:mt-auto lg:pt-6">
             {/* Add Button */}
             <button
               type="submit"

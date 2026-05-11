@@ -15,9 +15,9 @@ function StateCard({ title, value, change, progress }: Card) {
 
   return (
     <>
-      <div className="bg-white p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 flex flex-col justify-between">
+      <div className="flex min-h-[150px] flex-col justify-between rounded-lg bg-white p-4 shadow-md transition-shadow duration-200 hover:shadow-lg">
         {/* Large number */}
-        <span className="text-3xl font-bold">{value}</span>
+        <span className="text-2xl font-bold sm:text-3xl">{value}</span>
 
         {/* Title */}
         <span className="text-gray-500 text-sm mt-1">{title}</span>
@@ -45,7 +45,7 @@ function StateCard({ title, value, change, progress }: Card) {
 export default function StateCards({ cards }: { cards: Card[] }) {
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {cards.map((card, index) => (
           <StateCard
             key={index}
@@ -59,5 +59,4 @@ export default function StateCards({ cards }: { cards: Card[] }) {
     </>
   );
 }
-
 

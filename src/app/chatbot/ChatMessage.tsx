@@ -38,7 +38,7 @@ const ChatMessage = ({ message }: Props) => {
         }`}
       >
         <div
-          className={`max-w-[70%] flex gap-3 ${
+          className={`flex max-w-[88%] gap-2 sm:max-w-[78%] sm:gap-3 lg:max-w-[70%] ${
             isUserMessage
               ? "flex-row-reverse"
               : "flex-row"
@@ -50,8 +50,10 @@ const ChatMessage = ({ message }: Props) => {
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               transition={{ delay: 0.05, type: "spring", stiffness: 340, damping: 24 }}
               className="
-                w-10
-                h-10
+                h-8
+                w-8
+                sm:h-10
+                sm:w-10
                 rounded-full
                 bg-black
                 flex
@@ -82,6 +84,10 @@ const ChatMessage = ({ message }: Props) => {
                 isUserMessage
                   ? "bg-white text-black border border-gray-200 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
                   : "bg-black text-white shadow-[0_14px_34px_rgba(15,23,42,0.24)]"
+              } ${
+                isUserMessage
+                  ? "px-4 py-3 sm:p-5"
+                  : "px-4 py-3 sm:p-5"
               }`}
             >
               {message.isTyping ? (
@@ -103,7 +109,7 @@ const ChatMessage = ({ message }: Props) => {
                   />
                 </div>
               ) : (
-                <p className="text-sm leading-6">
+                <p className="text-sm leading-6 break-words whitespace-pre-wrap">
                   {message.text}
                 </p>
               )}

@@ -9,6 +9,7 @@ import {
   UserSessionIdsResponse,
 } from "./apis/getUserSessionIds";
 import { deleteSession } from "./apis/deleteSession";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const getUniqueSessionIds = (sessionIds: string[]) => [...new Set(sessionIds)];
 const getSessionItems = (
@@ -28,6 +29,7 @@ const Page = () => {
   const [sessionId, setSessionId] = useState("");
   const [sessionItems, setSessionItems] = useState<UserSessionIdsResponse["items"]>([]);
   const [chatResetKey, setChatResetKey] = useState(0);
+  const [isMobileRightBarOpen, setIsMobileRightBarOpen] = useState(false);
 
   useEffect(() => {
     const fetchSessionIds = async () => {
@@ -55,6 +57,22 @@ const Page = () => {
     fetchSessionIds();
   }, []);
 
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("chatbot-rightbar-toggle", {
+        detail: { isOpen: isMobileRightBarOpen },
+      }),
+    );
+
+    return () => {
+      window.dispatchEvent(
+        new CustomEvent("chatbot-rightbar-toggle", {
+          detail: { isOpen: false },
+        }),
+      );
+    };
+  }, [isMobileRightBarOpen]);
+
   const handleNewConversation = () => {
     const newSessionId = crypto.randomUUID();
     setSessionId(newSessionId);
@@ -67,6 +85,7 @@ const Page = () => {
     ]);
     CookieManager("set", "session-id", newSessionId);
     setChatResetKey((prev) => prev + 1);
+    setIsMobileRightBarOpen(false);
   };
 
   const handleSelectSession = (selectedSessionId: string) => {
@@ -84,6 +103,7 @@ const Page = () => {
       return selectedItem ? [selectedItem, ...remainingItems] : remainingItems;
     });
     setChatResetKey((prev) => prev + 1);
+    setIsMobileRightBarOpen(false);
   };
 
   const handleDeleteSession = async (selectedSessionId: string) => {
@@ -112,6 +132,7 @@ const Page = () => {
       }
 
       setChatResetKey((prev) => prev + 1);
+      setIsMobileRightBarOpen(false);
     } catch (error) {
       console.error("Delete session API error:", error);
     }
@@ -119,10 +140,32 @@ const Page = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="flex h-full min-h-0 overflow-hidden rounded-3xl bg-white shadow-sm">
+      <div className="relative flex h-full min-h-0 overflow-hidden bg-white shadow-sm md:rounded-3xl">
+        <button
+          type="button"
+          aria-label={isMobileRightBarOpen ? "Close chat history" : "Open chat history"}
+          onClick={() => setIsMobileRightBarOpen((prev) => !prev)}
+          className="fixed right-4 top-20 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 lg:hidden"
+        >
+          {isMobileRightBarOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
+
         <ChatArea key={chatResetKey} sessionId={sessionId} />
+
+        {isMobileRightBarOpen && (
+          <div className="fixed inset-0 z-20 bg-black/30 lg:hidden">
+            <button
+              type="button"
+              aria-label="Close chat history overlay"
+              onClick={() => setIsMobileRightBarOpen(false)}
+              className="h-full w-full"
+            />
+          </div>
+        )}
+
         <RightBar
           activeSessionId={sessionId}
+          isMobileOpen={isMobileRightBarOpen}
           onDeleteSession={handleDeleteSession}
           onNewConversation={handleNewConversation}
           onSelectSession={handleSelectSession}

@@ -27,7 +27,7 @@ const ClientsTable = ({
         <TableHeader />
 
         {clients.length > 0 ? (
-          <div className="flex-1">
+          <div className="flex-1 overflow-y-auto">
             {clients.map((client) => (
               <ClientRow
                 key={client.id}

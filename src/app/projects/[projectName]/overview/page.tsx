@@ -122,6 +122,7 @@ const Page = () => {
             <Button
               className="button_primary_xl w-full sm:w-auto"
               onClick={() => setIsCreateMilestoneOpen(true)}
+              variant="add"
             >
               Create new Milestone
             </Button>

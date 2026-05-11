@@ -12,11 +12,11 @@ export default function ModalFooter({
   isSubmitDisabled = false,
 }: FooterProps) {
   return (
-    <div className="flex justify-end space-x-3 border-t pt-3">
+    <div className="flex flex-col-reverse gap-3 border-t pt-3 sm:flex-row sm:justify-end sm:space-x-3 sm:gap-0">
       <button
         type="button"
         onClick={onCancel}
-        className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-100"
+        className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
       >
         Cancel
       </button>
@@ -25,7 +25,7 @@ export default function ModalFooter({
         type="button"
         onClick={onSubmit}
         disabled={isSubmitDisabled}
-        className={`px-4 py-2 rounded-md text-white transition ${
+        className={`rounded-md px-4 py-2 text-white transition ${
           isSubmitDisabled
             ? "bg-gray-400 cursor-not-allowed"
             : "bg-black hover:bg-gray-800"

@@ -17,7 +17,7 @@ export type ChatApiResponse = {
   user_id: string;
 };
 
-const chatUrl = "http://localhost:8000";
+const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_CHATBOT_BASE_URL;
 
 export async function chatWithUser(message: string, sessionId: string) {
   try {
@@ -33,7 +33,7 @@ export async function chatWithUser(message: string, sessionId: string) {
       session_id: sessionId,
     };
 
-    const response = await fetch(`${chatUrl}/api/users/chat`, {
+    const response = await fetch(`${requestBaseUrl}/api/users/chat`, {
       method: "POST",
       headers: getChatApiHeaders(),
       body: JSON.stringify(payload),

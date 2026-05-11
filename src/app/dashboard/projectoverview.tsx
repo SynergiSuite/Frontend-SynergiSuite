@@ -16,27 +16,28 @@ const containerHeight = 176; // h-44 = 12rem
 export default function ProjectOverview() {
   return (
     <>
-      <div className="bg-white border rounded-lg p-6">
+      <div className="rounded-lg border bg-white p-4 sm:p-6">
         {/* Heading */}
         <h2 className="text-lg font-semibold mb-4 text-left">Project Overview</h2>
 
-        <div className="flex justify-center">
+        <div className="overflow-x-auto">
+        <div className="flex min-w-[320px] justify-center sm:min-w-0">
           {/* Y-axis */}
-          <div className="flex flex-col justify-between text-sm text-gray-500 h-[176px] mr-4">
+          <div className="mr-3 flex h-[176px] flex-col justify-between text-xs text-gray-500 sm:mr-4 sm:text-sm">
             {yAxis.map((num) => (
               <span key={num}>{num}</span>
             ))}
           </div>
 
           {/* Bars */}
-          <div className="flex items-end h-[176px] space-x-4">
+          <div className="flex h-[176px] items-end gap-3 sm:gap-4">
             {data.map((item) => {
               const barHeight = (item.value / maxValue) * containerHeight;
               return (
                 <div key={item.label} className="flex flex-col items-center justify-end">
                   {/* Bar */}
                   <div
-                    className="bg-orange-400 w-12 rounded-md transition-all duration-500"
+                    className="w-10 rounded-md bg-orange-400 transition-all duration-500 sm:w-12"
                     style={{ height: `${barHeight}px` }}
                   ></div>
 
@@ -49,10 +50,10 @@ export default function ProjectOverview() {
             })}
           </div>
         </div>
+        </div>
       </div>
     </>
   );
 }
-
 
 

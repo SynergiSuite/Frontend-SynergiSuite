@@ -88,7 +88,7 @@ export default function NewProjectModal({
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className={`${modalShellClass} max-w-2xl`}
+        className={`${modalShellClass} max-h-[calc(100vh-2rem)] w-[calc(100vw-1.5rem)] max-w-2xl overflow-hidden`}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -100,7 +100,7 @@ export default function NewProjectModal({
           </h2>
         </div>
 
-        <div className={modalBodyClass}>
+        <div className={`${modalBodyClass} overflow-y-auto`}>
           {/* Project Name */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -153,7 +153,7 @@ export default function NewProjectModal({
                   return (
                     <label
                       key={team.id}
-                      className={`flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition ${
+                      className={`flex min-w-0 items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition ${
                         isSelected
                           ? "border-gray-900 bg-gray-100 text-gray-900"
                           : "border-gray-300 bg-white text-gray-700"
@@ -165,7 +165,7 @@ export default function NewProjectModal({
                         checked={isSelected}
                         onChange={() => toggleTeamId(team.id)}
                       />
-                      {team.name}
+                      <span className="break-words">{team.name}</span>
                     </label>
                   );
                 })}
@@ -231,7 +231,7 @@ export default function NewProjectModal({
           </div>
         </div>
 
-        <div className="border-t border-gray-200/80 px-6 py-4 sm:px-8">
+        <div className="border-t border-gray-200/80 px-4 py-4 sm:px-8">
           <ModalFooter
             onCancel={onCancel}
             isSubmitDisabled={!isFormValid}

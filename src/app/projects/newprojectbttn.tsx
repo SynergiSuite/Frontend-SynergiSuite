@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { AnimatePresence } from "framer-motion";
+import { Plus } from "lucide-react";
 import NewProjectModal from "./createNewProjectForm";
 import { Team } from "./schemas/team";
 import { Client } from "./schemas/client";
@@ -69,9 +70,10 @@ export default function NewProjectButton({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-white hover:bg-gray-800 sm:w-auto"
       >
-        + New Project
+        <Plus size={16} strokeWidth={2.25} aria-hidden="true" />
+        <span>New Project</span>
       </button>
 
       <AnimatePresence>

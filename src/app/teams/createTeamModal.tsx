@@ -116,7 +116,7 @@ export default function CreateTeamModal({
         transition={{ duration: 0.2 }}
       />
       <motion.div
-        className={`${modalShellClass} max-w-2xl`}
+        className={`${modalShellClass} max-h-[calc(100vh-2rem)] w-[calc(100vw-1.5rem)] max-w-2xl overflow-hidden`}
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -143,7 +143,7 @@ export default function CreateTeamModal({
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1">
           {/* Body */}
-          <div className={`${modalBodyClass} space-y-6`}>
+          <div className={`${modalBodyClass} space-y-6 overflow-y-auto`}>
             {/* Team Info */}
             <header className="space-y-4">
               <div>
@@ -178,12 +178,12 @@ export default function CreateTeamModal({
 
             {/* Add Members */}
             <div className="space-y-3 pt-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-md font-medium text-gray-700">
                   Team Members
                 </h3>
                 <Button
-                  className="button_primary_lg"
+                  className="button_primary_lg w-full sm:w-auto"
                   type="button"
                   onClick={handleAddMember}
                   disabled={!selectedMemberId}
@@ -209,7 +209,7 @@ export default function CreateTeamModal({
                 </SelectContent>
               </Select>
 
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="mt-3 flex flex-wrap gap-2">
                 {members.length === 0 ? (
                   <span className="text-sm text-gray-400">
                     No members added yet.
@@ -219,12 +219,12 @@ export default function CreateTeamModal({
                     return (
                       <span
                         key={member.user_id}
-                        className="flex items-center gap-2 bg-white px-3 py-2 rounded-full text-sm"
+                        className="flex max-w-full items-center gap-2 rounded-full bg-white px-3 py-2 text-sm"
                       >
                         <span className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center text-xs">
                           {member.name[0]}
                         </span>
-                        <span>{member.name}</span>
+                        <span className="break-words">{member.name}</span>
                         <button
                           type="button"
                           onClick={() => handleRemoveMember(String(member.user_id))}
@@ -268,7 +268,7 @@ export default function CreateTeamModal({
           </div>
 
           {/* Footer */}
-          <div className={`${modalFooterClass} flex justify-end gap-3`}>
+          <div className={`${modalFooterClass} flex flex-col-reverse gap-3 sm:flex-row sm:justify-end`}>
             <button
               type="button"
               onClick={onClose}

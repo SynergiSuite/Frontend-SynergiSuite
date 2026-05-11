@@ -100,14 +100,14 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
   const gridKey = `${filter || "all"}-${searchQuery || ""}`;
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="mx-auto w-full px-0 py-4 sm:px-1 sm:py-6">
       {filteredProjects.length === 0 ? (
-        <p className="text-gray-500 text-center mt-10">No projects found matching your criteria.</p>
+        <p className="mt-10 text-center text-gray-500">No projects found matching your criteria.</p>
       ) : (
         <AnimatePresence mode="sync">
           <motion.div
             key={gridKey}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6"
             initial="hidden"
             animate="show"
             exit="hidden"
@@ -126,7 +126,7 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                 <motion.div
                   key={project.id}
                   onClick={() => handleProjectDetail(project.name, project.client?.name || "No Client", project.id)}
-                  className="bg-white cursor-pointer border border-gray-200 rounded-xl p-5 shadow-sm hover:shadow-md transition"
+                  className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5"
                   whileHover={{ y: -4 }}
                   transition={{ type: "spring", stiffness: 260, damping: 22 }}
                   variants={{
@@ -138,11 +138,11 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                     },
                   }}
                 >
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-semibold text-gray-800">{project.name}</h3>
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <h3 className="line-clamp-2 font-semibold text-gray-800">{project.name}</h3>
                   </div>
 
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="mb-4 text-sm text-gray-500 break-words">
                     {getClientCompany(project.client?.company)}
                   </p>
 
@@ -160,7 +160,7 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                       {project.tasks?.filter((t: any) => String(t?.status ?? "").toLowerCase() === "completed").length || 0}
                       /{project.tasks?.length || 0} Tasks
                     </span>
-                    <span>{progress}%</span>
+                    <span className="shrink-0">{progress}%</span>
                   </div>
 
                   <div

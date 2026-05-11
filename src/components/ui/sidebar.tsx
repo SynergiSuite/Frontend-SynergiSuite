@@ -13,6 +13,7 @@ import {
   Orbit,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
+import { ComponentProps } from "react";
 
 type SidebarItem = {
   label: string;
@@ -20,7 +21,18 @@ type SidebarItem = {
   icon: React.ComponentType<{ size?: number; className?: string }>;
 };
 
-export default function Sidebar() {
+type SidebarProps = {
+  className?: string;
+  navClassName?: string;
+  onNavigate?: () => void;
+} & Omit<ComponentProps<"aside">, "className">;
+
+export default function Sidebar({
+  className = "",
+  navClassName = "",
+  onNavigate,
+  ...props
+}: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -42,29 +54,33 @@ export default function Sidebar() {
     pathname === route || pathname.startsWith(`${route}/`);
 
   return (
-    <>
-      <aside className="w-64 bg-white border-r border-gray-200 p-4 hidden md:block">
-        <nav className="space-y-3">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = isActiveRoute(item.route);
+    <aside
+      className={`w-64 border-r border-gray-200 bg-white p-4 ${className}`}
+      {...props}
+    >
+      <nav className={`space-y-3 ${navClassName}`}>
+        {sidebarItems.map((item) => {
+          const Icon = item.icon;
+          const isActive = isActiveRoute(item.route);
 
-            return (
-              <button
-                key={item.route}
-                onClick={() => router.push(item.route)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition ${
-                  isActive
-                    ? "bg-gray-100 font-semibold text-gray-900"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <Icon size={18} /> <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </aside>
-    </>
+          return (
+            <button
+              key={item.route}
+              onClick={() => {
+                router.push(item.route);
+                onNavigate?.();
+              }}
+              className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition ${
+                isActive
+                  ? "bg-gray-100 font-semibold text-gray-900"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <Icon size={18} /> <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }

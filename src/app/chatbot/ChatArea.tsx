@@ -133,10 +133,10 @@ const ChatArea = ({ sessionId }: ChatAreaProps) => {
   };
 
   return (
-    <main className="flex flex-col flex-1 h-full min-h-0 p-4 overflow-hidden">
+    <main className="flex h-full min-h-[55vh] flex-1 flex-col overflow-hidden p-3 sm:p-4">
 
       {/* MESSAGES AREA (FIXED SCROLL) */}
-      <div className="flex-1 min-h-0 overflow-y-auto pr-6 space-y-6">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 sm:space-y-6 sm:pr-4">
         {messages.map((message) => (
           <ChatMessage key={message.id} message={message} />
         ))}

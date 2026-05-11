@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { Plus } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -98,7 +99,14 @@ export default function FiltersBar({
           </Button>
         </div>
 
-        {canManageTasks ? <Button onClick={onAddTask}>+ Add New Task</Button> : null}
+        {canManageTasks ? (
+          <Button onClick={onAddTask}>
+            <span className="inline-flex items-center gap-2">
+              <Plus size={16} strokeWidth={2.25} aria-hidden="true" />
+              <span>Add New Task</span>
+            </span>
+          </Button>
+        ) : null}
       </div>
     </>
   );

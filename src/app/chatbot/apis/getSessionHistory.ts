@@ -12,7 +12,7 @@ export type SessionHistoryResponse = {
   count: number;
 };
 
-const chatUrl = "http://localhost:8000";
+const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_CHATBOT_BASE_URL;
 
 export async function getSessionHistory() {
   try {
@@ -28,7 +28,7 @@ export async function getSessionHistory() {
     }
 
     const response = await fetch(
-      `${chatUrl}/api/users/${userId}/sessions/${sessionId}/history`,
+      `${requestBaseUrl}/api/users/${userId}/sessions/${sessionId}/history`,
       {
         method: "GET",
         headers: getChatApiHeaders(),

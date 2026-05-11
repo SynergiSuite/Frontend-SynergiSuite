@@ -15,7 +15,7 @@ const SubHeader = ({
 }: Props) => {
   return (
     <>
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-2xl font-bold">
           All Clients
         </h2>
@@ -27,7 +27,7 @@ const SubHeader = ({
           onChange={(e) =>
             setSearch(e.target.value)
           }
-          className="rounded-xl border px-4 py-3 outline-none bg-white w-2/5"
+          className="w-full rounded-xl border bg-white px-4 py-3 outline-none sm:max-w-sm"
         />
       </div>
     </>

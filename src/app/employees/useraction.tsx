@@ -33,13 +33,13 @@ export default function UserActions() {
   const handleExport = () => {};
 
   return (
-    <div className="flex justify-end items-center space-x-3">
+    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:space-x-3 sm:gap-0">
       {/* Add User and Dialog */}
       {allowedRoles.includes(role) ? (
         <>
           <Button
             variant="add"
-            className="button_primary_lg py-6"
+            className="button_primary_lg w-full py-6 sm:w-auto"
             onClick={handleAddUser}
           >
             Add User
@@ -51,7 +51,7 @@ export default function UserActions() {
       {/* Export */}
       <button
         onClick={handleExport}
-        className="flex items-center gap-2 border border-gray-300 px-4 py-2 rounded-md hover:bg-gray-100"
+        className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 hover:bg-gray-100 sm:w-auto"
       >
         <Download size={16} /> Export
       </button>

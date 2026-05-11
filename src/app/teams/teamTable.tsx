@@ -94,61 +94,136 @@ export default function TeamTable({
 
   return (
     <>
-      <table className="w-full text-sm text-left text-gray-700 border-collapse">
-        <thead className="bg-gray-200 text-gray-700">
-          <tr>
-            <th className="px-4 py-2">Team Name</th>
-            <th className="px-4 py-2">Members</th>
-            <th className="px-4 py-2"></th>
-            {canManageTeams ? (
-              <th className="px-4 py-2">Action</th>
-            ) : null}
-          </tr>
-        </thead>
-
-        <tbody>
-          {teams.map((team, index) => (
-            <tr
-              key={index}
-              className="cursor-pointer border-t border-gray-300 transition hover:bg-slate-50/80"
-              onClick={() => setSelectedTeam(team)}
-            >
-              <td className="px-4 py-2 font-medium">{team.name}</td>
-              <td className="px-4 py-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  {team.members.slice(0, 2).map((member, memberIndex) => (
-                    <span
-                      key={member?.id ?? member?.user_id ?? memberIndex}
-                      className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200"
-                    >
-                      {resolveMemberName(member)}
-                    </span>
-                  ))}
-                  {team.members.length > 2 ? (
-                    <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
-                      +{team.members.length - 2}
-                    </span>
-                  ) : null}
-                  {team.members.length === 0 ? (
-                    <span className="text-xs text-slate-400">No members</span>
-                  ) : null}
-                </div>
-              </td>
-              <td className="px-4 py-2"></td>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full border-collapse text-left text-sm text-gray-700">
+          <thead className="bg-gray-200 text-gray-700">
+            <tr>
+              <th className="px-4 py-2">Team Name</th>
+              <th className="px-4 py-2">Members</th>
+              <th className="px-4 py-2"></th>
               {canManageTeams ? (
-                <td className="px-4 py-2 flex items-center space-x-3">
-                  <button className="cursor-pointer" onClick={(event) => {event.stopPropagation(); setTeam(team); setIsEdit(true)}}>
-                    <PencilRuler size={15}/>
-                  </button>
-                  <button className="cursor-pointer">
-                    <Trash size={15} onClick={(event) => {event.stopPropagation(); setTeamId(team.id); setIsDelete(true)}} />
-                  </button>
-                </td>
+                <th className="px-4 py-2">Action</th>
               ) : null}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            {teams.map((team, index) => (
+              <tr
+                key={index}
+                className="cursor-pointer border-t border-gray-300 transition hover:bg-slate-50/80"
+                onClick={() => setSelectedTeam(team)}
+              >
+                <td className="px-4 py-2 font-medium">{team.name}</td>
+                <td className="px-4 py-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {team.members.slice(0, 2).map((member, memberIndex) => (
+                      <span
+                        key={member?.id ?? member?.user_id ?? memberIndex}
+                        className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200"
+                      >
+                        {resolveMemberName(member)}
+                      </span>
+                    ))}
+                    {team.members.length > 2 ? (
+                      <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                        +{team.members.length - 2}
+                      </span>
+                    ) : null}
+                    {team.members.length === 0 ? (
+                      <span className="text-xs text-slate-400">No members</span>
+                    ) : null}
+                  </div>
+                </td>
+                <td className="px-4 py-2"></td>
+                {canManageTeams ? (
+                  <td className="flex items-center space-x-3 px-4 py-2">
+                    <button className="cursor-pointer" onClick={(event) => {event.stopPropagation(); setTeam(team); setIsEdit(true)}}>
+                      <PencilRuler size={15}/>
+                    </button>
+                    <button className="cursor-pointer">
+                      <Trash size={15} onClick={(event) => {event.stopPropagation(); setTeamId(team.id); setIsDelete(true)}} />
+                    </button>
+                  </td>
+                ) : null}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="space-y-3 md:hidden">
+        {teams.map((team, index) => (
+          <button
+            key={index}
+            type="button"
+            onClick={() => setSelectedTeam(team)}
+            className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:bg-slate-50/80"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Team Name
+                </p>
+                <h3 className="mt-1 break-words font-medium text-gray-900">
+                  {team.name}
+                </h3>
+              </div>
+
+              {canManageTeams ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setTeam(team);
+                      setIsEdit(true);
+                    }}
+                  >
+                    <PencilRuler size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setTeamId(team.id);
+                      setIsDelete(true);
+                    }}
+                  >
+                    <Trash size={15} />
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mt-4">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Members
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                {team.members.slice(0, 3).map((member, memberIndex) => (
+                  <span
+                    key={member?.id ?? member?.user_id ?? memberIndex}
+                    className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200"
+                  >
+                    {resolveMemberName(member)}
+                  </span>
+                ))}
+                {team.members.length > 3 ? (
+                  <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                    +{team.members.length - 3}
+                  </span>
+                ) : null}
+                {team.members.length === 0 ? (
+                  <span className="text-xs text-slate-400">No members</span>
+                ) : null}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
 
       <AnimatePresence>
         {isEdit && canManageTeams ? (

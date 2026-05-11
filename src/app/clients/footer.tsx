@@ -17,12 +17,12 @@ const Pagination = ({
 }: Props) => {
   return (
     <>
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-gray-500">
           Page {currentPage} of {totalPages}
         </p>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {Array.from(
             { length: totalPages },
             (_, index) => (

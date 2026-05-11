@@ -37,15 +37,15 @@ const MessageInput = ({
 
   return (
     <>
-      <div className="w-full border-t border-gray-200 bg-white px-5 py-4">
+      <div className="w-full border-t border-gray-200 bg-white px-3 py-3 sm:px-5 sm:py-4">
         <div
           className="
             w-full
             border
             border-gray-300
             rounded-2xl
-            px-4
-            py-3
+            px-3
+            py-2.5
             flex
             items-end
             justify-between
@@ -53,14 +53,17 @@ const MessageInput = ({
             bg-white
             transition-all
             duration-200
+            sm:px-4 sm:py-3
           "
         >
           <div className="flex items-center gap-3 w-full">
             <button
               type="button"
               className="
-                w-9
-                h-9
+                w-8
+                h-8
+                sm:w-9
+                sm:h-9
                 rounded-full
                 hover:bg-gray-100
                 flex
@@ -107,8 +110,10 @@ const MessageInput = ({
             type="button"
             onClick={sendMessage}
             className="
-              w-10
-              h-10
+              w-9
+              h-9
+              sm:w-10
+              sm:h-10
               rounded-full
               bg-black
               flex

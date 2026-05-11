@@ -21,7 +21,7 @@ export default function RoleDistribution({ roles }: Props) {
 
       {/* Pie Chart */}
       <div className="flex justify-center">
-        <ResponsiveContainer width={250} height={250}>
+        <ResponsiveContainer width="100%" height={250}>
           <PieChart>
             <Pie
               data={roles}
@@ -53,4 +53,3 @@ export default function RoleDistribution({ roles }: Props) {
     </div>
   );
 }
-

@@ -27,12 +27,12 @@ export default function Header({
   return (
     <>
       {/* Top section: title + search + button */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 mb-4 md:mb-0">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <h1 className="text-2xl font-bold text-gray-800">
           Projects Overview
         </h1>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <SearchBar setSearchQuery={setSearchQuery} />
           <NewProjectButton
             teams={teams}
@@ -43,12 +43,12 @@ export default function Header({
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex space-x-3 mb-8">
+      <div className="-mx-1 mb-8 flex gap-3 overflow-x-auto px-1 pb-2">
         {tabs.map((tab) => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+            className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-medium whitespace-nowrap ${
               filter === tab
                 ? "bg-black text-white"
                 : "bg-white text-gray-700 hover:bg-gray-100"

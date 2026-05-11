@@ -20,7 +20,7 @@ export type DeleteSessionResponse = {
   memory_cleared: boolean;
 };
 
-const chatUrl = "http://localhost:8000";
+const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_CHATBOT_BASE_URL;
 
 export async function deleteSession(sessionId: string) {
   try {
@@ -35,7 +35,7 @@ export async function deleteSession(sessionId: string) {
     }
 
     const response = await fetch(
-      `${chatUrl}/api/users/${userId}/sessions/${sessionId}`,
+      `${requestBaseUrl}/api/users/${userId}/sessions/${sessionId}`,
       {
         method: "DELETE",
         headers: getChatApiHeaders(),

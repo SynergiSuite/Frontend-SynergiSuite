@@ -11,7 +11,7 @@ export type UserSessionIdsResponse = {
   count: number;
 };
 
-const chatUrl = "http://localhost:8000";
+const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_CHATBOT_BASE_URL;
 
 export async function getUserSessionIds() {
   try {
@@ -21,7 +21,7 @@ export async function getUserSessionIds() {
       throw new Error("User id not found in cookie");
     }
 
-    const response = await fetch(`${chatUrl}/api/users/${userId}/session-ids`, {
+    const response = await fetch(`${requestBaseUrl}/api/users/${userId}/session-ids`, {
       method: "GET",
       headers: getChatApiHeaders(),
     });

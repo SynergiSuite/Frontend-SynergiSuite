@@ -145,7 +145,7 @@ export default function TeamDetailModal({
           />
 
           <motion.div
-            className="relative w-full max-w-3xl overflow-hidden rounded-[28px] border border-gray-200 bg-gradient-to-br from-slate-200/35 via-white to-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]"
+            className="relative max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-hidden rounded-[28px] border border-gray-200 bg-gradient-to-br from-slate-200/35 via-white to-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]"
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.98 }}
@@ -153,7 +153,8 @@ export default function TeamDetailModal({
           >
             <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.22),transparent_58%)]" />
 
-            <div className="relative border-b border-gray-200/80 px-6 py-6 sm:px-8">
+            <div className="relative overflow-y-auto">
+            <div className="border-b border-gray-200/80 px-6 py-6 sm:px-8">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/70 bg-white/80 shadow-sm">
@@ -189,7 +190,7 @@ export default function TeamDetailModal({
               </div>
             </div>
 
-            <div className="relative grid gap-4 px-6 py-6 sm:grid-cols-2 sm:px-8">
+            <div className="grid gap-4 px-6 py-6 sm:grid-cols-2 sm:px-8">
               <DetailRow
                 icon={<Users className="h-4 w-4" />}
                 label="Members"
@@ -242,6 +243,7 @@ export default function TeamDetailModal({
                   No members assigned yet.
                 </div>
               )}
+            </div>
             </div>
           </motion.div>
         </motion.div>

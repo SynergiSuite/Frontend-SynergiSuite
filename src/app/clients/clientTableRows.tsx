@@ -47,23 +47,39 @@ const ClientRow = ({
             onSelectClient(client);
           }
         }}
-        className="grid w-full grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] items-center border-b px-6 py-5 text-left transition hover:bg-slate-50/80 focus:outline-none focus:bg-slate-50/80 last:border-b-0"
+        className="grid w-full gap-4 border-b px-4 py-4 text-left transition hover:bg-slate-50/80 focus:bg-slate-50/80 focus:outline-none last:border-b-0 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] md:items-center md:gap-0 md:px-6 md:py-5"
       >
         <div className="min-w-0">
-          <p className="truncate" title={getDisplayValue(client?.name)}>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 md:hidden">
+            Client Name
+          </p>
+          <p className="truncate font-medium md:font-normal" title={getDisplayValue(client?.name)}>
             {getDisplayValue(client?.name)}
           </p>
         </div>
 
-        <div className="min-w-0 truncate" title={getDisplayValue(client?.email)}>
-          {getDisplayValue(client?.email)}
-        </div>
-
-        <div className="min-w-0 truncate" title={getDisplayValue(client?.company)}>
-          {getDisplayValue(client?.company)}
+        <div className="min-w-0">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 md:hidden">
+            Email
+          </p>
+          <div className="truncate" title={getDisplayValue(client?.email)}>
+            {getDisplayValue(client?.email)}
+          </div>
         </div>
 
         <div className="min-w-0">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 md:hidden">
+            Company
+          </p>
+          <div className="truncate" title={getDisplayValue(client?.company)}>
+            {getDisplayValue(client?.company)}
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500 md:hidden">
+            Priority
+          </p>
           <span
             className={`rounded-full px-4 py-1 text-xs ${
               priorityLabel === "High"
@@ -80,9 +96,12 @@ const ClientRow = ({
           </span>
         </div>
 
-        <div className="flex min-w-0 gap-2">
+        <div className="flex min-w-0 items-center justify-between gap-3 md:justify-start">
+          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 md:hidden">
+            Actions
+          </p>
           {canManageClients ? (
-            <>
+            <div className="flex gap-2">
               <button
                 type="button"
                 aria-label="Edit client"
@@ -106,7 +125,7 @@ const ClientRow = ({
               >
                 <Trash className="h-4 w-4" aria-hidden="true" />
               </button>
-            </>
+            </div>
           ) : (
             <span className="text-sm text-gray-400">No access</span>
           )}

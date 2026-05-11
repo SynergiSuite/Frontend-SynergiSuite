@@ -16,19 +16,19 @@ const cardsData: Card[] = [
 export default function Page() {
   return (
     <>
-      <div className="flex bg-gray-50 min-h-screen">  
-        <main className="flex-1 p-6 space-y-6">
+      <div className="min-h-0 bg-gray-50">  
+        <main className="space-y-6 p-4 sm:p-6">
          
           <StateCards cards={cardsData} />
 
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             <ProjectOverview />
             <TeamPerformance />
           </div>
 
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
             <RecentActivities />
             <UpcomingDeadlines />
             <ResourceAllocation />

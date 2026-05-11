@@ -21,7 +21,7 @@ export default function SearchBar({ onSearch }: SearchBarProps) {
   };
 
   return (
-    <div className="flex items-center border rounded-md px-2 py-1 w-64">
+    <div className="flex w-full items-center rounded-md border px-2 py-1">
       <input
         type="text"
         placeholder="Search employees..."

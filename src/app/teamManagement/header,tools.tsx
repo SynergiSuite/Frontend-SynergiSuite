@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { Plus } from "lucide-react";
 
 const TeamManagementHeader = () => {
   return (
@@ -12,8 +13,9 @@ const TeamManagementHeader = () => {
           </p>
         </div>
 
-        <button className="bg-black text-white px-4 py-2 rounded">
-          Add Team
+        <button className="inline-flex items-center gap-2 rounded bg-black px-4 py-2 text-white">
+          <Plus size={16} strokeWidth={2.25} aria-hidden="true" />
+          <span>Add Team</span>
         </button>
       </div>
 

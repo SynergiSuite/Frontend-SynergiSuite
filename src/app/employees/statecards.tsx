@@ -22,7 +22,7 @@ function StatsCard({ title, value, change }: StatsCardProps) {
 export default function StatsCards({ stats }: { stats: StatsCardProps[] }) {
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 my-6">
+      <div className="my-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {stats.map((stat) => (
           <StatsCard
             key={stat.title}

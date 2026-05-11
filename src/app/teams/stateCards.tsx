@@ -28,7 +28,7 @@ function StateCard({ title, value, change }: StateCardProps) {
 export default function StateCards({ states }: { states: StateCardProps[] }) {
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 my-6">
+      <div className="my-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {states.map((state) => (
           <StateCard
             key={state.title}

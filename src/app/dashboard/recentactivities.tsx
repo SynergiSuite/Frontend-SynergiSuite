@@ -4,7 +4,7 @@ import React from "react";
 export default function RecentActivities() {
   return (
     <>
-      <div className="bg-white border rounded-lg p-4">
+      <div className="rounded-lg border bg-white p-4">
         <h2 className="font-semibold mb-4">Recent Activities</h2>
 
         <div className="space-y-4 text-sm">
@@ -36,4 +36,3 @@ export default function RecentActivities() {
     </>
   );
 }
-
