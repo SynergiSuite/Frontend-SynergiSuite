@@ -4,6 +4,7 @@ import TaskCard from "./taskcard";
 import { Task } from "./schemas/task";
 import ViewAndEditModal, { type TaskViewEditPayload } from "./viewAndEdit";
 import DeleteTaskModal from "./deleteTask";
+import TaskDetailModal from "./taskDetailModal";
 import {
   filterTasks,
   formatTaskLabel,
@@ -38,6 +39,7 @@ export default function TaskKanban({
   statusOptions = TASK_STATUS_OPTIONS,
 }: TaskKanbanProps) {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dropTargetStatus, setDropTargetStatus] = useState<string | null>(null);
@@ -197,7 +199,7 @@ export default function TaskKanban({
                           priority={task.priority}
                           status={task.status}
                           assigned_to={task.teams.map((team) => team.name)}
-                          onClick={canEditTasks ? () => setSelectedTask(task) : undefined}
+                          onClick={() => setSelectedTask(task)}
                           onDeleteClick={
                             canDeleteTasks
                               ? (taskId) => setDeleteTaskId(taskId)
@@ -230,21 +232,35 @@ export default function TaskKanban({
       </AnimatePresence>
 
       <AnimatePresence>
-        {selectedTask && canEditTasks ? (
+        {selectedTask ? (
+          <TaskDetailModal
+            task={selectedTask}
+            canEdit={canEditTasks}
+            onClose={() => setSelectedTask(null)}
+            onEdit={() => {
+              setEditingTask(selectedTask);
+              setSelectedTask(null);
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingTask && canEditTasks ? (
           <ViewAndEditModal
             data={{
-              id: selectedTask.id,
-              title: selectedTask.title,
-              description: selectedTask.description,
-              due_date: selectedTask.due_date,
-              status: selectedTask.status,
-              priority: selectedTask.priority,
-              teams: selectedTask.teams,
+              id: editingTask.id,
+              title: editingTask.title,
+              description: editingTask.description,
+              due_date: editingTask.due_date,
+              status: editingTask.status,
+              priority: editingTask.priority,
+              teams: editingTask.teams,
             }}
-            onCancel={() => setSelectedTask(null)}
+            onCancel={() => setEditingTask(null)}
             onSave={async (payload) => {
               await onUpdateTask(payload);
-              setSelectedTask(null);
+              setEditingTask(null);
             }}
             statusOptions={statusOptions}
           />
