@@ -27,8 +27,8 @@ export default function Header({
   return (
     <>
       {/* Top section: title + search + button */}
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">
+      <div className="project-animate-item opacity-0 mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <h1 className="text-2xl font-black text-white tracking-tight">
           Projects Overview
         </h1>
 
@@ -43,20 +43,23 @@ export default function Header({
       </div>
 
       {/* Filter Tabs */}
-      <div className="-mx-1 mb-8 flex gap-3 overflow-x-auto px-1 pb-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab)}
-            className={`shrink-0 rounded-lg border px-4 py-2 text-sm font-medium whitespace-nowrap ${
-              filter === tab
-                ? "bg-black text-white"
-                : "bg-white text-gray-700 hover:bg-gray-100"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      <div className="project-animate-item opacity-0 -mx-1 mb-8 flex gap-3 overflow-x-auto px-1 pb-2">
+        {tabs.map((tab) => {
+          const isActive = filter === tab;
+          return (
+            <button
+              key={tab}
+              onClick={() => setFilter(tab)}
+              className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold whitespace-nowrap border transition-all duration-300 ${
+                isActive
+                  ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white border-transparent shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:scale-[1.02] active:scale-[0.98]"
+                  : "border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md text-white/60 hover:text-white hover:bg-[#0a0826]/75 hover:border-white/[0.15]"
+              }`}
+            >
+              {tab}
+            </button>
+          );
+        })}
       </div>
     </> 
   );

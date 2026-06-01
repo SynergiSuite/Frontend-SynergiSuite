@@ -1,6 +1,6 @@
 "use client";
 
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import { jwtVerify } from "jose";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -31,7 +31,11 @@ const protectedRoutes = [
   "/team",
   "/profile",
   "/teams",
-  "/task"
+  "/task",
+  "/resources",
+  "/resources/*",
+  "/cloud",
+  "/cloud/*"
 ];
 
 const publicRoutes = ["/login", "/signup", "/forgot-password"];
@@ -41,14 +45,16 @@ const programmaticOnlyRoutes = [
   "/session/register-business",
 ];
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: "../../public/fonts/Geist[wght].woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "../../public/fonts/Geist[wght].woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900",
 });
 
 type WindowWithPatchedFetch = Window & {
@@ -249,7 +255,7 @@ export default function RootLayout({
         <div className="flex h-screen flex-col overflow-hidden">
           {/* Navbar (always on top) */}
           {showSidebar && (
-            <header className="border-b border-gray-200 bg-white">
+            <header className="border-b border-[#5271ff]/15 bg-[#030114]">
               <Navbar />
             </header>
           )}
@@ -263,14 +269,14 @@ export default function RootLayout({
                     type="button"
                     aria-label="Open sidebar"
                     onClick={() => setIsMobileSidebarOpen(true)}
-                    className="fixed left-4 top-20 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 md:hidden"
+                    className="fixed left-4 top-20 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#5271ff]/30 bg-[#030114]/90 text-white shadow-[0_0_15px_rgba(82,113,255,0.15)] backdrop-blur-md transition hover:bg-[#5271ff]/10 hover:border-[#5271ff]/60 md:hidden"
                   >
                     <Menu size={18} />
                   </button>
                 )}
 
                 {isMobileSidebarOpen && (
-                  <div className="fixed inset-0 z-40 bg-black/35 md:hidden">
+                  <div className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm md:hidden">
                     <button
                       type="button"
                       aria-label="Close sidebar overlay"
@@ -285,10 +291,10 @@ export default function RootLayout({
                     isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
                   }`}
                 >
-                  <div className="flex h-full flex-col border-r border-gray-200 bg-white shadow-xl">
-                    <div className="flex items-center justify-between border-b border-gray-200 px-4 py-4">
+                  <div className="flex h-full flex-col border-r border-[#5271ff]/15 bg-[#030114] shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-[#5271ff]/15 px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/30 shadow-[inset_0_0_10px_rgba(82,113,255,0.2)]">
                           <Image
                             src={Logo}
                             alt="SynergiSuite"
@@ -298,7 +304,7 @@ export default function RootLayout({
                             priority
                           />
                         </div>
-                        <span className="text-base font-semibold text-gray-900">
+                        <span className="text-base font-bold tracking-wide text-white">
                           SynergiSuite
                         </span>
                       </div>
@@ -306,7 +312,7 @@ export default function RootLayout({
                         type="button"
                         aria-label="Close sidebar"
                         onClick={() => setIsMobileSidebarOpen(false)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 transition hover:bg-gray-50"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#5271ff]/20 text-gray-400 transition hover:text-white hover:bg-white/5"
                       >
                         <X size={18} />
                       </button>
@@ -323,14 +329,16 @@ export default function RootLayout({
 
             {/* Sidebar (left) */}
             {showSidebar && (
-              <aside className="hidden w-64 border-r border-gray-200 bg-white md:block">
+              <aside className="hidden w-64 border-r border-[#5271ff]/15 bg-[#030114] md:block">
                 <Sidebar className="h-full" />
               </aside>
             )}
 
             {/* Main content (right) */}
             <main
-              className={`flex-1 bg-gray-50 p-10 min-h-0 ${
+              className={`flex-1 min-h-0 ${
+                showSidebar ? "bg-[#030114] p-6 lg:p-8" : ""
+              } ${
                 isChatbotRoute ? "overflow-hidden" : "overflow-y-auto"
               }`}
             >

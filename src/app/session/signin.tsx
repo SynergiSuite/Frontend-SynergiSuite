@@ -104,14 +104,13 @@ export default function Signin() {
       setIsLoading(false);
     }
   };
-
   return (
     <>
       <form
         onSubmit={handleSubmit}
         action=""
         method="post"
-        className="mx-auto w-[90%] space-y-3 py-2"
+        className="mx-auto w-[95%] sm:w-[90%] space-y-4 py-2"
       >
         {/* Error Alert */}
         {error && (
@@ -121,22 +120,25 @@ export default function Signin() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.3 }}
           >
-            <Alert variant="destructive" className="border-red-400">
-              <Terminal />
-              <AlertTitle>OOPs!</AlertTitle>
-              <AlertDescription>
-                <p className="text-red-600 text-sm">{error}</p>
-              </AlertDescription>
+            <Alert variant="destructive" className="bg-red-500/10 border border-red-500/20 text-red-200 rounded-xl px-4 py-3 flex items-start gap-3 shadow-[0_0_15px_rgba(239,68,68,0.1)]">
+              <Terminal className="text-red-400 mt-0.5" size={18} />
+              <div>
+                <AlertTitle className="text-red-400 font-semibold text-sm">OOPs!</AlertTitle>
+                <AlertDescription className="text-red-200/80 text-xs mt-1">
+                  {error}
+                </AlertDescription>
+              </div>
             </Alert>
           </motion.div>
         )}
 
-        <div className="space-y-1.5 text-[#09090B]">
-          <label htmlFor="email" className="text-sm">
-            Email
+        {/* Email Input */}
+        <div className="space-y-3 text-white">
+          <label htmlFor="emailLogin" className="block text-xs font-semibold text-white/70 uppercase tracking-wider">
+            Email Address
           </label>
-          <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
-            <Mail size={18} className="text-gray-500" aria-hidden="true" />
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl flex items-center px-4 h-12 focus-within:border-[#5271ff]/60 focus-within:bg-white/[0.04] focus-within:shadow-[0_0_15px_rgba(82,113,255,0.15)] transition-all duration-300 group">
+            <Mail size={18} className="text-white/40 group-focus-within:text-[#5271ff] transition-colors duration-300" aria-hidden="true" />
             <input
               type="email"
               name="email"
@@ -146,19 +148,20 @@ export default function Signin() {
                 setEmail(e.target.value);
                 setError(null);
               }}
-              className="w-full focus:outline-none text-gray-600"
+              className="session-auth-input w-full bg-transparent focus:outline-none text-white placeholder-white/20 text-sm h-full pl-3"
               placeholder="example@gmail.com"
               required
             />
           </div>
         </div>
 
-        <div className="space-y-1.5 text-[#09090B]">
-          <label htmlFor="password" className="text-sm">
+        {/* Password Input */}
+        <div className="space-y-3 text-white">
+          <label htmlFor="passwordLogin" className="block text-xs font-semibold text-white/70 uppercase tracking-wider">
             Password
           </label>
-          <div className="border_primary flex h-11 flex-row items-center space-x-2 px-4">
-            <LockKeyhole size={18} className="text-gray-500" aria-hidden="true" />
+          <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl flex items-center px-4 h-12 focus-within:border-[#5271ff]/60 focus-within:bg-white/[0.04] focus-within:shadow-[0_0_15px_rgba(82,113,255,0.15)] transition-all duration-300 group">
+            <LockKeyhole size={18} className="text-white/40 group-focus-within:text-[#5271ff] transition-colors duration-300" aria-hidden="true" />
             <input
               type="password"
               name="password"
@@ -168,27 +171,37 @@ export default function Signin() {
                 setPassword(e.target.value);
                 setError(null);
               }}
-              className="w-full focus:outline-none text-gray-600"
-              placeholder="•••••••••••"
+              className="session-auth-input w-full bg-transparent focus:outline-none text-white placeholder-white/20 text-sm h-full pl-3"
+              placeholder="••••••••••••"
               required
             />
           </div>
         </div>
 
+        {/* Forgot Password */}
         <div className="pt-1 text-end">
-          <a href="">
-            <p className="underline text-[#09090B] font-medium text-sm">
+          <a href="#" onClick={(e) => e.preventDefault()} className="group">
+            <p className="text-white/40 group-hover:text-[#5271ff] transition-colors duration-200 text-sm font-medium inline-block relative">
               Forgot Password?
+              <span className="absolute bottom-0 left-0 w-0 h-[1px] bg-[#5271ff] transition-all duration-300 group-hover:w-full" />
             </p>
           </a>
         </div>
 
+        {/* Submit button */}
         <Button
           type="submit"
           disabled={isLoading}
-          className="button_primary_full mt-3"
+          className="w-full mt-4 h-12 bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#4b60df] text-white font-semibold rounded-xl shadow-[0_4px_20px_rgba(82,113,255,0.15)] hover:shadow-[0_4px_25px_rgba(82,113,255,0.35)] active:scale-[0.98] transition-all duration-300 flex items-center justify-center cursor-pointer disabled:opacity-50 disabled:pointer-events-none text-sm"
         >
-          Login
+          {isLoading ? (
+            <div className="flex items-center space-x-2">
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              <span>Logging in...</span>
+            </div>
+          ) : (
+            "Login"
+          )}
         </Button>
       </form>
     </>

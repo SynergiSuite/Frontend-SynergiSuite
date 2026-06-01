@@ -1,0 +1,48 @@
+"use client";
+
+import React from "react";
+import TableHeader from "./resourcesTableHeader";
+import ResourceRow from "./resourcesTableRows";
+import { ResourceType } from "./statesCards";
+
+type Props = {
+  resources: ResourceType[];
+  onSelect: (resource: ResourceType) => void;
+  onEdit: (resource: ResourceType) => void;
+  onDelete: (id: string) => void;
+};
+
+const ResourcesTable = ({
+  resources,
+  onSelect,
+  onEdit,
+  onDelete,
+}: Props) => {
+  return (
+    <>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+        <TableHeader />
+
+        {resources.length > 0 ? (
+          <div className="flex-1 overflow-y-auto">
+            {resources.map((resource) => (
+              <ResourceRow
+                key={resource.id}
+                resource={resource}
+                onSelect={onSelect}
+                onEdit={onEdit}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="flex flex-1 items-center justify-center px-6 py-12 text-sm text-white/40">
+            No resources found
+          </div>
+        )}
+      </div>
+    </>
+  );
+};
+
+export default ResourcesTable;

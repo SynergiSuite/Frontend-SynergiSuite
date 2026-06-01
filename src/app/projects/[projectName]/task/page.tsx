@@ -1,6 +1,7 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
+import { gsap } from "gsap";
 import Filters from "./filters";
 import TaskGrid from "./taskgrid";
 import NewTaskModal, { type NewTaskPayload } from "./createModal";
@@ -34,6 +35,7 @@ export default function TaskPage() {
   const [projectId, setProjectId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(false);
   const [role, setRole] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const projectName = useParams().projectName as string;
   const canEditTasks = true;
@@ -98,7 +100,28 @@ export default function TaskPage() {
     };
 
     load();
-  }, [projectName])
+  }, [projectName]);
+
+  // GSAP Page Entrance Animation
+  useEffect(() => {
+    if (!isLoading && containerRef.current) {
+      const animElements = containerRef.current.querySelectorAll(".task-animate-item");
+      if (animElements.length > 0) {
+        gsap.killTweensOf(animElements);
+        gsap.fromTo(
+          animElements,
+          { opacity: 0, y: 18 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.04,
+            ease: "power2.out",
+          }
+        );
+      }
+    }
+  }, [isLoading, viewMode]);
 
   useEffect(() => {
     const handleOpenCreate = () => {
@@ -187,10 +210,14 @@ export default function TaskPage() {
       {isLoading ? (
         <LoaderCustom />
       ) : (
-        <>
-          <div className="flex min-w-0 flex-col">
-            <div className="flex min-w-0 flex-1">
-              <main className="min-w-0 flex-1 overflow-hidden">
+        <div ref={containerRef} className="relative flex h-full min-h-0 flex-col overflow-hidden text-white bg-[#030114]">
+          {/* Ambient radial glows */}
+          <div className="absolute left-0 top-0 h-[500px] w-[500px] bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.06),transparent_55%)] pointer-events-none" />
+          <div className="absolute right-0 bottom-0 h-[400px] w-[400px] bg-[radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.04),transparent_50%)] pointer-events-none" />
+
+          <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
+            <div className="flex min-h-0 min-w-0 flex-1">
+              <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <Filters
                   searchQuery={searchQuery}
                   statusFilter={statusFilter}
@@ -205,31 +232,33 @@ export default function TaskPage() {
                   canManageTasks={canEditTasks}
                   statusOptions={TASK_STATUS_OPTIONS}
                 />
-                {viewMode === "kanban" ? (
-                  <TaskKanban
-                    searchQuery={searchQuery}
-                    statusFilter={statusFilter}
-                    dueFilter={dueFilter}
-                    tasks={tasks}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    canEditTasks={canEditTasks}
-                    canDeleteTasks={canDeleteTask}
-                    statusOptions={TASK_STATUS_OPTIONS}
-                  />
-                ) : (
-                  <TaskGrid
-                    searchQuery={searchQuery}
-                    statusFilter={statusFilter}
-                    dueFilter={dueFilter}
-                    tasks={tasks}
-                    onUpdateTask={handleUpdateTask}
-                    onDeleteTask={handleDeleteTask}
-                    canEditTasks={canEditTasks}
-                    canDeleteTasks={canDeleteTask}
-                    statusOptions={TASK_STATUS_OPTIONS}
-                  />
-                )}
+                <div className={`min-h-0 flex-1 ${viewMode === "kanban" ? "overflow-hidden" : "overflow-y-auto overflow-x-hidden custom-scrollbar"}`}>
+                  {viewMode === "kanban" ? (
+                    <TaskKanban
+                      searchQuery={searchQuery}
+                      statusFilter={statusFilter}
+                      dueFilter={dueFilter}
+                      tasks={tasks}
+                      onUpdateTask={handleUpdateTask}
+                      onDeleteTask={handleDeleteTask}
+                      canEditTasks={canEditTasks}
+                      canDeleteTasks={canDeleteTask}
+                      statusOptions={TASK_STATUS_OPTIONS}
+                    />
+                  ) : (
+                    <TaskGrid
+                      searchQuery={searchQuery}
+                      statusFilter={statusFilter}
+                      dueFilter={dueFilter}
+                      tasks={tasks}
+                      onUpdateTask={handleUpdateTask}
+                      onDeleteTask={handleDeleteTask}
+                      canEditTasks={canEditTasks}
+                      canDeleteTasks={canDeleteTask}
+                      statusOptions={TASK_STATUS_OPTIONS}
+                    />
+                  )}
+                </div>
               </main>
             </div>
           </div>
@@ -245,7 +274,7 @@ export default function TaskPage() {
               />
             )}
           </AnimatePresence>
-        </>
+        </div>
       )}
     </>
   );

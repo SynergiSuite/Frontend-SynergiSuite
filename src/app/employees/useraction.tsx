@@ -1,8 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Download } from "lucide-react";
+import { Download, UserPlus } from "lucide-react";
 import { getCookie } from "cookies-next";
-import { Button } from "@/global/buttons";
 import dynamic from "next/dynamic";
 
 // Dynamically import the dialog to avoid SSR issues with modals
@@ -19,7 +18,6 @@ export default function UserActions() {
     setRole(role as string);
   }, []);
 
-  // 👉 JavaScript functions
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleAddUser = () => {
@@ -33,28 +31,29 @@ export default function UserActions() {
   const handleExport = () => {};
 
   return (
-    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:space-x-3 sm:gap-0">
-      {/* Add User and Dialog */}
+    <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
+      {/* Export button */}
+      <button
+        onClick={handleExport}
+        className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white/60 backdrop-blur-md transition-all duration-200 hover:border-white/[0.15] hover:bg-white/[0.06] hover:text-white sm:w-auto"
+      >
+        <Download size={15} />
+        Export
+      </button>
+
+      {/* Add User button — role-gated */}
       {allowedRoles.includes(role) ? (
         <>
-          <Button
-            variant="add"
-            className="button_primary_lg w-full py-6 sm:w-auto"
+          <button
             onClick={handleAddUser}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#5271ff]/40 bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_16px_rgba(82,113,255,0.25)] transition-all duration-200 hover:from-[#5f7fff] hover:to-[#4a5fd4] hover:shadow-[0_0_24px_rgba(82,113,255,0.35)] sm:w-auto"
           >
-            Add User
-          </Button>
+            <UserPlus size={15} />
+            Add Employee
+          </button>
           <AddEmployee isOpen={isDialogOpen} onClose={handleCloseDialog} />
         </>
       ) : null}
-
-      {/* Export */}
-      <button
-        onClick={handleExport}
-        className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-300 px-4 py-2 hover:bg-gray-100 sm:w-auto"
-      >
-        <Download size={16} /> Export
-      </button>
     </div>
   );
 }

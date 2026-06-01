@@ -116,10 +116,10 @@ export default function TaskKanban({
   return (
     <>
       <AnimatePresence mode="sync">
-        <div className="max-w-full overflow-x-auto pb-4">
+        <div className="h-full min-h-0 max-w-full overflow-x-auto overflow-y-hidden pb-2">
           <motion.div
             key={boardKey}
-            className="flex w-max min-w-full gap-4"
+            className="flex h-full min-h-0 w-max min-w-full gap-4"
             initial="hidden"
             animate="show"
             exit="hidden"
@@ -134,10 +134,10 @@ export default function TaskKanban({
             {columns.map((column) => (
               <motion.section
                 key={column.status}
-                className={`min-h-[calc(100vh-240px)] w-[360px] shrink-0 rounded-xl border p-3 transition-colors ${
+                className={`flex h-full min-h-0 w-[min(360px,calc(100vw-3rem))] shrink-0 flex-col rounded-2xl border p-4 transition-all duration-300 task-animate-item opacity-0 sm:w-[360px] ${
                   dropTargetStatus === column.status
-                    ? "border-blue-400 bg-blue-50/70"
-                    : "border-gray-200 bg-gray-50/80"
+                    ? "border-[#5271ff]/50 bg-[#0a0826]/80 shadow-[0_0_20px_rgba(82,113,255,0.2)]"
+                    : "border-white/[0.04] bg-white/[0.01]"
                 }`}
                 onDragOver={(event) => {
                   event.preventDefault();
@@ -164,22 +164,21 @@ export default function TaskKanban({
                   },
                 }}
               >
-                <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="text-sm font-bold text-white/80">
                       {formatTaskLabel(column.status)}
                     </h3>
-                    <p className="text-xs text-gray-500">
-                      {column.tasks.length} task
-                      {column.tasks.length === 1 ? "" : "s"}
+                    <p className="text-xs text-white/40 mt-0.5 font-medium">
+                      {column.tasks.length} {column.tasks.length === 1 ? "task" : "tasks"}
                     </p>
                   </div>
-                  <span className="inline-flex min-w-8 items-center justify-center rounded-full bg-white px-2 py-1 text-xs font-semibold text-gray-700 ring-1 ring-inset ring-gray-200">
+                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 px-1.5 text-[11px] font-bold text-[#5271ff]">
                     {column.tasks.length}
                   </span>
                 </div>
 
-                <div className="space-y-3">
+                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
                   {column.tasks.length > 0 ? (
                     column.tasks.map((task) => (
                       <motion.div
@@ -220,7 +219,7 @@ export default function TaskKanban({
                       </motion.div>
                     ))
                   ) : (
-                    <div className="rounded-lg border border-dashed border-gray-200 bg-white/70 px-3 py-6 text-center text-sm text-gray-500">
+                    <div className="rounded-xl border border-dashed border-white/[0.08] bg-[#030114]/20 px-3 py-8 text-center text-xs text-white/30 font-medium">
                       No tasks in this column
                     </div>
                   )}

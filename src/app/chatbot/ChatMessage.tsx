@@ -55,14 +55,17 @@ const ChatMessage = ({ message }: Props) => {
                 sm:h-10
                 sm:w-10
                 rounded-full
-                bg-black
+                bg-gradient-to-r
+                from-[#5271ff]
+                to-[#3a4ec4]
+                shadow-[0_0_12px_rgba(82,113,255,0.3)]
                 flex
                 items-center
                 justify-center
                 shrink-0
               "
             >
-              <Sparkles className="w-5 h-5 text-white" />
+              <Sparkles className="w-4 h-4 text-white" />
             </motion.div>
           )}
 
@@ -82,8 +85,8 @@ const ChatMessage = ({ message }: Props) => {
               }}
               className={`p-5 rounded-2xl shadow-sm ${
                 isUserMessage
-                  ? "bg-white text-black border border-gray-200 shadow-[0_10px_30px_rgba(15,23,42,0.08)]"
-                  : "bg-black text-white shadow-[0_14px_34px_rgba(15,23,42,0.24)]"
+                  ? "bg-[#5271ff]/15 text-white border border-[#5271ff]/30 shadow-[0_8px_24px_rgba(82,113,255,0.15)]"
+                  : "bg-[#0a0826]/60 text-white/95 border border-white/[0.08] shadow-[0_12px_32px_rgba(0,0,0,0.3)]"
               } ${
                 isUserMessage
                   ? "px-4 py-3 sm:p-5"
@@ -91,21 +94,21 @@ const ChatMessage = ({ message }: Props) => {
               }`}
             >
               {message.isTyping ? (
-                <div className="flex items-center gap-1 py-1">
+                <div className="flex items-center gap-1.5 py-1">
                   <motion.span
                     animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut" }}
-                    className="h-2 w-2 rounded-full bg-white"
+                    className="h-1.5 w-1.5 rounded-full bg-[#5271ff] shadow-[0_0_8px_#5271ff]"
                   />
                   <motion.span
                     animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.15 }}
-                    className="h-2 w-2 rounded-full bg-white"
+                    className="h-1.5 w-1.5 rounded-full bg-[#5271ff] shadow-[0_0_8px_#5271ff]"
                   />
                   <motion.span
                     animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }}
                     transition={{ duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: 0.3 }}
-                    className="h-2 w-2 rounded-full bg-white"
+                    className="h-1.5 w-1.5 rounded-full bg-[#5271ff] shadow-[0_0_8px_#5271ff]"
                   />
                 </div>
               ) : (
@@ -120,7 +123,7 @@ const ChatMessage = ({ message }: Props) => {
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.08, duration: 0.22 }}
-                className={`text-xs text-gray-400 mt-2 ${
+                className={`text-[9px] uppercase tracking-wider font-semibold text-white/30 mt-2 ${
                   isUserMessage
                     ? "text-right"
                     : "text-left"

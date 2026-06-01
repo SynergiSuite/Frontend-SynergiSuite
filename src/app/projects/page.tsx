@@ -1,5 +1,6 @@
 "use client";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { gsap } from "gsap";
 import Header from "./header";
 import ProjectCards from "./statecards";
 import { Projects } from "./schemas/project";
@@ -18,6 +19,7 @@ export default function Page() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const getProjects = useCallback(async () => {
     setIsLoading(true);
@@ -65,19 +67,46 @@ export default function Page() {
     getClients();
   }, []);
 
+  // GSAP Page Entrance Animation
+  useEffect(() => {
+    if (!isLoading && containerRef.current) {
+      const animElements = containerRef.current.querySelectorAll(".project-animate-item");
+      if (animElements.length > 0) {
+        gsap.killTweensOf(animElements);
+        gsap.fromTo(
+          animElements,
+          { opacity: 0, y: 18 },
+          {
+            opacity: 1,
+            y: 0,
+            duration: 0.5,
+            stagger: 0.05,
+            ease: "power2.out",
+          }
+        );
+      }
+    }
+  }, [isLoading]);
+
   return (
     <>
-      {isLoading? <LoaderCustom/> :(
-        <div className="min-h-full">
-          <Header
-            filter={filter}
-            setFilter={setFilter}
-            setSearchQuery={setSearchQuery}
-            teams={teams}
-            clients={clients}
-            onProjectCreated={getProjects}
-          />
-          <ProjectCards filter={filter} searchQuery={searchQuery} projects={projects} />
+      {isLoading ? <LoaderCustom /> : (
+        <div ref={containerRef} className="relative min-h-screen text-white bg-[#030114] px-4 py-6 sm:px-6 lg:px-8 overflow-hidden">
+          {/* Accent radial glow overlay */}
+          <div className="absolute left-0 top-0 h-[500px] w-[500px] bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.06),transparent_55%)] pointer-events-none" />
+          <div className="absolute right-0 bottom-0 h-[400px] w-[400px] bg-[radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.04),transparent_50%)] pointer-events-none" />
+
+          <div className="relative z-10">
+            <Header
+              filter={filter}
+              setFilter={setFilter}
+              setSearchQuery={setSearchQuery}
+              teams={teams}
+              clients={clients}
+              onProjectCreated={getProjects}
+            />
+            <ProjectCards filter={filter} searchQuery={searchQuery} projects={projects} />
+          </div>
         </div>
       )}
     </>

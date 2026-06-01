@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import { ChevronDown, MessageSquarePlus, Sparkles, Trash2 } from "lucide-react";
+import { gsap } from "gsap";
 
 type SessionItem = {
   session_id: string;
@@ -30,29 +31,73 @@ const Sidebar = ({
   onSelectSession,
   sessionItems,
 }: SidebarProps) => {
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      const tl = gsap.timeline();
+      
+      tl.from(".select-widget", {
+        opacity: 0,
+        y: -15,
+        duration: 0.45,
+        ease: "power2.out"
+      })
+      .from(".action-btn-container", {
+        opacity: 0,
+        y: -10,
+        duration: 0.35,
+        ease: "power2.out"
+      }, "-=0.2")
+      .from(".heading-container", {
+        opacity: 0,
+        duration: 0.25
+      }, "-=0.1");
+
+      const items = sidebarRef.current?.querySelectorAll(".chat-history-item");
+      if (items && items.length > 0) {
+        gsap.fromTo(items, 
+          { opacity: 0, y: 15 },
+          { 
+            opacity: 1, 
+            y: 0, 
+            duration: 0.45, 
+            stagger: 0.05, 
+            ease: "power2.out", 
+            delay: 0.1,
+            clearProps: "all"
+          }
+        );
+      }
+    }, sidebarRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
     <aside
-      className={`fixed inset-y-0 right-0 z-30 flex h-full w-[calc(100vw-1rem)] max-w-[360px] flex-col rounded-l-3xl border-l border-gray-200 bg-gray-100 shadow-2xl transition-transform duration-300 lg:static lg:w-[320px] lg:max-w-none lg:rounded-none lg:shadow-none ${
+      ref={sidebarRef}
+      className={`fixed inset-y-0 right-0 z-30 flex h-full w-[calc(100vw-1rem)] max-w-[360px] flex-col border-l border-white/[0.08] bg-[#0c0a2d]/40 backdrop-blur-md shadow-2xl transition-transform duration-300 lg:static lg:w-[320px] lg:max-w-none lg:shadow-none ${
         isMobileOpen ? "translate-x-0" : "translate-x-full"
       } lg:translate-x-0`}
     >
-      <div className="border-b border-gray-200 px-4 py-4 lg:hidden">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+      <div className="border-b border-white/[0.08] px-4 py-4 lg:hidden">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-white/50">
           Recent Chats
         </h2>
       </div>
 
-      <div className="shrink-0 px-3 pt-3 sm:px-4 sm:pt-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
+      <div className="shrink-0 px-3 pt-3 sm:px-4 sm:pt-4 select-widget">
+        <div className="rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 p-3 shadow-sm backdrop-blur-sm">
           <div className="mb-2 flex items-center gap-2">
-            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-black text-white">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff]">
               <Sparkles className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
                 Model
               </p>
-              <p className="text-sm font-medium text-black">
+              <p className="text-xs font-medium text-white/80">
                 Select assistant engine
               </p>
             </div>
@@ -64,31 +109,31 @@ const Sidebar = ({
               onChange={(event) =>
                 onModelChange(event.target.value as "llama" | "gpt" | "gemma")
               }
-              className="h-12 w-full appearance-none rounded-xl border border-gray-200 bg-gray-50 px-4 pr-11 text-sm font-medium text-black outline-none transition focus:border-black"
+              className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#030114]/60 px-4 pr-11 text-xs font-semibold text-white/90 outline-none transition focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 cursor-pointer"
             >
-              <option value="llama">Llama 7b</option>
-              <option value="gpt">GPT 20b</option>
-              <option value="gemma">Gemma</option>
+              <option value="llama" className="bg-[#0c0a2d] text-white">Llama 7b</option>
+              <option value="gpt" className="bg-[#0c0a2d] text-white">GPT 20b</option>
+              <option value="gemma" className="bg-[#0c0a2d] text-white">Gemma</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
           </div>
         </div>
       </div>
 
       {/* TOP BUTTON */}
-      <div className="shrink-0 p-3 sm:p-4">
+      <div className="shrink-0 p-3 sm:p-4 action-btn-container">
         <button
           type="button"
           onClick={onNewConversation}
-          className="w-full h-[52px] bg-black text-white rounded-xl flex items-center justify-center gap-2 font-medium hover:opacity-90 transition-all duration-300"
+          className="w-full h-[48px] bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:opacity-95 shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 text-sm tracking-wide"
         >
-          <MessageSquarePlus className="w-5 h-5" />
+          <MessageSquarePlus className="w-4 h-4" />
           New Conversation
         </button>
       </div>
 
-      <div className="hidden shrink-0 px-3 sm:px-4 lg:block">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-4">
+      <div className="hidden shrink-0 px-3 sm:px-4 lg:block heading-container">
+        <h2 className="text-xs font-semibold text-white/40 uppercase tracking-wide mb-4">
           Recent Chats
         </h2>
       </div>
@@ -108,31 +153,20 @@ const Sidebar = ({
                   onSelectSession(item.session_id);
                 }
               }}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.985 }}
-              className={`relative overflow-hidden rounded-2xl p-4 border bg-white transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-black/10 ${
+              className={`chat-history-item relative overflow-hidden rounded-2xl p-4 border transition-all duration-300 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#5271ff]/35 ${
                 activeSessionId === item.session_id
-                  ? "border-black shadow-[0_16px_36px_rgba(15,23,42,0.12)]"
-                  : "border-gray-200 hover:border-gray-300 hover:shadow-[0_10px_24px_rgba(15,23,42,0.08)]"
+                  ? "border-[#5271ff] bg-[#0a0826]/60 text-white shadow-[0_8px_32px_rgba(82,113,255,0.12)]"
+                  : "border-white/[0.06] bg-[#0a0826]/20 hover:bg-[#0a0826]/40 hover:border-white/[0.12] text-white/70 hover:text-white hover:shadow-[0_10px_24px_rgba(82,113,255,0.04)]"
               } w-full text-left`}
             >
-              <AnimatePresence>
-                {activeSessionId === item.session_id && (
-                  <motion.span
-                    className="absolute inset-0 rounded-2xl border-2 border-black pointer-events-none"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 320, damping: 28 }}
-                  />
-                )}
-              </AnimatePresence>
+              {activeSessionId === item.session_id && (
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-[#5271ff] to-[#3a4ec4]" />
+              )}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="truncate whitespace-nowrap overflow-hidden text-ellipsis font-semibold text-black text-[15px]">
+                  <h3 className="truncate whitespace-nowrap overflow-hidden text-ellipsis font-semibold text-[14px]">
                     {item.last_bot_message || "New conversation"}
                   </h3>
                 </div>
@@ -143,32 +177,26 @@ const Sidebar = ({
                     event.stopPropagation();
                     onDeleteSession(item.session_id);
                   }}
-                  className="relative z-10 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-gray-400 transition hover:bg-red-50 hover:text-red-600"
+                  className="relative z-10 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/30 transition hover:bg-rose-500/20 hover:text-rose-400"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-              <div className="mt-4">
-                <motion.span
-                  key={activeSessionId === item.session_id ? "open" : "previous"}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className={`text-xs ${
+              <div className="mt-4 flex items-center justify-between">
+                <span
+                  className={`text-[10px] uppercase font-semibold tracking-wider ${
                     activeSessionId === item.session_id
-                      ? "text-black font-medium"
-                      : "text-gray-400"
+                      ? "text-[#5271ff]"
+                      : "text-white/35"
                   }`}
                 >
-                  {activeSessionId === item.session_id ? "Open" : "Previous session"}
-                </motion.span>
+                  {activeSessionId === item.session_id ? "Active" : "Previous"}
+                </span>
               </div>
             </motion.div>
           ))}
         </div>
-
       </div>
-
     </aside>
   );
 };

@@ -35,20 +35,48 @@ const ProjectStatus = ({ progress, startDate, dueDate, managedBy }: any) => {
 
   return (
     <>
-      <div className="overview-card p-4">
-        <h3 className="font-semibold mb-2">Project Status</h3>
-        <p className="text-2xl font-bold">{animatedProgress}%</p>
-        <p className="text-sm font-medium text-gray-700 pt-4">
-          Managed by:{" "}
-          <span className="font-semibold text-gray-900">
-            {managedBy || "No Client"}
+      <div className="bg-[#0a0826]/40 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden transition-all duration-300 hover:border-[#5271ff]/30">
+        {/* Left Glowing Accent */}
+        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[#5271ff] to-[#3a4ec4]" />
+
+        <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2.5">
+          Project Status
+        </h3>
+        
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-3xl font-extrabold text-white tracking-tight">
+            {animatedProgress}%
           </span>
-        </p>
-        <p className="text-sm mt-1">Start: {startDate}</p>
-        <p className="text-sm">Due: {dueDate}</p>
+          <span className="text-xs text-white/40 font-medium">Completed</span>
+        </div>
+
+        {/* Progress Slider Track */}
+        <div className="w-full bg-white/[0.06] rounded-full h-1.5 mt-3.5 overflow-hidden border border-white/[0.04]">
+          <div
+            className="bg-gradient-to-r from-[#5271ff] to-cyan-400 h-full rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_#5271ff]"
+            style={{ width: `${animatedProgress}%` }}
+          />
+        </div>
+
+        {/* Metadata Details */}
+        <div className="pt-4 space-y-2.5 border-t border-white/[0.06] mt-4.5 text-xs font-medium text-white/50">
+          <p className="flex justify-between items-center">
+            <span>Managed by</span>
+            <span className="text-white font-semibold">{managedBy || "No Client"}</span>
+          </p>
+          <p className="flex justify-between items-center">
+            <span>Start Date</span>
+            <span className="text-white/90 font-semibold">{startDate}</span>
+          </p>
+          <p className="flex justify-between items-center">
+            <span>Due Date</span>
+            <span className="text-[#5271ff] font-semibold">{dueDate}</span>
+          </p>
+        </div>
       </div>
     </>
   );
 };
+
 
 export default ProjectStatus;

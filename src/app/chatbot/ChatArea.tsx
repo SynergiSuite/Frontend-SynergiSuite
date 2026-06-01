@@ -8,6 +8,7 @@ import {
   getSessionHistory,
   SessionHistoryResponse,
 } from "./apis/getSessionHistory";
+import { gsap } from "gsap";
 
 export interface MessageType {
   id: number;
@@ -52,6 +53,7 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<MessageType[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
@@ -78,6 +80,29 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
 
     fetchSessionHistory();
   }, [sessionId]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      const ctx = gsap.context(() => {
+        const bubbles = chatContainerRef.current?.querySelectorAll(".chat-bubble-container");
+        if (bubbles && bubbles.length > 0) {
+          gsap.fromTo(bubbles,
+            { opacity: 0, y: 15 },
+            {
+              opacity: 1,
+              y: 0,
+              duration: 0.4,
+              stagger: 0.04,
+              ease: "power2.out",
+              clearProps: "all"
+            }
+          );
+        }
+      }, chatContainerRef);
+
+      return () => ctx.revert();
+    }
+  }, [sessionId, messages.length === 0]);
 
   const sendMessage = async () => {
     const trimmedInput = input.trim();
@@ -134,18 +159,23 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
   };
 
   return (
-    <main className="flex h-full min-h-[55vh] flex-1 flex-col overflow-hidden p-3 sm:p-4">
+    <main className="flex h-full min-h-[55vh] flex-1 flex-col overflow-hidden bg-transparent p-3 sm:p-4">
 
       {/* MESSAGES AREA (FIXED SCROLL) */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 sm:space-y-6 sm:pr-4">
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1 sm:space-y-6 sm:pr-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+      >
         {messages.map((message) => (
-          <ChatMessage key={message.id} message={message} />
+          <div key={message.id} className="chat-bubble-container">
+            <ChatMessage message={message} />
+          </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
 
       {/* INPUT AREA (FIXED - NO OVERLAP) */}
-      <div className="shrink-0 border-t bg-white">
+      <div className="shrink-0 border-t border-white/[0.08] bg-transparent">
         <MessageInput
           input={input}
           setInput={setInput}

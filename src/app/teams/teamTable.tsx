@@ -95,14 +95,14 @@ export default function TeamTable({
   return (
     <>
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse text-left text-sm text-gray-700">
-          <thead className="bg-gray-200 text-gray-700">
+        <table className="w-full border-collapse text-left text-sm text-white">
+          <thead className="bg-white/[0.04] text-white/50 border-b border-white/[0.06] text-xs font-semibold uppercase tracking-wider">
             <tr>
-              <th className="px-4 py-2">Team Name</th>
-              <th className="px-4 py-2">Members</th>
-              <th className="px-4 py-2"></th>
+              <th className="px-4 py-3">Team Name</th>
+              <th className="px-4 py-3">Members</th>
+              <th className="px-4 py-3"></th>
               {canManageTeams ? (
-                <th className="px-4 py-2">Action</th>
+                <th className="px-4 py-3 text-right">Action</th>
               ) : null}
             </tr>
           </thead>
@@ -111,39 +111,55 @@ export default function TeamTable({
             {teams.map((team, index) => (
               <tr
                 key={index}
-                className="cursor-pointer border-t border-gray-300 transition hover:bg-slate-50/80"
+                className="cursor-pointer border-t border-white/[0.05] transition hover:bg-white/[0.03]"
                 onClick={() => setSelectedTeam(team)}
               >
-                <td className="px-4 py-2 font-medium">{team.name}</td>
-                <td className="px-4 py-2">
+                <td className="px-4 py-4 font-semibold text-white/95">{team.name}</td>
+                <td className="px-4 py-4">
                   <div className="flex flex-wrap items-center gap-2">
                     {team.members.slice(0, 2).map((member, memberIndex) => (
                       <span
                         key={member?.id ?? member?.user_id ?? memberIndex}
-                        className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200"
+                        className="inline-flex rounded-full bg-[#5271ff]/15 text-[#5271ff] border border-[#5271ff]/25 px-3 py-1 text-xs font-medium"
                       >
                         {resolveMemberName(member)}
                       </span>
                     ))}
                     {team.members.length > 2 ? (
-                      <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                      <span className="inline-flex rounded-full bg-white/[0.08] text-white px-3 py-1 text-xs font-semibold">
                         +{team.members.length - 2}
                       </span>
                     ) : null}
                     {team.members.length === 0 ? (
-                      <span className="text-xs text-slate-400">No members</span>
+                      <span className="text-xs text-white/35">No members</span>
                     ) : null}
                   </div>
                 </td>
-                <td className="px-4 py-2"></td>
+                <td className="px-4 py-4"></td>
                 {canManageTeams ? (
-                  <td className="flex items-center space-x-3 px-4 py-2">
-                    <button className="cursor-pointer" onClick={(event) => {event.stopPropagation(); setTeam(team); setIsEdit(true)}}>
-                      <PencilRuler size={15}/>
-                    </button>
-                    <button className="cursor-pointer">
-                      <Trash size={15} onClick={(event) => {event.stopPropagation(); setTeamId(team.id); setIsDelete(true)}} />
-                    </button>
+                  <td className="px-4 py-4 text-right">
+                    <div className="inline-flex items-center space-x-3" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="cursor-pointer text-white/40 hover:text-[#5271ff] transition-colors"
+                        onClick={() => {
+                          setTeam(team);
+                          setIsEdit(true);
+                        }}
+                        aria-label="Edit team"
+                      >
+                        <PencilRuler size={15}/>
+                      </button>
+                      <button
+                        className="cursor-pointer text-white/40 hover:text-red-400 transition-colors"
+                        onClick={() => {
+                          setTeamId(team.id);
+                          setIsDelete(true);
+                        }}
+                        aria-label="Delete team"
+                      >
+                        <Trash size={15} />
+                      </button>
+                    </div>
                   </td>
                 ) : null}
               </tr>
@@ -158,66 +174,64 @@ export default function TeamTable({
             key={index}
             type="button"
             onClick={() => setSelectedTeam(team)}
-            className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:bg-slate-50/80"
+            className="w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 p-4 text-left shadow-sm transition hover:bg-white/[0.04]"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
                   Team Name
                 </p>
-                <h3 className="mt-1 break-words font-medium text-gray-900">
+                <h3 className="mt-1 break-words font-semibold text-white text-base">
                   {team.name}
                 </h3>
               </div>
 
               {canManageTeams ? (
-                <div className="flex shrink-0 items-center gap-2">
+                <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     type="button"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600"
-                    onClick={(event) => {
-                      event.stopPropagation();
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/50 hover:text-[#5271ff] hover:bg-white/[0.08] transition-all"
+                    onClick={() => {
                       setTeam(team);
                       setIsEdit(true);
                     }}
                   >
-                    <PencilRuler size={15} />
+                    <PencilRuler size={14} />
                   </button>
                   <button
                     type="button"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-200 text-gray-600"
-                    onClick={(event) => {
-                      event.stopPropagation();
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/50 hover:text-red-400 hover:bg-white/[0.08] transition-all"
+                    onClick={() => {
                       setTeamId(team.id);
                       setIsDelete(true);
                     }}
                   >
-                    <Trash size={15} />
+                    <Trash size={14} />
                   </button>
                 </div>
               ) : null}
             </div>
 
             <div className="mt-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
                 Members
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {team.members.slice(0, 3).map((member, memberIndex) => (
                   <span
                     key={member?.id ?? member?.user_id ?? memberIndex}
-                    className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 ring-1 ring-inset ring-slate-200"
+                    className="inline-flex rounded-full bg-[#5271ff]/15 text-[#5271ff] border border-[#5271ff]/25 px-3 py-1 text-xs font-medium"
                   >
                     {resolveMemberName(member)}
                   </span>
                 ))}
                 {team.members.length > 3 ? (
-                  <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-semibold text-white">
+                  <span className="inline-flex rounded-full bg-white/[0.08] text-white px-3 py-1 text-xs font-semibold">
                     +{team.members.length - 3}
                   </span>
                 ) : null}
                 {team.members.length === 0 ? (
-                  <span className="text-xs text-slate-400">No members</span>
+                  <span className="text-xs text-white/35">No members</span>
                 ) : null}
               </div>
             </div>
@@ -243,17 +257,29 @@ export default function TeamTable({
       />
 
       <AlertDialog open={canManageTeams ? isDelete : false} onOpenChange={setIsDelete}>
-        <AlertDialogContent>
+        <AlertDialogContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.65)] p-6 backdrop-blur-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your
-              account and remove your data from our servers.
+            <AlertDialogTitle className="text-white font-bold text-lg">Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-white/50 text-sm leading-relaxed mt-2">
+              This action cannot be undone. This will permanently delete the team
+              and remove its data from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {setTeamId("")}} className="cursor-pointer">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="cursor-pointer">Continue</AlertDialogAction>
+          <AlertDialogFooter className="mt-6 flex justify-end space-x-3">
+            <AlertDialogCancel
+              onClick={() => {
+                setTeamId("");
+              }}
+              className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="cursor-pointer rounded-xl bg-red-500/20 border border-red-500/30 px-5 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/30 transition-all"
+            >
+              Continue
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

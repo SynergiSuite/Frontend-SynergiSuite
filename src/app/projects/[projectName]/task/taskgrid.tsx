@@ -61,7 +61,7 @@ export default function TaskGrid({
           {filteredTasks.map((task) => (
             <motion.div
               key={task.id}
-              className="h-full"
+              className="h-full task-animate-item opacity-0"
               whileHover={{ y: -4 }}
               transition={{ type: "spring", stiffness: 260, damping: 22 }}
               variants={{

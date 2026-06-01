@@ -12,13 +12,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  modalBodyClass,
-  modalHeaderClass,
-  modalOverlayClass,
-  modalShellClass,
-  modalTitleClass,
-} from "@/lib/modalStyles";
 
 interface NewProjectModalProps {
   onCancel: () => void;
@@ -42,7 +35,7 @@ export default function NewProjectModal({
 }: NewProjectModalProps) {
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
-  const [statusValue, setStatusValue] = useState<string>(""); // FIX
+  const [statusValue, setStatusValue] = useState<string>(""); 
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [duration, setDuration] = useState("");
@@ -71,68 +64,80 @@ export default function NewProjectModal({
 
   return (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      transition={{ duration: 0.25 }}
     >
+      {/* Background Overlay */}
       <motion.button
         type="button"
         aria-label="Close modal"
-        className={modalOverlayClass}
+        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md z-45"
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.25 }}
       />
+
+      {/* Modal Container Shell */}
       <motion.div
-        className={`${modalShellClass} max-h-[calc(100vh-2rem)] w-[calc(100vw-1.5rem)] max-w-2xl overflow-hidden`}
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
+        className="relative z-50 flex flex-col w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#0a0826]/90 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[calc(100vh-4rem)]"
+        initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+        exit={{ opacity: 0, y: 20, scale: 0.96 }}
+        transition={{ type: "spring", stiffness: 280, damping: 25 }}
       >
-        <div className={modalHeaderClass}>
-          <h2 className={modalTitleClass}>
-            Project Details
+        {/* Top Accent Neon Stripe */}
+        <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#5271ff] via-cyan-400 to-[#3a4ec4] z-10" />
+
+        {/* Ambient background glow inside modal */}
+        <div className="absolute -left-20 -top-20 h-[300px] w-[300px] bg-[radial-gradient(circle,rgba(82,113,255,0.12),transparent_65%)] pointer-events-none" />
+
+        {/* Header */}
+        <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01]">
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            Create New Project
           </h2>
+          <p className="text-xs text-white/40 mt-1 font-medium">Enter project parameters and assign team structure</p>
         </div>
 
-        <div className={`${modalBodyClass} overflow-y-auto`}>
+        {/* Body (Scrollable Content) */}
+        <div className="relative z-10 flex-1 overflow-y-auto px-6 py-6 sm:px-8 space-y-6 text-white custom-scrollbar">
           {/* Project Name */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Project Name
             </label>
             <input
               type="text"
               placeholder="Enter project name"
-              className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-gray-400"
+              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300"
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
             />
           </div>
 
           {/* Client */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Select Client
             </label>
             <Select
               value={selectedClientId}
               onValueChange={setSelectedClientId}
             >
-              <SelectTrigger className="w-full border_primary bg-white cursor-pointer">
+              <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
                 <SelectValue placeholder="Select Client" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
                 {clients.map((client) => (
                   <SelectItem
                     key={client.id}
                     value={client.id}
-                    className="cursor-pointer"
+                    className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white rounded-lg py-2 px-3 transition-colors text-white/80"
                   >
                     {client.name}
                   </SelectItem>
@@ -141,97 +146,102 @@ export default function NewProjectModal({
             </Select>
           </div>
 
-          {/* Team */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          {/* Team Checkboxes */}
+          <div>
+            <label className="block text-sm font-semibold text-white/70 mb-2">
               Select Teams
             </label>
-            <div className="rounded-md border border-gray-300 bg-white p-2">
-              <div className="flex flex-wrap gap-2">
+            <div className="rounded-xl border border-white/[0.08] bg-[#030114]/20 p-4 max-h-[180px] overflow-y-auto custom-scrollbar">
+              <div className="flex flex-wrap gap-2.5">
                 {teams.map((team) => {
                   const isSelected = selectedTeamIds.includes(team.id);
                   return (
                     <label
                       key={team.id}
-                      className={`flex min-w-0 items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer transition ${
+                      className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm cursor-pointer transition-all duration-300 ${
                         isSelected
-                          ? "border-gray-900 bg-gray-100 text-gray-900"
-                          : "border-gray-300 bg-white text-gray-700"
+                          ? "border-[#5271ff]/50 bg-[#5271ff]/10 text-white shadow-[0_0_12px_rgba(82,113,255,0.15)] font-semibold"
+                          : "border-white/[0.08] bg-[#0a0826]/40 text-white/60 hover:text-white hover:border-white/[0.15]"
                       }`}
                     >
                       <input
                         type="checkbox"
-                        className="h-4 w-4 accent-black"
+                        className="h-4 w-4 rounded-md accent-[#5271ff] border-white/[0.08] bg-[#030114]/50 cursor-pointer"
                         checked={isSelected}
                         onChange={() => toggleTeamId(team.id)}
                       />
-                      <span className="break-words">{team.name}</span>
+                      <span className="break-words select-none">{team.name}</span>
                     </label>
                   );
                 })}
               </div>
               {selectedTeamIds.length > 0 && (
-                <div className="mt-2 text-xs text-gray-500">
-                  {selectedTeamIds.length} team
-                  {selectedTeamIds.length === 1 ? "" : "s"} selected
+                <div className="mt-3 text-xs text-white/40 font-semibold pl-1">
+                  {selectedTeamIds.length} {selectedTeamIds.length === 1 ? "team" : "teams"} selected
                 </div>
               )}
             </div>
           </div>
 
-          {/* Status + Description */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Project Status
-            </label>
-            <Select
-              value={statusValue}
-              onValueChange={setStatusValue}
-            >
-              <SelectTrigger className="w-full border_primary bg-white cursor-pointer">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {priorityOptions.map((option) => (
-                  <SelectItem
-                    key={option.value}
-                    value={String(option.value)}
-                    className="cursor-pointer"
-                  >
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Grid for Status and Date */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-semibold text-white/70 mb-2">
+                Project Status
+              </label>
+              <Select
+                value={statusValue}
+                onValueChange={setStatusValue}
+              >
+                <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
+                  {priorityOptions.map((option) => (
+                    <SelectItem
+                      key={option.value}
+                      value={String(option.value)}
+                      className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white rounded-lg py-2 px-3 transition-colors text-white/80"
+                    >
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+            {/* End Date */}
+            <div>
+              <label className="block text-sm font-semibold text-white/70 mb-2">
                 End Date
               </label>
               <input
                 type="date"
-                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-2.5 h-11 text-white focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 scheme-dark cursor-pointer font-medium"
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
               />
             </div>
+          </div>
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Project Description
-              </label>
-              <textarea
-                rows={4}
-                placeholder="Enter project description"
-                className="w-full border border-gray-300 rounded-md p-2 focus:ring-1 focus:ring-gray-400"
-                value={projectDescription}
-                onChange={(e) => setProjectDescription(e.target.value)}
-              />
-            </div>
+          {/* Project Description */}
+          <div>
+            <label className="block text-sm font-semibold text-white/70 mb-2">
+              Project Description
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Enter project description..."
+              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 resize-none"
+              value={projectDescription}
+              onChange={(e) => setProjectDescription(e.target.value)}
+            />
           </div>
         </div>
 
-        <div className="border-t border-gray-200/80 px-4 py-4 sm:px-8">
+        {/* Footer */}
+        <div className="relative z-10 border-t border-white/[0.08] bg-[#0a0826]/40 px-6 py-5 sm:px-8">
           <ModalFooter
             onCancel={onCancel}
             isSubmitDisabled={!isFormValid}

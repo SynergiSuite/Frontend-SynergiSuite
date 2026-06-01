@@ -37,12 +37,12 @@ const MessageInput = ({
 
   return (
     <>
-      <div className="w-full border-t border-gray-200 bg-white px-3 py-3 sm:px-5 sm:py-4">
+      <div className="w-full border-t border-white/[0.08] bg-transparent px-3 py-3 sm:px-5 sm:py-4">
         <div
           className="
             w-full
             border
-            border-gray-300
+            border-white/[0.08]
             rounded-2xl
             px-3
             py-2.5
@@ -50,9 +50,10 @@ const MessageInput = ({
             items-end
             justify-between
             gap-3
-            bg-white
+            bg-white/[0.02]
+            focus-within:border-[#5271ff]/50
             transition-all
-            duration-200
+            duration-300
             sm:px-4 sm:py-3
           "
         >
@@ -65,16 +66,22 @@ const MessageInput = ({
                 sm:w-9
                 sm:h-9
                 rounded-full
-                hover:bg-gray-100
+                bg-white/5
+                border
+                border-white/10
+                hover:bg-[#5271ff]/10
+                hover:border-[#5271ff]/30
                 flex
                 items-center
                 justify-center
                 transition-all
                 duration-300
                 shrink-0
+                text-white/60
+                hover:text-white
               "
             >
-              <Paperclip className="w-5 h-5 text-gray-600" />
+              <Paperclip className="w-4.5 h-4.5" />
             </button>
 
             <textarea
@@ -96,8 +103,8 @@ const MessageInput = ({
                 outline-none
                 bg-transparent
                 text-sm
-                text-black
-                placeholder:text-gray-400
+                text-white
+                placeholder:text-white/30
                 leading-6
                 min-h-[24px]
                 max-h-[120px]
@@ -115,17 +122,22 @@ const MessageInput = ({
               sm:w-10
               sm:h-10
               rounded-full
-              bg-black
+              bg-gradient-to-r
+              from-[#5271ff]
+              to-[#3a4ec4]
+              shadow-[0_0_12px_rgba(82,113,255,0.3)]
+              hover:shadow-[0_0_18px_rgba(82,113,255,0.5)]
               flex
               items-center
               justify-center
               hover:scale-105
+              active:scale-95
               transition-all
               duration-300
               shrink-0
             "
           >
-            <SendHorizonal className="w-5 h-5 text-white" />
+            <SendHorizonal className="w-4 h-4 text-white" />
           </button>
         </div>
       </div>

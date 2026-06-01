@@ -72,22 +72,24 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
 
   const getStatusColor = (status: number) => {
     switch (status) {
-      case 1:
-        return "bg-green-100 text-green-600";
-      case 2:
-        return "bg-green-100 text-green-600";
-      case 3:
-        return "bg-blue-100 text-blue-600";
-      case 4:
-        return "bg-red-100 text-red-600";
+      case 0: // In Queue
+        return "bg-[#5271ff]/10 text-[#5271ff] border border-[#5271ff]/20";
+      case 1: // In Progress
+        return "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20";
+      case 2: // Completed
+        return "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+      case 3: // On Hold
+        return "bg-amber-500/10 text-amber-400 border border-amber-500/20";
+      case 4: // At Risk
+        return "bg-rose-500/10 text-rose-400 border border-rose-500/20";
       default:
-        return "bg-gray-100 text-gray-600";
+        return "bg-white/[0.04] text-white/60 border border-white/[0.08]";
     }
   };
 
   const getClientCompany = (company: string | undefined): string => {
     if (!company) return "No Client Company";
-    return company || "No Client Company";
+    return company;
   };
 
   const handleProjectDetail = (projectName: string, clientName: string, projectID: string) => {
@@ -102,7 +104,7 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
   return (
     <div className="mx-auto w-full px-0 py-4 sm:px-1 sm:py-6">
       {filteredProjects.length === 0 ? (
-        <p className="mt-10 text-center text-gray-500">No projects found matching your criteria.</p>
+        <p className="mt-10 text-center text-white/40">No projects found matching your criteria.</p>
       ) : (
         <AnimatePresence mode="sync">
           <motion.div
@@ -126,7 +128,7 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                 <motion.div
                   key={project.id}
                   onClick={() => handleProjectDetail(project.name, project.client?.name || "No Client", project.id)}
-                  className="cursor-pointer rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5"
+                  className="group cursor-pointer rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md p-4 shadow-[0_4px_20px_rgba(0,0,0,0.2)] transition hover:border-[#5271ff]/30 hover:shadow-[0_0_20px_rgba(82,113,255,0.15)] sm:p-5"
                   whileHover={{ y: -4 }}
                   transition={{ type: "spring", stiffness: 260, damping: 22 }}
                   variants={{
@@ -139,23 +141,23 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                   }}
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <h3 className="line-clamp-2 font-semibold text-gray-800">{project.name}</h3>
+                    <h3 className="line-clamp-2 font-semibold text-white group-hover:text-[#5271ff] transition-colors">{project.name}</h3>
                   </div>
 
-                  <p className="mb-4 text-sm text-gray-500 break-words">
+                  <p className="mb-4 text-sm text-white/50 break-words font-medium">
                     {getClientCompany(project.client?.company)}
                   </p>
 
-                  <div className="mb-2 text-sm text-gray-700">Progress</div>
-                  <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+                  <div className="mb-2 text-sm text-white/70 font-medium">Progress</div>
+                  <div className="mb-2 h-2 w-full overflow-hidden rounded-full bg-white/[0.06] border border-white/[0.04]">
                     <motion.div
-                      className="h-2 rounded-full bg-slate-800"
+                      className="h-2 rounded-full bg-gradient-to-r from-[#5271ff] to-cyan-400"
                       initial={{ width: 0 }}
                       animate={{ width: `${progress}%` }}
                       transition={{ duration: 0.8, ease: "easeOut" }}
                     />
                   </div>
-                  <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="flex items-center justify-between text-sm text-white/60 font-medium">
                     <span>
                       {project.tasks?.filter((t: any) => String(t?.status ?? "").toLowerCase() === "completed").length || 0}
                       /{project.tasks?.length || 0} Tasks
@@ -163,19 +165,21 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                     <span className="shrink-0">{progress}%</span>
                   </div>
 
-                  <div
-                    className={`mt-3 inline-block text-xs font-medium px-2 py-1 rounded-full ${getStatusColor(
-                      project.status
-                    )}`}
-                  >
-                    {getStatus(project.status)}
-                  </div>
-
-                  {project.teams && project.teams.length > 0 && (
-                    <div className="mt-3 text-sm text-gray-600">
-                      {project.teams.length} Team assigned
+                  <div className="mt-4 flex items-center justify-between gap-2">
+                    <div
+                      className={`inline-block text-xs font-semibold px-3 py-1 rounded-full ${getStatusColor(
+                        project.status
+                      )}`}
+                    >
+                      {getStatus(project.status)}
                     </div>
-                  )}
+
+                    {project.teams && project.teams.length > 0 && (
+                      <div className="text-xs text-white/40 font-medium">
+                        {project.teams.length} {project.teams.length === 1 ? "Team" : "Teams"} assigned
+                      </div>
+                    )}
+                  </div>
                 </motion.div>
               );
             })}

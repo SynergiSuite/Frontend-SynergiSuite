@@ -141,12 +141,17 @@ const Page = () => {
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="relative flex h-full min-h-0 overflow-hidden bg-white shadow-sm md:rounded-3xl">
+      <div className="relative flex h-full min-h-0 overflow-hidden bg-[#030114] border border-white/[0.08] shadow-2xl md:rounded-3xl">
+        {/* Ambient background glows */}
+        <div className="pointer-events-none absolute -top-32 left-1/4 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#5271ff]/[0.06] blur-[130px]" />
+        <div className="pointer-events-none absolute top-1/2 right-0 h-[400px] w-[400px] rounded-full bg-[#3a4ec4]/[0.06] blur-[120px]" />
+        <div className="pointer-events-none absolute bottom-0 left-1/3 h-[300px] w-[300px] rounded-full bg-[#22d3ee]/[0.04] blur-[100px]" />
+
         <button
           type="button"
           aria-label={isMobileRightBarOpen ? "Close chat history" : "Open chat history"}
           onClick={() => setIsMobileRightBarOpen((prev) => !prev)}
-          className="fixed right-4 top-20 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-700 shadow-sm transition hover:bg-gray-50 lg:hidden"
+          className="fixed right-4 top-20 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-[#0a0826]/80 text-white/70 shadow-lg shadow-blue-500/5 backdrop-blur-md transition hover:bg-white/[0.04] hover:text-white hover:border-[#5271ff]/30 lg:hidden"
         >
           {isMobileRightBarOpen ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -154,7 +159,7 @@ const Page = () => {
         <ChatArea key={chatResetKey} sessionId={sessionId} model={selectedModel} />
 
         {isMobileRightBarOpen && (
-          <div className="fixed inset-0 z-20 bg-black/30 lg:hidden">
+          <div className="fixed inset-0 z-20 bg-[#030114]/80 backdrop-blur-sm lg:hidden">
             <button
               type="button"
               aria-label="Close chat history overlay"

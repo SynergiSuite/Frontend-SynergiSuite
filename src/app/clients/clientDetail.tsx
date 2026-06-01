@@ -16,23 +16,26 @@ const getPriorityConfig = (priority: number) => {
   if (priority === ClientPriority.HIGH) {
     return {
       label: "High Priority",
-      chipClass: "bg-red-100 text-red-700 ring-1 ring-inset ring-red-200",
-      accentClass: "from-red-500/15 via-white to-white",
+      chipClass: "bg-red-500/10 text-red-400 border border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.2)]",
+      accentClass: "from-red-500/10 via-[#0c0a2f]/90 to-[#0a0826] border-red-500/20",
+      glowColor: "bg-red-500/10",
     };
   }
 
   if (priority === ClientPriority.LOW) {
     return {
       label: "Low Priority",
-      chipClass: "bg-blue-100 text-blue-700 ring-1 ring-inset ring-blue-200",
-      accentClass: "from-blue-500/15 via-white to-white",
+      chipClass: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.2)]",
+      accentClass: "from-cyan-500/10 via-[#0c0a2f]/90 to-[#0a0826] border-cyan-500/20",
+      glowColor: "bg-cyan-500/10",
     };
   }
 
   return {
     label: "Medium Priority",
-    chipClass: "bg-amber-100 text-amber-700 ring-1 ring-inset ring-amber-200",
-    accentClass: "from-amber-500/15 via-white to-white",
+    chipClass: "bg-amber-500/10 text-amber-400 border border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.2)]",
+    accentClass: "from-amber-500/10 via-[#0c0a2f]/90 to-[#0a0826] border-amber-500/20",
+    glowColor: "bg-amber-500/10",
   };
 };
 
@@ -45,12 +48,12 @@ const DetailRow = ({
   label: string;
   value: string;
 }) => (
-  <div className="rounded-2xl border border-gray-200 bg-white/85 p-4 shadow-sm">
-    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-500">
-      <span className="text-gray-400">{icon}</span>
+  <div className="rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 p-4 shadow-lg backdrop-blur-md transition-all duration-300 hover:border-white/[0.15]">
+    <div className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-white/40">
+      <span className="text-[#5271ff]/70">{icon}</span>
       <span>{label}</span>
     </div>
-    <p className="break-words text-sm font-semibold text-gray-900">{value}</p>
+    <p className="break-words text-sm font-semibold text-white">{value}</p>
   </div>
 );
 
@@ -79,44 +82,46 @@ export default function ClientDetailModal({
             type="button"
             aria-label="Close client details"
             onClick={onClose}
-            className="absolute inset-0 bg-slate-950/45 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
 
           <motion.div
-            className={`relative w-full max-w-2xl overflow-hidden rounded-[28px] border border-gray-200 bg-gradient-to-br ${priority.accentClass} shadow-[0_24px_80px_rgba(15,23,42,0.18)]`}
+            className={`relative w-full max-w-2xl overflow-hidden rounded-[28px] border bg-gradient-to-br ${priority.accentClass} shadow-[0_24px_80px_rgba(0,0,0,0.6)]`}
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 240, damping: 24 }}
           >
-            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(148,163,184,0.22),transparent_58%)]" />
+            {/* Custom glowing backdrop */}
+            <div className={`absolute -right-16 -top-16 h-36 w-36 rounded-full blur-3xl ${priority.glowColor}`} />
+            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.15),transparent_58%)]" />
 
-            <div className="relative border-b border-gray-200/80 px-6 py-6 sm:px-8">
+            <div className="relative border-b border-white/[0.08] px-6 py-6 sm:px-8">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/70 bg-white/80 shadow-sm">
-                    <span className="text-2xl font-bold text-gray-700">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.08] bg-[#0a0826]/60 shadow-inner">
+                    <span className="text-2xl font-extrabold text-white">
                       {client.name?.charAt(0)?.toUpperCase() || "C"}
                     </span>
                   </div>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gray-500">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/40">
                       Client Overview
                     </p>
-                    <h2 className="mt-1 text-2xl font-semibold text-gray-950">
+                    <h2 className="mt-1 text-2xl font-bold tracking-tight text-white">
                       {client.name || "Unnamed Client"}
                     </h2>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <span
-                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${priority.chipClass}`}
+                        className={`inline-flex items-center gap-1.5 rounded-full px-3 py-0.5 text-xs font-semibold ${priority.chipClass}`}
                       >
-                        <Star className="h-3.5 w-3.5" />
+                        <Star className="h-3.5 w-3.5 fill-current" />
                         {priority.label}
                       </span>
-                      <span className="inline-flex rounded-full bg-slate-900 px-3 py-1 text-xs font-medium text-white">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-0.5 text-xs font-semibold text-white/80">
                         {client.company || "No company"}
                       </span>
                     </div>
@@ -126,7 +131,7 @@ export default function ClientDetailModal({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 bg-white/90 text-gray-500 transition hover:text-gray-900"
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.02] text-white/50 transition hover:bg-white/[0.08] hover:text-white"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -161,3 +166,4 @@ export default function ClientDetailModal({
     </AnimatePresence>
   );
 }
+

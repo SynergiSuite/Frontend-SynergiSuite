@@ -68,7 +68,7 @@ const MiddleSection = ({
 
   return (
     <>
-      <div className="w-full px-6 lg:w-2/4">
+      <div className="w-full min-w-0">
         <Milestones
           milestones={milestones}
           availableTasks={availableTasks}

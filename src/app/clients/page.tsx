@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { AnimatePresence } from "framer-motion";
 
 import SidebarForm from "./sidebarClientAddForm";
@@ -22,6 +22,7 @@ import EditClientModal from "./editClientModal";
 import DeleteClientModal from "./deleteClientModal";
 import { CookieManager } from "@/lib/cookieManager";
 import ClientDetailModal from "./clientDetail";
+import { gsap } from "gsap";
 
 export type ClientType = {
   id: string;
@@ -64,6 +65,9 @@ const ClientManagementPage = () => {
 
   // ✅ PAGINATION STATE
   const [currentPage, setCurrentPage] = useState(1);
+
+  // ✅ REFS FOR GSAP
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const itemsPerPage = 4;
   const allowedRoles = ["manager", "founder", "admin"];
@@ -111,6 +115,23 @@ const ClientManagementPage = () => {
       setDeleteClientId(null);
     }
   }, [canManageClients]);
+
+  // ✅ GSAP STAGGER ENTRANCE ANIMATION
+  useEffect(() => {
+    if (!isLoading && clients.length > 0) {
+      const ctx = gsap.context(() => {
+        gsap.from([".clients-header-area", ".clients-stats-area", ".clients-table-area", ".clients-sidebar-area"], {
+          opacity: 0,
+          y: 20,
+          duration: 0.6,
+          ease: "power3.out",
+          stagger: 0.12,
+          clearProps: "all"
+        });
+      }, containerRef);
+      return () => ctx.revert();
+    }
+  }, [isLoading, clients.length > 0]);
 
   // ✅ PAGINATION LOGIC
   const totalPages = Math.max(
@@ -186,41 +207,52 @@ const ClientManagementPage = () => {
       {isLoading ? (
         <LoaderCustom />
       ) : (
-        <div className="min-h-0">
+        <div ref={containerRef} className="relative min-h-0 w-full overflow-hidden">
+          {/* Ambient background glows */}
+          <div className="pointer-events-none absolute -top-32 left-1/4 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#5271ff]/[0.06] blur-[130px]" />
+          <div className="pointer-events-none absolute top-1/2 right-0 h-[400px] w-[400px] rounded-full bg-[#3a4ec4]/[0.06] blur-[120px]" />
+          <div className="pointer-events-none absolute bottom-0 left-1/3 h-[300px] w-[300px] rounded-full bg-[#22d3ee]/[0.04] blur-[100px]" />
+
           <div
-            className={`grid grid-cols-1 items-stretch gap-6 lg:min-h-[calc(100vh-140px)] lg:gap-8 ${
+            className={`relative z-10 grid grid-cols-1 items-stretch gap-6 lg:min-h-[calc(100vh-140px)] lg:gap-8 ${
               canManageClients
                 ? "lg:grid-cols-[minmax(420px,1.2fr)_minmax(0,0.8fr)]"
                 : ""
             }`}
           >
               <div className="flex min-h-0 flex-col">
-                <SubHeader
-                  search={search}
-                  setSearch={setSearch}
-                />
-
-                <StatsCards clients={clients} />
-
-                <div className="min-h-0 flex-1">
-                  <ClientsTable
-                    clients={currentClients}
-                    deleteClient={setDeleteClientId}
-                    onSelectClient={setDetailClient}
-                    onEditClient={setSelectedClient}
-                    canManageClients={canManageClients}
+                <div className="clients-header-area">
+                  <SubHeader
+                    search={search}
+                    setSearch={setSearch}
                   />
                 </div>
 
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  setCurrentPage={setCurrentPage}
-                />
+                <div className="clients-stats-area">
+                  <StatsCards clients={clients} />
+                </div>
+
+                <div className="clients-table-area flex flex-col flex-1 min-h-0">
+                  <div className="min-h-0 flex-1">
+                    <ClientsTable
+                      clients={currentClients}
+                      deleteClient={setDeleteClientId}
+                      onSelectClient={setDetailClient}
+                      onEditClient={setSelectedClient}
+                      canManageClients={canManageClients}
+                    />
+                  </div>
+
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    setCurrentPage={setCurrentPage}
+                  />
+                </div>
               </div>
               
               {canManageClients ? (
-                <div className="min-h-0">
+                <div className="clients-sidebar-area min-h-0">
                   <SidebarForm addClient={addClient} />
                 </div>
               ) : null}

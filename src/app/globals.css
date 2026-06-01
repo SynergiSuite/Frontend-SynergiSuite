@@ -295,3 +295,215 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* ============================================
+   LANDING PAGE — Dark Premium Theme
+   Inspired by Lesse Studio (lessestudio.com)
+   ============================================ */
+
+/* Landing page keyframe animations */
+@keyframes landing-progress-fill {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+@keyframes landing-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes landing-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes landing-ken-burns {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.08); }
+}
+
+@keyframes landing-fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes landing-count-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes landing-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(82, 113, 255, 0); }
+  50% { box-shadow: 0 0 30px rgba(82, 113, 255, 0.15); }
+}
+
+@keyframes landing-dot-pulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* Landing page utility classes */
+.landing-serif {
+  font-family: 'DM Serif Display', Georgia, serif;
+}
+
+.landing-bg {
+  background-color: #030114;
+}
+
+.landing-card-bg {
+  background-color: #0a0826;
+}
+
+.landing-elevated-bg {
+  background-color: #120e3a;
+}
+
+.landing-glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.landing-glass-border {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.landing-text-secondary {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.landing-text-tertiary {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.landing-gradient-blue {
+  background: linear-gradient(135deg, #5271ff 0%, #3a4ec4 100%);
+}
+
+.landing-gradient-radial {
+  background: radial-gradient(ellipse at center, rgba(82, 113, 255, 0.15) 0%, transparent 70%);
+}
+
+.landing-border-subtle {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Hero progress bar animation */
+.landing-progress-bar {
+  animation: landing-progress-fill linear forwards;
+}
+
+/* Ken Burns effect for hero images */
+.landing-ken-burns {
+  animation: landing-ken-burns 7s ease-out forwards;
+}
+
+/* Floating animation for decorative elements */
+.landing-float {
+  animation: landing-float 6s ease-in-out infinite;
+}
+
+/* Shimmer effect for loading states */
+.landing-shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.05) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: landing-shimmer 2s infinite;
+}
+
+/* Glow effect on hover */
+.landing-glow-hover:hover {
+  animation: landing-glow 2s ease-in-out infinite;
+}
+
+/* Custom scrollbar for landing horizontal scroll */
+.landing-scroll-container::-webkit-scrollbar {
+  height: 4px;
+}
+
+.landing-scroll-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+}
+
+.landing-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.landing-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Smooth scroll for entire page */
+.landing-smooth-scroll {
+  scroll-behavior: smooth;
+}
+
+/* Landing page button styles */
+.landing-btn-primary {
+  background: linear-gradient(135deg, #5271ff 0%, #3a4ec4 100%);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(82, 113, 255, 0.3);
+}
+
+.landing-btn-outline {
+  background: transparent;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  padding: 14px 32px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.landing-btn-outline:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+
+.session-auth-input:-webkit-autofill,
+.session-auth-input:-webkit-autofill:hover,
+.session-auth-input:-webkit-autofill:focus,
+.session-auth-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  box-shadow: 0 0 0 1000px transparent inset;
+  transition: background-color 9999s ease-out, color 9999s ease-out;
+}
+
+.session-light-input:-webkit-autofill,
+.session-light-input:-webkit-autofill:hover,
+.session-light-input:-webkit-autofill:focus,
+.session-light-input:-webkit-autofill:active {
+  -webkit-text-fill-color: #111827;
+  caret-color: #111827;
+  box-shadow: 0 0 0 1000px #fff inset;
+  transition: background-color 9999s ease-out, color 9999s ease-out;
+}

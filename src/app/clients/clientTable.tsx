@@ -23,7 +23,7 @@ const ClientsTable = ({
 }: Props) => {
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
         <TableHeader />
 
         {clients.length > 0 ? (
@@ -40,7 +40,7 @@ const ClientsTable = ({
             ))}
           </div>
         ) : (
-          <div className="flex flex-1 items-center justify-center px-6 py-12 text-sm text-gray-500">
+          <div className="flex flex-1 items-center justify-center px-6 py-12 text-sm text-white/40">
             No clients found
           </div>
         )}
@@ -50,3 +50,4 @@ const ClientsTable = ({
 };
 
 export default ClientsTable;
+

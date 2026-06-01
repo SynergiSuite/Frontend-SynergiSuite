@@ -233,7 +233,7 @@ export default function RegisterBusiness() {
                 <div>
                   <label
                     htmlFor="name"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 mb-2"
                   >
                     Business Name
                   </label>
@@ -242,7 +242,7 @@ export default function RegisterBusiness() {
                     id="name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
+                    className="session-light-input w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
                     placeholder="Enter your business name"
                     required
                   />
@@ -251,7 +251,7 @@ export default function RegisterBusiness() {
                 <div>
                   <label
                     htmlFor="numberOfEmployees"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 mb-2"
                   >
                     Number of Employees
                   </label>
@@ -262,7 +262,7 @@ export default function RegisterBusiness() {
                     onChange={(e) =>
                       setNumberOfEmployees(Number(e.target.value))
                     }
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
+                    className="session-light-input w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
                     placeholder="Enter number of employees"
                     min="1"
                     required
@@ -272,7 +272,7 @@ export default function RegisterBusiness() {
                 <div>
                   <label
                     htmlFor="businessCategory"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 mb-2"
                   >
                     Business Category
                   </label>
@@ -280,7 +280,7 @@ export default function RegisterBusiness() {
                     id="businessCategory"
                     value={category_id}
                     onChange={(e) => setCategoryID(Number(e.target.value))}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
+                    className="session-light-input w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
                     required
                     disabled={isLoading}
                   >
@@ -321,7 +321,7 @@ export default function RegisterBusiness() {
                 <div>
                   <label
                     htmlFor="invitationLink"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 mb-2"
                   >
                     Enter Link
                   </label>
@@ -330,7 +330,7 @@ export default function RegisterBusiness() {
                     id="invitationLink"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
+                    className="session-light-input w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
                     placeholder="Paste your invitation link here"
                     required
                   />

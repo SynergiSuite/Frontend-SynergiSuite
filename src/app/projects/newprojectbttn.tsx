@@ -70,7 +70,7 @@ export default function NewProjectButton({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-black px-4 py-2.5 text-white hover:bg-gray-800 sm:w-auto"
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-4 py-2.5 text-white shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 sm:w-auto font-semibold"
       >
         <Plus size={16} strokeWidth={2.25} aria-hidden="true" />
         <span>New Project</span>

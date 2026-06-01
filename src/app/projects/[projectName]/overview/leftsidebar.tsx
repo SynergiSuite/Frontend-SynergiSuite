@@ -2,7 +2,6 @@
 import React from "react";
 import ProjectStatus from "./projectstatus";
 import TeamMembers from "./teamMembers";
-import QuickStats from "./quickstats";
 import { Project } from "../schemas/project";
 import { Team } from "../../schemas/team";
 
@@ -38,26 +37,9 @@ const LeftSidebar = ({
   canManageTeams = false,
   onSaveTeams,
 }: LeftSidebarProps) => {
-  const normalizeStatus = (status: string) =>
-    status.trim().toLowerCase().replace(/[\s-]+/g, "_");
-
-  const tasks = projectDetail?.tasks ?? [];
-  const stats = tasks.reduce(
-    (acc, task) => {
-      const normalized = normalizeStatus(task.status || "");
-      if (normalized === "completed") acc.completed += 1;
-      if (normalized === "in_progress") acc.inProgress += 1;
-      if (normalized === "blocked") acc.blocked += 1;
-      if (normalized === "todo") acc.todo += 1;
-      acc.total += 1;
-      return acc;
-    },
-    { total: 0, completed: 0, inProgress: 0, blocked: 0, todo: 0 }
-  );
-
   return (
     <>
-      <div className="w-full space-y-4 lg:w-1/4">
+      <div className="space-y-5">
         <ProjectStatus
           progress={completionStatus}
           managedBy={projectDetail?.client?.name}
@@ -70,10 +52,10 @@ const LeftSidebar = ({
           canManageTeams={canManageTeams}
           onSaveTeams={onSaveTeams}
         />
-        <QuickStats stats={stats} />
       </div>
     </>
   );
 };
+
 
 export default LeftSidebar;

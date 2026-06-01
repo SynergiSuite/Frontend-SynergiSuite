@@ -7,7 +7,6 @@ import {
   XAxis,
   YAxis,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
@@ -21,7 +20,6 @@ const data = [
 ];
 
 // ✅ Reusable wrapper for all charts
-// This ensures consistent size and styling across all charts
 export function ChartContainer({
   title,
   children,
@@ -30,9 +28,9 @@ export function ChartContainer({
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border rounded-xl shadow-sm p-5 w-full h-full flex flex-col">
-      <h2 className="text-lg font-semibold text-gray-700 mb-3">{title}</h2>
-      <div className="flex-1">{children}</div>
+    <div className="bg-[#0a0826]/60 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 w-full h-[320px] flex flex-col shadow-lg">
+      <h2 className="text-lg font-bold text-white mb-4">{title}</h2>
+      <div className="flex-1 min-h-0">{children}</div>
     </div>
   );
 }
@@ -44,21 +42,24 @@ export default function TeamActivitiesChart() {
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
-          margin={{ top: 10, right: 20, left: 0, bottom: 10 }}
+          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+          barGap={6}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="name" tick={{ fill: "#555", fontSize: 12 }} />
-          <YAxis tick={{ fill: "#555", fontSize: 12 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
+          <XAxis dataKey="name" tick={{ fill: "rgba(255, 255, 255, 0.4)", fontSize: 11 }} stroke="rgba(255,255,255,0.08)" />
+          <YAxis tick={{ fill: "rgba(255, 255, 255, 0.4)", fontSize: 11 }} stroke="rgba(255,255,255,0.08)" />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#fff",
-              borderRadius: "8px",
-              border: "1px solid #ddd",
+              backgroundColor: "#0a0826",
+              borderRadius: "12px",
+              border: "1px solid rgba(255, 255, 255, 0.08)",
               fontSize: "12px",
             }}
+            itemStyle={{ color: "#fff" }}
+            labelStyle={{ color: "rgba(255, 255, 255, 0.5)", fontWeight: "semibold", marginBottom: "4px" }}
           />
-          <Bar dataKey="Completed" fill="#4b4b4b" radius={[10, 10, 10, 10]} />
-          <Bar dataKey="Ongoing" fill="#a9a9a9" radius={[10, 10, 10, 10]} />
+          <Bar dataKey="Completed" fill="#5271ff" radius={[4, 4, 0, 0]} barSize={18} />
+          <Bar dataKey="Ongoing" fill="rgba(82, 113, 255, 0.35)" radius={[4, 4, 0, 0]} barSize={18} />
         </BarChart>
       </ResponsiveContainer>
     </ChartContainer>
