@@ -35,7 +35,9 @@ const protectedRoutes = [
   "/resources",
   "/resources/*",
   "/cloud",
-  "/cloud/*"
+  "/cloud/*",
+  "/collab-station",
+  "/collab-station/*"
 ];
 
 const publicRoutes = ["/login", "/signup", "/forgot-password"];
