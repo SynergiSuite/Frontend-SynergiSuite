@@ -6,4 +6,5 @@ export type AddEmployeeDialogProps = {
 export type InviteEmployeePayload = {
   email: string;
   role_id: number;
+  salary: string;
 };

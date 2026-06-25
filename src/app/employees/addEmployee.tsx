@@ -16,6 +16,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
   const [formData, setFormData] = useState({
     email: "",
     role_id: 0,
+    salary: "",
   });
   const modalShellRef = useRef<HTMLDivElement>(null);
 
@@ -41,20 +42,26 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
     }
   }, [isOpen]);
 
+  const handleCloseModal = () => {
+    setError("");
+    onClose();
+    setFormData({ email: "", role_id: 0, salary: "" });
+  };
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "role" ? Number(value) : value,
+      [name]: name === "role" || name === "role_id" ? Number(value) : value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.email.trim() || formData.role_id === 0) {
+    if (!formData.email.trim() || formData.role_id === 0 || !formData.salary.trim()) {
       setError("Please fill in all fields before submitting.");
       return;
     }
@@ -64,7 +71,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
       await inviteEmployee(formData);
       toast.success("Employee invited successfully!");
       onClose();
-      setFormData({ email: "", role_id: 0 });
+      setFormData({ email: "", role_id: 0, salary: "" });
     } catch (err) {
       toast.error("Failed to invite employee");
       console.error("Error inviting employee:", err);
@@ -80,11 +87,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
           type="button"
           aria-label="Close add employee modal"
           className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
-          onClick={() => {
-            setError("");
-            onClose();
-            setFormData({ email: "", role_id: 0 });
-          }}
+          onClick={handleCloseModal}
         />
 
         <div
@@ -103,11 +106,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
               </p>
             </div>
             <button
-              onClick={() => {
-                setError("");
-                onClose();
-                setFormData({ email: "", role_id: 0 });
-              }}
+              onClick={handleCloseModal}
               className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/50 transition hover:bg-white/[0.08] hover:text-white"
               aria-label="Close"
             >
@@ -172,16 +171,28 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
                 </select>
               </div>
 
+              {/* Salary Info */}
+              <div className="space-y-2">
+                <label htmlFor="salary" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/50">
+                  Salary
+                </label>
+                <input
+                  id="salary"
+                  name="salary"
+                  type="text"
+                  value={formData.salary}
+                  onChange={handleChange}
+                  placeholder="Enter annual or monthly salary"
+                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
+                />
+              </div>
+
               {/* Footer / Buttons */}
               <div className="flex justify-end space-x-3 pt-4 border-t border-white/[0.06] -mx-6 sm:-mx-8 px-6 sm:px-8 mt-6">
                 <Button
                   className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"
                   type="button"
-                  onClick={() => {
-                    setError("");
-                    onClose();
-                    setFormData({ email: "", role_id: 0 });
-                  }}
+                  onClick={handleCloseModal}
                 >
                   Cancel
                 </Button>

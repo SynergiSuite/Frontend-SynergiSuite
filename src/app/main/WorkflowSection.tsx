@@ -14,12 +14,12 @@ import {
 
 export default function WorkflowSection() {
   const steps = [
-    { label: "Lead captured", icon: UserPlus, color: "text-[#5271ff]", bg: "bg-[#5271ff]/10 border-[#5271ff]/30 shadow-[#5271ff]/10" },
-    { label: "Client onboarded", icon: Briefcase, color: "text-[#a855f7]", bg: "bg-[#a855f7]/10 border-[#a855f7]/30 shadow-[#a855f7]/10" },
-    { label: "Project created", icon: Layers, color: "text-[#22d3ee]", bg: "bg-[#22d3ee]/10 border-[#22d3ee]/30 shadow-[#22d3ee]/10" },
-    { label: "Team assigned", icon: Users, color: "text-blue-500", bg: "bg-blue-500/10 border-blue-500/30 shadow-blue-500/10" },
-    { label: "Progress tracked", icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/30 shadow-emerald-400/10" },
-    { label: "Report generated", icon: FileCheck2, color: "text-[#e879f9]", bg: "bg-[#e879f9]/10 border-[#e879f9]/30 shadow-[#e879f9]/10" },
+    { label: "Lead captured", icon: UserPlus, color: "text-[#5271ff]", border: "border-[#5271ff]/30 shadow-[#5271ff]/10", overlayBg: "bg-[#5271ff]" },
+    { label: "Client onboarded", icon: Briefcase, color: "text-[#a855f7]", border: "border-[#a855f7]/30 shadow-[#a855f7]/10", overlayBg: "bg-[#a855f7]" },
+    { label: "Project created", icon: Layers, color: "text-[#22d3ee]", border: "border-[#22d3ee]/30 shadow-[#22d3ee]/10", overlayBg: "bg-[#22d3ee]" },
+    { label: "Team assigned", icon: Users, color: "text-blue-500", border: "border-blue-500/30 shadow-blue-500/10", overlayBg: "bg-blue-500" },
+    { label: "Progress tracked", icon: TrendingUp, color: "text-emerald-400", border: "border-emerald-400/30 shadow-emerald-400/10", overlayBg: "bg-emerald-400" },
+    { label: "Report generated", icon: FileCheck2, color: "text-[#e879f9]", border: "border-[#e879f9]/30 shadow-[#e879f9]/10", overlayBg: "bg-[#e879f9]" },
   ];
 
   return (
@@ -57,7 +57,7 @@ export default function WorkflowSection() {
         {/* Futuristic horizontal flow pipeline (Desktop) */}
         <div className="hidden lg:flex relative items-center justify-between py-12 px-6 w-full">
           {/* Animated Glowing Connecting Line */}
-          <div className="absolute left-[8%] right-[8%] h-0.5 bg-white/[0.05] top-[54px] z-0">
+          <div className="pointer-events-none absolute left-[8%] right-[8%] top-[76px] z-[1] h-0.5 overflow-hidden rounded-full bg-white/[0.05]">
             {/* Pulsing glow timeline path */}
             <motion.div
               className="h-full bg-gradient-to-r from-[#5271ff] via-[#e879f9] to-[#22d3ee] rounded-full"
@@ -72,7 +72,7 @@ export default function WorkflowSection() {
               style={{
                 width: "40%",
                 backgroundSize: "200% 200%",
-                boxShadow: "0 0 15px #e879f9",
+                boxShadow: "0 0 12px rgba(232,121,249,0.85)",
               }}
             />
           </div>
@@ -91,9 +91,12 @@ export default function WorkflowSection() {
                 transition={{ duration: 0.5, delay: index * 0.12 }}
               >
                 {/* Node bubble */}
-                <div className={`relative flex h-14 w-14 items-center justify-center rounded-2xl border bg-[#0a0826]/80 group cursor-pointer hover:scale-105 transition-all duration-300 shadow-lg ${step.bg}`}>
-                  <Icon className={`h-5.5 w-5.5 ${step.color}`} />
-                  <div className="absolute -inset-px rounded-2xl bg-white/[0.02] border border-white/10 group-hover:opacity-100 transition-opacity duration-300" />
+                <div className={`relative z-[5] flex h-14 w-14 items-center justify-center rounded-2xl border bg-[#0a0826] overflow-hidden group cursor-pointer hover:scale-105 transition-all duration-300 shadow-lg ${step.border}`}>
+                  {/* Subtle color backdrop overlay */}
+                  <div className={`absolute inset-0 opacity-10 ${step.overlayBg}`} />
+
+                  <Icon className={`h-5.5 w-5.5 ${step.color} relative z-10`} />
+                  <div className="pointer-events-none absolute -inset-px -z-10 rounded-2xl border border-white/10 bg-white/[0.02] transition-opacity duration-300 group-hover:opacity-100" />
                 </div>
 
                 {/* Node number tag */}
