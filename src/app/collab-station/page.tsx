@@ -1,12 +1,19 @@
 "use client";
 
+import { CookieManager } from "@/lib/cookieManager";
+import { socket } from "@/lib/socket";
+
 import React, { useState, useEffect, useRef } from "react";
+import { getMessagesApi } from "./apis/DirectChats/getMessageApi";
+import { sendMessageApi } from "./apis/DirectChats/sendMessageApi";
+import { CreateDirectChatApi } from "./apis/DirectChats/createDirectChatsApi";
 import { gsap } from "gsap";
 import ChatWindow from "./ChatWindow";
 import RightSidebar from "./RightSidebar";
 import CallOverlay from "./CallOverlay";
 import NewChatModal from "./NewChatModal";
 import { ChatChannel, Message, ChatThreadMap, CallType, Attachment } from "./types";
+
 
 // Setup Initial Mock Channels
 const INITIAL_GROUPS: ChatChannel[] = [
@@ -252,11 +259,23 @@ export default function CollabStationPage() {
   const [activeChannelId, setActiveChannelId] = useState("g-1");
   const [groups, setGroups] = useState<ChatChannel[]>(INITIAL_GROUPS);
   const [recentChats, setRecentChats] = useState<ChatChannel[]>(INITIAL_RECENT_CHATS);
-  const [threads, setThreads] = useState<ChatThreadMap>(INITIAL_THREADS);
+  const [threads, setThreads] = useState<ChatThreadMap>({});
   const [callType, setCallType] = useState<CallType>(null);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+  socket.connect();
+
+  socket.on("connect", () => {
+    console.log("Socket connected:", socket.id);
+  });
+
+  return () => {
+    socket.disconnect();
+  };
+}, []);
 
   // GSAP Entrance animation
   useEffect(() => {
@@ -277,22 +296,84 @@ export default function CollabStationPage() {
     return () => ctx.revert();
   }, []);
 
+useEffect(() => {
+  const fetchChats = async () => {
+    try {
+      const token = await CookieManager("get", "access-token");
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/collab-station/groups`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+       setGroups(data.groups || []); 
+      setRecentChats(data.directChats || []);
+    } catch (err) {
+      console.log("Failed to load chats", err);
+    }
+  };
+
+  fetchChats();
+}, []);
+
+useEffect(() => {
+  if (!activeChannelId) return;
+
+  socket.emit("join_room", activeChannelId);
+}, [activeChannelId]);
+  
+useEffect(() => {
+  socket.on("receive_message", (message) => {
+    const roomId = message.roomId;
+
+    setThreads((prev) => ({
+      ...prev,
+      [roomId]: [...(prev[roomId] || []), message],
+    }));
+  });
+
+  return () => {
+    socket.off("receive_message");
+  };
+}, []);
+
   // Find active channel metadata
   const activeChannel =
     groups.find((g) => g.id === activeChannelId) ||
     recentChats.find((c) => c.id === activeChannelId);
 
   const activeMessages = threads[activeChannelId] || [];
+  const handleSelectChannel = async (id: string) => {
+  setActiveChannelId(id);
 
+  try {
+    const data = await getMessagesApi(id);
+
+    setThreads((prev) => ({
+      ...prev,
+      [id]: data.messages || [],
+    }));
+  } catch (err) {
+    console.log("Failed to load messages", err);
+  }
+ };
   // Handle message dispatching
-  const handleSendMessage = (text: string, attachment?: Attachment) => {
-    if (!activeChannel) return;
+ const handleSendMessage = async (text: string, attachment?: Attachment) => {
+  if (!activeChannel) return;
 
+  try {
     const timeString = new Date().toLocaleTimeString([], {
       hour: "numeric",
       minute: "2-digit",
     });
 
+    // 1. CREATE MESSAGE FIRST (OPTIMISTIC UI)
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
       sender: "me",
@@ -302,18 +383,32 @@ export default function CollabStationPage() {
       attachment,
     };
 
-    // Update active thread messages
+    // 2. UPDATE UI IMMEDIATELY
     setThreads((prev) => ({
       ...prev,
-      [activeChannelId]: [...(prev[activeChannelId] || []), newMessage],
+      [activeChannel.id]: [
+        ...(prev[activeChannel.id] || []),
+        newMessage,
+      ],
     }));
 
-    // Update last message in channels list
-    const lastMsgDisplay = attachment ? `Sent a file: ${attachment.name}` : text;
-    
+    // 3. SEND VIA SOCKET (REAL-TIME)
+    socket.emit("send_message", {
+      roomId: activeChannel.id,
+      message: newMessage,
+    });
+
+    // 4. OPTIONAL: SAVE IN BACKEND (API fallback)
+    await sendMessageApi(activeChannel.id, text, attachment);
+
+    // 5. UPDATE CHAT LIST
+    const lastMsgDisplay = attachment
+      ? `Sent a file: ${attachment.name}`
+      : text;
+
     setGroups((prev) =>
       prev.map((g) =>
-        g.id === activeChannelId
+        g.id === activeChannel.id
           ? { ...g, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString }
           : g
       )
@@ -321,12 +416,16 @@ export default function CollabStationPage() {
 
     setRecentChats((prev) =>
       prev.map((c) =>
-        c.id === activeChannelId
+        c.id === activeChannel.id
           ? { ...c, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString }
           : c
       )
     );
-  };
+
+  } catch (err) {
+    console.log("Send message failed:", err);
+  }
+ };
 
   // Clear unread counts upon channel activation
   useEffect(() => {
@@ -339,26 +438,39 @@ export default function CollabStationPage() {
   }, [activeChannelId]);
 
   // Handle channel creation
-  const handleCreateChannel = (newChan: Omit<ChatChannel, "unreadCount" | "lastMessage" | "time">) => {
+  const handleCreateChannel = async (
+  newChan: Omit<ChatChannel, "unreadCount" | "lastMessage" | "time">
+ ) => {
+  try {
     const timeString = new Date().toLocaleTimeString([], {
       hour: "numeric",
       minute: "2-digit",
     });
 
+    // 👇 CALL BACKEND API HERE
+    const data = await CreateDirectChatApi(newChan.id);
+
+    const chat = data.chat || data;
+
     const fullChannel: ChatChannel = {
-      ...newChan,
+      id: chat.id,
+      name: chat.name,
+      type: chat.type,
+      groupType: chat.groupType,
       lastMessage: "Secure sync session established",
       time: timeString,
       unreadCount: 0,
+      status: chat.status || "online",
+      avatar: chat.avatar || "",
+      membersCount: chat.membersCount,
     };
 
-    if (newChan.type === "group") {
+    if (fullChannel.type === "group") {
       setGroups((prev) => [fullChannel, ...prev]);
     } else {
       setRecentChats((prev) => [fullChannel, ...prev]);
     }
 
-    // Initialize blank message thread with greeting system message
     setThreads((prev) => ({
       ...prev,
       [fullChannel.id]: [
@@ -373,9 +485,11 @@ export default function CollabStationPage() {
       ],
     }));
 
-    // Instantly navigate to the newly created channel
     setActiveChannelId(fullChannel.id);
-  };
+  } catch (err) {
+    console.log("Create channel failed:", err);
+  }
+};
 
   return (
     <div ref={containerRef} className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -411,7 +525,7 @@ export default function CollabStationPage() {
             activeId={activeChannelId}
             groups={groups}
             recentChats={recentChats}
-            onSelectChannel={(id) => setActiveChannelId(id)}
+            onSelectChannel={handleSelectChannel}
             onOpenNewChat={() => setIsNewChatOpen(true)}
           />
         </div>
