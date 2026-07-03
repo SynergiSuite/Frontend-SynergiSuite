@@ -314,8 +314,16 @@ export default function CollabStationPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
+<<<<<<< Updated upstream
   const currentUserRef = useRef<TokenUser>({});
   const chatIdsRef = useRef<string[]>([]);
+=======
+<<<<<<< Updated upstream
+=======
+  const currentUserRef = useRef<TokenUser>({});
+  const chatIdsRef = useRef<string[]>([]);
+  const tokenRequestCallIdRef = useRef<string | null>(null);
+>>>>>>> Stashed changes
 
   useEffect(() => {
   let cancelled = false;
@@ -351,6 +359,7 @@ export default function CollabStationPage() {
       window.setTimeout(() => setCurrentCall(null), 1200);
     };
 
+<<<<<<< Updated upstream
     const activateCall = async (call: CallDto) => {
       setCurrentCall(call);
       setCallError("");
@@ -361,6 +370,8 @@ export default function CollabStationPage() {
       }
     };
 
+=======
+>>>>>>> Stashed changes
     const onIncoming = (call: CallDto) => {
       setCallRole("recipient");
       setCallError("");
@@ -370,7 +381,14 @@ export default function CollabStationPage() {
       setCallRole((role) => role || "caller");
       setCurrentCall(call);
     };
+<<<<<<< Updated upstream
     const onAccepted = (call: CallDto) => void activateCall(call);
+=======
+    const onAccepted = (call: CallDto) => {
+      setCallError("");
+      setCurrentCall(call);
+    };
+>>>>>>> Stashed changes
     const onError = (payload: { message?: string; error?: { message?: string } }) =>
       setCallError(payload.error?.message || payload.message || "Call operation failed");
 
@@ -399,8 +417,12 @@ export default function CollabStationPage() {
             setCallRole(me?.userId === call.recipient.user_id ? "recipient" : "caller");
           }
         }
+<<<<<<< Updated upstream
         if (call.status === "active") await activateCall(call);
         else setCurrentCall(call);
+=======
+        setCurrentCall(call);
+>>>>>>> Stashed changes
       })
       .catch(() => undefined);
 
@@ -416,6 +438,33 @@ export default function CollabStationPage() {
     };
   }, []);
 
+<<<<<<< Updated upstream
+=======
+  // Token acquisition is centralized here so an accept acknowledgement and the
+  // `call:accepted` broadcast cannot create two LiveKit room connections.
+  useEffect(() => {
+    if (!currentCall || currentCall.status !== "active" || callCredentials) return;
+    if (tokenRequestCallIdRef.current === currentCall.callId) return;
+
+    let cancelled = false;
+    tokenRequestCallIdRef.current = currentCall.callId;
+    getCallToken(currentCall.callId)
+      .then((credentials) => {
+        if (!cancelled) setCallCredentials(credentials);
+      })
+      .catch((error) => {
+        tokenRequestCallIdRef.current = null;
+        if (!cancelled) {
+          setCallError(error instanceof Error ? error.message : "Unable to join the voice call");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCall, callCredentials]);
+
+>>>>>>> Stashed changes
   const emitCallEvent = async (event: string, payload: Record<string, string>) => {
     if (!socket.connected) throw new Error("Call signaling is disconnected");
     const acknowledgement = (await socket
@@ -448,7 +497,10 @@ export default function CollabStationPage() {
     try {
       const call = await emitCallEvent("call:accept", { callId: currentCall.callId });
       setCurrentCall(call);
+<<<<<<< Updated upstream
       setCallCredentials(await getCallToken(call.callId));
+=======
+>>>>>>> Stashed changes
     } catch (error) {
       setCallError(error instanceof Error ? error.message : "Unable to accept call");
     }
@@ -460,11 +512,19 @@ export default function CollabStationPage() {
       const call = await emitCallEvent(event, { callId: currentCall.callId });
       setCurrentCall(call);
       setCallCredentials(null);
+<<<<<<< Updated upstream
+=======
+      tokenRequestCallIdRef.current = null;
+>>>>>>> Stashed changes
       window.setTimeout(() => setCurrentCall(null), 600);
     } catch (error) {
       setCallError(error instanceof Error ? error.message : "Unable to update call");
     }
   };
+<<<<<<< Updated upstream
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes
 
   // GSAP Entrance animation
   useEffect(() => {
