@@ -315,7 +315,7 @@ export default function RightSidebar({
                 )}
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-[#5271ff]/20 to-[#3a4ec4]/10 border border-white/10 text-xs font-bold text-white shrink-0 relative">
-                    {chat.avatar || chat.name.slice(0, 2).toUpperCase()}
+                    {chat.avatar || (chat.name || "Unknown").slice(0, 2).toUpperCase()}
                     {chat.status && (
                       <span className={`absolute bottom-0 right-0 h-2 w-2 rounded-full border border-[#0c0a2f] ${
                         chat.status === "online" ? "bg-emerald-500 shadow-[0_0_6px_#10b981]" : "bg-zinc-500"
@@ -325,7 +325,7 @@ export default function RightSidebar({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="truncate font-semibold text-xs text-white">
-                        {chat.name}
+                        {chat.name || "Unknown"}
                       </h4>
                       <span className="text-[9px] text-white/30 font-medium shrink-0 ml-2">
                         {chat.time}

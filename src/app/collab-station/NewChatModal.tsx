@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Users, User, Sparkles } from "lucide-react";
 import { ChatChannel } from "./types";
+import { fetchEmployeesData } from "@/app/employees/apis/getEmployeeApi";
 
 interface NewChatModalProps {
   isOpen: boolean;
@@ -11,14 +12,13 @@ interface NewChatModalProps {
   onCreateChannel: (channel: Omit<ChatChannel, "unreadCount" | "lastMessage" | "time">) => void;
 }
 
-const MOCK_TEAMMATES = [
-  { id: "1", name: "Sarah Connor", role: "UI Designer", avatar: "SC", online: true },
-  { id: "2", name: "Alex Mercer", role: "Backend Architect", avatar: "AM", online: false },
-  { id: "3", name: "Elena Rostova", role: "Product Manager", avatar: "ER", online: true },
-  { id: "4", name: "David Chen", role: "DevOps Engineer", avatar: "DC", online: true },
-  { id: "5", name: "Marcus Aurelius", role: "Project Lead", avatar: "MA", online: false },
-  { id: "6", name: "Livia Drusilla", role: "Data Scientist", avatar: "LD", online: true },
-];
+interface Teammate {
+  id: string;
+  name: string;
+  role: string;
+  avatar: string;
+  online: boolean;
+}
 
 export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewChatModalProps) {
   const [activeTab, setActiveTab] = useState<"direct" | "group">("direct");
@@ -26,8 +26,54 @@ export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewCh
   const [groupName, setGroupName] = useState("");
   const [selectedGroupType, setSelectedGroupType] = useState<"team" | "project" | "custom">("team");
   const [selectedTeammate, setSelectedTeammate] = useState<string | null>(null);
+  const [teammates, setTeammates] = useState<Teammate[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const filteredTeammates = MOCK_TEAMMATES.filter((member) =>
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let active = true;
+    const loadEmployees = async () => {
+      setIsLoading(true);
+      try {
+        const data = await fetchEmployeesData();
+        if (!active) return;
+
+        const mapped: Teammate[] = data.employees.map((emp) => {
+          const initials = emp.name
+            ? emp.name
+                .split(" ")
+                .map((n) => n[0])
+                .join("")
+                .substring(0, 2)
+                .toUpperCase()
+            : "??";
+          return {
+            id: String(emp.id),
+            name: emp.name,
+            role: emp.role,
+            avatar: initials,
+            online: emp.status === "Active",
+          };
+        });
+        setTeammates(mapped);
+      } catch (err) {
+        console.error("Failed to load employees for new chat modal:", err);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadEmployees();
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen]);
+
+  const filteredTeammates = teammates.filter((member) =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -45,7 +91,7 @@ export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewCh
       setGroupName("");
     } else {
       if (!selectedTeammate) return;
-      const teammate = MOCK_TEAMMATES.find((t) => t.id === selectedTeammate);
+      const teammate = teammates.find((t) => t.id === selectedTeammate);
       if (!teammate) return;
       onCreateChannel({
         id: `d-${teammate.id}-${Date.now()}`,
@@ -188,7 +234,11 @@ export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewCh
 
                   {/* Teammates List */}
                   <div className="max-h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                    {filteredTeammates.length > 0 ? (
+                    {isLoading ? (
+                      <p className="py-4 text-center text-xs text-white/50 animate-pulse">
+                        Loading teammates...
+                      </p>
+                    ) : filteredTeammates.length > 0 ? (
                       filteredTeammates.map((member) => (
                         <button
                           key={member.id}

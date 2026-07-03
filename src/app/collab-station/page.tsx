@@ -5,7 +5,6 @@ import { socket } from "@/lib/socket";
 
 import React, { useState, useEffect, useRef } from "react";
 import { getMessagesApi } from "./apis/DirectChats/getMessageApi";
-import { sendMessageApi } from "./apis/DirectChats/sendMessageApi";
 import { CreateDirectChatApi } from "./apis/DirectChats/createDirectChatsApi";
 import { gsap } from "gsap";
 import ChatWindow from "./ChatWindow";
@@ -255,8 +254,43 @@ const INITIAL_THREADS: ChatThreadMap = {
   ],
 };
 
+type TokenUser = { user_id?: number; sub?: number; email?: string };
+
+const readTokenUser = (token: string): TokenUser => {
+  try {
+    const payload = token.split(".")[1];
+    return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+  } catch {
+    return {};
+  }
+};
+
+const formatMessage = (message: any, currentUser: TokenUser): Message => {
+  const sender = message.sender || {};
+  const isMe =
+    (currentUser.user_id ?? currentUser.sub) === message.senderId ||
+    (!!currentUser.email && currentUser.email === sender.email);
+
+  return {
+    id: message.id,
+    sender: isMe ? "me" : "them",
+    senderName: isMe ? "Me" : sender.name || sender.email || "Unknown user",
+    text: message.text || "",
+    time: message.createdAt
+      ? new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+      : "",
+    avatar: sender.name
+      ? sender.name.split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()
+      : undefined,
+    attachment: message.fileUrl
+      ? { name: message.fileUrl.split("/").pop() || "Attachment", size: "", type: message.type, url: message.fileUrl }
+      : undefined,
+  };
+};
+
 export default function CollabStationPage() {
-  const [activeChannelId, setActiveChannelId] = useState("g-1");
+  // Wait for the API to provide a real UUID before loading message history.
+  const [activeChannelId, setActiveChannelId] = useState("");
   const [groups, setGroups] = useState<ChatChannel[]>(INITIAL_GROUPS);
   const [recentChats, setRecentChats] = useState<ChatChannel[]>(INITIAL_RECENT_CHATS);
   const [threads, setThreads] = useState<ChatThreadMap>({});
@@ -264,15 +298,32 @@ export default function CollabStationPage() {
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const currentUserRef = useRef<TokenUser>({});
+  const chatIdsRef = useRef<string[]>([]);
 
   useEffect(() => {
-  socket.connect();
+  let cancelled = false;
+
+  const connectSocket = async () => {
+    const token = await CookieManager("get", "access-token");
+    if (cancelled || !token) return;
+    currentUserRef.current = readTokenUser(token);
+    socket.auth = { token };
+    socket.connect();
+  };
+
+  connectSocket();
 
   socket.on("connect", () => {
     console.log("Socket connected:", socket.id);
+    chatIdsRef.current.forEach((groupId) => {
+      socket.emit("group:join", { groupId });
+    });
   });
 
   return () => {
+    cancelled = true;
+    socket.off("connect");
     socket.disconnect();
   };
 }, []);
@@ -300,6 +351,8 @@ useEffect(() => {
   const fetchChats = async () => {
     try {
       const token = await CookieManager("get", "access-token");
+      const currentUser = token ? readTokenUser(token) : {};
+      currentUserRef.current = currentUser;
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/collab-station/groups`,
@@ -312,8 +365,60 @@ useEffect(() => {
 
       const data = await res.json();
 
-       setGroups(data.groups || []); 
-      setRecentChats(data.directChats || []);
+      let loadedGroups: any[] = [];
+      let loadedDirects: any[] = [];
+
+      if (Array.isArray(data)) {
+        const mappedChats = data.map((c) => {
+          const otherMember = c.type === "direct"
+            ? c.members?.find((member: any) => {
+                const user = member.user || {};
+                const myId = currentUser.user_id ?? currentUser.sub;
+                return myId ? member.userId !== myId : user.email !== currentUser.email;
+              })
+            : undefined;
+          const displayUser = otherMember?.user;
+
+          return {
+          id: c.id,
+          name: c.type === "direct"
+            ? displayUser?.name || displayUser?.email || "Unknown user"
+            : c.name,
+          type: c.type,
+          groupType: c.type === "direct" ? undefined : c.type,
+          lastMessage: c.latestMessage ? c.latestMessage.m_text : "No messages yet",
+          time: c.latestMessage ? new Date(c.latestMessage.m_createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
+          unreadCount: 0,
+          status: "online",
+          avatar: c.avatarUrl || (displayUser?.name
+            ? displayUser.name.split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()
+            : undefined),
+          membersCount: c.members?.length || 0,
+        };});
+
+        loadedGroups = mappedChats.filter((c) => c.type !== "direct");
+        loadedDirects = mappedChats.filter((c) => c.type === "direct");
+      } else {
+        loadedGroups = data.groups || [];
+        loadedDirects = data.directChats || [];
+      }
+
+      setGroups(loadedGroups);
+      setRecentChats(loadedDirects);
+      const loadedChats = [...loadedGroups, ...loadedDirects];
+      chatIdsRef.current = loadedChats.map((chat) => chat.id);
+      setActiveChannelId((currentId) =>
+        loadedChats.some((chat) => chat.id === currentId)
+          ? currentId
+          : loadedChats[0]?.id || ""
+      );
+
+      // Join all chat rooms so we can receive messages in real-time
+      if (socket.connected) {
+        chatIdsRef.current.forEach((groupId) => {
+          socket.emit("group:join", { groupId });
+        });
+      }
     } catch (err) {
       console.log("Failed to load chats", err);
     }
@@ -325,21 +430,42 @@ useEffect(() => {
 useEffect(() => {
   if (!activeChannelId) return;
 
-  socket.emit("join_room", activeChannelId);
+  socket.emit("group:join", { groupId: activeChannelId });
+
+  let cancelled = false;
+  getMessagesApi(activeChannelId)
+    .then((data) => {
+      if (cancelled) return;
+      const messages = Array.isArray(data) ? data : data.messages || [];
+      setThreads((prev) => ({
+        ...prev,
+        [activeChannelId]: messages.map((message: any) =>
+          formatMessage(message, currentUserRef.current)
+        ),
+      }));
+    })
+    .catch((err) => console.log("Failed to load messages", err));
+
+  return () => {
+    cancelled = true;
+  };
 }, [activeChannelId]);
   
 useEffect(() => {
-  socket.on("receive_message", (message) => {
-    const roomId = message.roomId;
+  const receiveMessage = (message: any) => {
+    const roomId = message.groupId;
+    const formatted = formatMessage(message, currentUserRef.current);
 
     setThreads((prev) => ({
       ...prev,
-      [roomId]: [...(prev[roomId] || []), message],
+      [roomId]: [...(prev[roomId] || []).filter((item) => item.id !== formatted.id), formatted],
     }));
-  });
+  };
+
+  socket.on("message:received", receiveMessage);
 
   return () => {
-    socket.off("receive_message");
+    socket.off("message:received", receiveMessage);
   };
 }, []);
 
@@ -349,20 +475,7 @@ useEffect(() => {
     recentChats.find((c) => c.id === activeChannelId);
 
   const activeMessages = threads[activeChannelId] || [];
-  const handleSelectChannel = async (id: string) => {
-  setActiveChannelId(id);
-
-  try {
-    const data = await getMessagesApi(id);
-
-    setThreads((prev) => ({
-      ...prev,
-      [id]: data.messages || [],
-    }));
-  } catch (err) {
-    console.log("Failed to load messages", err);
-  }
- };
+  const handleSelectChannel = (id: string) => setActiveChannelId(id);
   // Handle message dispatching
  const handleSendMessage = async (text: string, attachment?: Attachment) => {
   if (!activeChannel) return;
@@ -373,35 +486,19 @@ useEffect(() => {
       minute: "2-digit",
     });
 
-    // 1. CREATE MESSAGE FIRST (OPTIMISTIC UI)
-    const newMessage: Message = {
-      id: `msg-${Date.now()}`,
-      sender: "me",
-      senderName: "Me",
+    if (!socket.connected) {
+      throw new Error("Chat connection is not available");
+    }
+
+    // The gateway persists the message before broadcasting `message:received`.
+    socket.emit("message:send", {
+      groupId: activeChannel.id,
       text,
-      time: timeString,
-      attachment,
-    };
-
-    // 2. UPDATE UI IMMEDIATELY
-    setThreads((prev) => ({
-      ...prev,
-      [activeChannel.id]: [
-        ...(prev[activeChannel.id] || []),
-        newMessage,
-      ],
-    }));
-
-    // 3. SEND VIA SOCKET (REAL-TIME)
-    socket.emit("send_message", {
-      roomId: activeChannel.id,
-      message: newMessage,
+      type: attachment ? "file" : "text",
+      fileUrl: attachment?.url,
     });
 
-    // 4. OPTIONAL: SAVE IN BACKEND (API fallback)
-    await sendMessageApi(activeChannel.id, text, attachment);
-
-    // 5. UPDATE CHAT LIST
+    // Update the preview immediately; the thread updates from the persisted broadcast.
     const lastMsgDisplay = attachment
       ? `Sent a file: ${attachment.name}`
       : text;
@@ -448,20 +545,21 @@ useEffect(() => {
     });
 
     // 👇 CALL BACKEND API HERE
-    const data = await CreateDirectChatApi(newChan.id);
+    const targetUserId = newChan.type === "direct" ? newChan.id.split('-')[1] : newChan.id;
+    const data = await CreateDirectChatApi(targetUserId);
 
     const chat = data.chat || data;
 
     const fullChannel: ChatChannel = {
       id: chat.id,
-      name: chat.name,
+      name: chat.type === "direct" ? newChan.name : chat.name,
       type: chat.type,
       groupType: chat.groupType,
       lastMessage: "Secure sync session established",
       time: timeString,
       unreadCount: 0,
       status: chat.status || "online",
-      avatar: chat.avatar || "",
+      avatar: chat.avatarUrl || newChan.avatar || "",
       membersCount: chat.membersCount,
     };
 
@@ -486,6 +584,7 @@ useEffect(() => {
     }));
 
     setActiveChannelId(fullChannel.id);
+    socket.emit("group:join", { groupId: fullChannel.id });
   } catch (err) {
     console.log("Create channel failed:", err);
   }
