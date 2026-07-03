@@ -80,13 +80,15 @@ export default function ChatWindow({
       <div className="shrink-0 border-b border-white/[0.08] bg-[#0c0a2d]/25 px-6 py-4 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff] shadow-[inset_0_0_10px_rgba(82,113,255,0.2)] font-bold text-sm relative">
-            {activeChannelName.startsWith("#") ? activeChannelName.slice(1, 3).toUpperCase() : activeChannelName.slice(0, 2).toUpperCase()}
+            {(activeChannelName || "Unknown").startsWith("#") 
+              ? (activeChannelName || "Unknown").slice(1, 3).toUpperCase() 
+              : (activeChannelName || "Unknown").slice(0, 2).toUpperCase()}
             {activeChannelType === "direct" && (
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#030114] shadow-[0_0_8px_#10b981]" />
             )}
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white tracking-wide">{activeChannelName}</h2>
+            <h2 className="text-sm font-bold text-white tracking-wide">{activeChannelName || "Unknown"}</h2>
             <p className="text-[10px] text-white/40 flex items-center gap-1">
               {activeChannelType === "group" ? (
                 <>

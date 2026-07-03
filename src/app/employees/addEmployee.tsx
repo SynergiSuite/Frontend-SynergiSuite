@@ -21,7 +21,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
   const modalShellRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const loadRoles = async() => {
+    const loadRoles = async () => {
       try {
         const rolesData = await fetchRoles();
         setRoles(rolesData);
@@ -126,8 +126,7 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
             ) : null}
 
             <p className="text-sm text-white/40 leading-relaxed">
-              Make sure the invited person has an account with SynergiSuite. If
-              they don&apos;t, they can sign up for a free trial. Once they&apos;ve signed
+              Once they&apos;ve signed
               up, they&apos;ll be able to access SynergiSuite and start collaborating
               with you.
             </p>
@@ -197,11 +196,10 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
                   Cancel
                 </Button>
                 <Button
-                  className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all ${
-                    isSubmitting
+                  className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all ${isSubmitting
                       ? "bg-gray-700/50 cursor-not-allowed opacity-50"
                       : "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_16px_rgba(82,113,255,0.25)] hover:shadow-[0_0_24px_rgba(82,113,255,0.35)]"
-                  }`}
+                    }`}
                   type="submit"
                   disabled={isSubmitting}
                 >
