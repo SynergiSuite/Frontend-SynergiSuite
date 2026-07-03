@@ -6,12 +6,19 @@ import { socket } from "@/lib/socket";
 import React, { useState, useEffect, useRef } from "react";
 import { getMessagesApi } from "./apis/DirectChats/getMessageApi";
 import { CreateDirectChatApi } from "./apis/DirectChats/createDirectChatsApi";
+import { sendMessageApi } from "./apis/DirectChats/sendMessageApi";
+import { deleteMessageApi } from "./apis/DirectChats/deleteMessageApi";
+import { getPresignedUrlApi } from "../cloud/apis/getPresignedUrlApi";
 import { gsap } from "gsap";
 import ChatWindow from "./ChatWindow";
 import RightSidebar from "./RightSidebar";
 import CallOverlay from "./CallOverlay";
 import NewChatModal from "./NewChatModal";
-import { ChatChannel, Message, ChatThreadMap, CallType, Attachment } from "./types";
+import LoaderCustom from "@/components/ui/loader-custom";
+import { ChatChannel, Message, ChatThreadMap, Attachment } from "./types";
+import { CallAcknowledgement, CallDto, CallTokenResponse } from "./callTypes";
+import { getCallToken, getCurrentCall } from "./apis/callApi";
+import { toast } from "sonner";
 
 
 // Setup Initial Mock Channels
@@ -283,7 +290,12 @@ const formatMessage = (message: any, currentUser: TokenUser): Message => {
       ? sender.name.split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()
       : undefined,
     attachment: message.fileUrl
-      ? { name: message.fileUrl.split("/").pop() || "Attachment", size: "", type: message.type, url: message.fileUrl }
+      ? { 
+          name: decodeURIComponent(message.fileUrl.split("/").pop()?.split("?")[0] || "Attachment"), 
+          size: "", 
+          type: message.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i) ? "image" : "file", 
+          url: message.fileUrl 
+        }
       : undefined,
   };
 };
@@ -294,8 +306,12 @@ export default function CollabStationPage() {
   const [groups, setGroups] = useState<ChatChannel[]>(INITIAL_GROUPS);
   const [recentChats, setRecentChats] = useState<ChatChannel[]>(INITIAL_RECENT_CHATS);
   const [threads, setThreads] = useState<ChatThreadMap>({});
-  const [callType, setCallType] = useState<CallType>(null);
+  const [currentCall, setCurrentCall] = useState<CallDto | null>(null);
+  const [callRole, setCallRole] = useState<"caller" | "recipient" | null>(null);
+  const [callCredentials, setCallCredentials] = useState<CallTokenResponse | null>(null);
+  const [callError, setCallError] = useState("");
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const currentUserRef = useRef<TokenUser>({});
@@ -327,6 +343,128 @@ export default function CollabStationPage() {
     socket.disconnect();
   };
 }, []);
+
+  useEffect(() => {
+    const setTerminalCall = (call: CallDto) => {
+      setCurrentCall(call);
+      setCallCredentials(null);
+      window.setTimeout(() => setCurrentCall(null), 1200);
+    };
+
+    const activateCall = async (call: CallDto) => {
+      setCurrentCall(call);
+      setCallError("");
+      try {
+        setCallCredentials(await getCallToken(call.callId));
+      } catch (error) {
+        setCallError(error instanceof Error ? error.message : "Unable to join the voice call");
+      }
+    };
+
+    const onIncoming = (call: CallDto) => {
+      setCallRole("recipient");
+      setCallError("");
+      setCurrentCall(call);
+    };
+    const onRinging = (call: CallDto) => {
+      setCallRole((role) => role || "caller");
+      setCurrentCall(call);
+    };
+    const onAccepted = (call: CallDto) => void activateCall(call);
+    const onError = (payload: { message?: string; error?: { message?: string } }) =>
+      setCallError(payload.error?.message || payload.message || "Call operation failed");
+
+    socket.on("call:incoming", onIncoming);
+    socket.on("call:ringing", onRinging);
+    socket.on("call:accepted", onAccepted);
+    socket.on("call:rejected", setTerminalCall);
+    socket.on("call:cancelled", setTerminalCall);
+    socket.on("call:missed", setTerminalCall);
+    socket.on("call:ended", setTerminalCall);
+    socket.on("call:error", onError);
+
+    getCurrentCall()
+      .then(async (call) => {
+        if (!call) return;
+        const token = await CookieManager("get", "access-token");
+        const email = token ? readTokenUser(token).email : undefined;
+        if (email) {
+          const response = await fetch(
+            `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/collab-station/groups/${call.groupId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (response.ok) {
+            const group = await response.json();
+            const me = group.members?.find((member: any) => member.user?.email === email);
+            setCallRole(me?.userId === call.recipient.user_id ? "recipient" : "caller");
+          }
+        }
+        if (call.status === "active") await activateCall(call);
+        else setCurrentCall(call);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      socket.off("call:incoming", onIncoming);
+      socket.off("call:ringing", onRinging);
+      socket.off("call:accepted", onAccepted);
+      socket.off("call:rejected", setTerminalCall);
+      socket.off("call:cancelled", setTerminalCall);
+      socket.off("call:missed", setTerminalCall);
+      socket.off("call:ended", setTerminalCall);
+      socket.off("call:error", onError);
+    };
+  }, []);
+
+  const emitCallEvent = async (event: string, payload: Record<string, string>) => {
+    if (!socket.connected) throw new Error("Call signaling is disconnected");
+    const acknowledgement = (await socket
+      .timeout(10_000)
+      .emitWithAck(event, payload)) as CallAcknowledgement;
+    if (!acknowledgement.success || !acknowledgement.call) {
+      throw new Error(acknowledgement.error?.message || "Call operation failed");
+    }
+    return acknowledgement.call;
+  };
+
+  const handleStartCall = async () => {
+    if (!activeChannel || activeChannel.type !== "direct") {
+      setCallError("Voice calls are currently available for direct chats only");
+      return;
+    }
+    try {
+      setCallError("");
+      setCallRole("caller");
+      setCurrentCall(await emitCallEvent("call:invite", { groupId: activeChannel.id }));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unable to start call";
+      setCallError(message);
+      toast.error(message);
+    }
+  };
+
+  const handleAcceptCall = async () => {
+    if (!currentCall) return;
+    try {
+      const call = await emitCallEvent("call:accept", { callId: currentCall.callId });
+      setCurrentCall(call);
+      setCallCredentials(await getCallToken(call.callId));
+    } catch (error) {
+      setCallError(error instanceof Error ? error.message : "Unable to accept call");
+    }
+  };
+
+  const handleCallAction = async (event: "call:reject" | "call:cancel" | "call:end") => {
+    if (!currentCall) return;
+    try {
+      const call = await emitCallEvent(event, { callId: currentCall.callId });
+      setCurrentCall(call);
+      setCallCredentials(null);
+      window.setTimeout(() => setCurrentCall(null), 600);
+    } catch (error) {
+      setCallError(error instanceof Error ? error.message : "Unable to update call");
+    }
+  };
 
   // GSAP Entrance animation
   useEffect(() => {
@@ -421,6 +559,8 @@ useEffect(() => {
       }
     } catch (err) {
       console.log("Failed to load chats", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -456,16 +596,46 @@ useEffect(() => {
     const roomId = message.groupId;
     const formatted = formatMessage(message, currentUserRef.current);
 
+    setThreads((prev) => {
+      const roomThreads = prev[roomId] || [];
+      
+      // Find matching temporary message by text or attachment name
+      let tempIndexToRemove = roomThreads.findIndex((m) => {
+        if (!m.id.startsWith("temp-")) return false;
+        const textMatch = m.text && formatted.text && m.text === formatted.text;
+        const attachmentMatch = m.attachment?.name && formatted.attachment?.name && m.attachment.name === formatted.attachment.name;
+        return textMatch || attachmentMatch;
+      });
+
+      // If we found a matching temp message, it means this incoming message is actually ours echoing back!
+      if (tempIndexToRemove !== -1) {
+        formatted.sender = "me";
+      }
+
+      const newThreads = roomThreads.filter(
+        (item, idx) => item.id !== formatted.id && idx !== tempIndexToRemove
+      );
+
+      return {
+        ...prev,
+        [roomId]: [...newThreads, formatted],
+      };
+    });
+  };
+
+  const handleMessageDeleted = (data: { messageId: string, groupId: string }) => {
     setThreads((prev) => ({
       ...prev,
-      [roomId]: [...(prev[roomId] || []).filter((item) => item.id !== formatted.id), formatted],
+      [data.groupId]: (prev[data.groupId] || []).filter((item) => item.id !== data.messageId),
     }));
   };
 
   socket.on("message:received", receiveMessage);
+  socket.on("message:deleted", handleMessageDeleted);
 
   return () => {
     socket.off("message:received", receiveMessage);
+    socket.off("message:deleted", handleMessageDeleted);
   };
 }, []);
 
@@ -490,38 +660,104 @@ useEffect(() => {
       throw new Error("Chat connection is not available");
     }
 
-    // The gateway persists the message before broadcasting `message:received`.
+    // 1. Optimistic UI Update immediately!
+    const tempId = `temp-${Date.now()}`;
+    const previewUrl = attachment?.file ? URL.createObjectURL(attachment.file) : attachment?.url;
+    
+    const tempMessage: Message = {
+      id: tempId,
+      sender: "me",
+      senderName: "Me",
+      text,
+      time: timeString,
+      avatar: "",
+      attachment: attachment ? {
+        name: attachment.name,
+        size: attachment.size,
+        type: attachment.type,
+        url: previewUrl || ""
+      } : undefined
+    };
+
+    setThreads((prev) => ({
+      ...prev,
+      [activeChannel.id]: [...(prev[activeChannel.id] || []), tempMessage],
+    }));
+
+    const lastMsgDisplay = attachment ? `Sent a file: ${attachment.name}` : text;
+    
+    setGroups((prev) => prev.map((g) =>
+      g.id === activeChannel.id ? { ...g, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString } : g
+    ));
+
+    setRecentChats((prev) => prev.map((c) =>
+      c.id === activeChannel.id ? { ...c, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString } : c
+    ));
+
+    // 2. Perform the slow network operations silently in the background
+    let fileUrl = attachment?.url;
+
+    if (attachment?.file) {
+      const presignedData = await getPresignedUrlApi(
+        attachment.file.name,
+        attachment.file.type || "application/octet-stream",
+        process.env.NEXT_PUBLIC_CHAT_BUCKET || "synergi-chat-attachments"
+      );
+      
+      const uploadRes = await fetch(presignedData.uploadUrl, {
+        method: "PUT",
+        headers: {
+          "Content-Type": attachment.file.type || "application/octet-stream",
+        },
+        body: attachment.file,
+      });
+
+      if (!uploadRes.ok) {
+        throw new Error("Failed to upload attachment");
+      }
+      
+      fileUrl = presignedData.filePath;
+    }
+
+    const payloadAttachment = attachment 
+      ? { name: attachment.name, size: attachment.size, type: attachment.type, url: fileUrl } 
+      : undefined;
+
+    // 3. Emit to backend 
     socket.emit("message:send", {
       groupId: activeChannel.id,
       text,
       type: attachment ? "file" : "text",
-      fileUrl: attachment?.url,
+      fileUrl: fileUrl,
     });
 
-    // Update the preview immediately; the thread updates from the persisted broadcast.
-    const lastMsgDisplay = attachment
-      ? `Sent a file: ${attachment.name}`
-      : text;
-
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.id === activeChannel.id
-          ? { ...g, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString }
-          : g
-      )
-    );
-
-    setRecentChats((prev) =>
-      prev.map((c) =>
-        c.id === activeChannel.id
-          ? { ...c, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString }
-          : c
-      )
-    );
+    await sendMessageApi(activeChannel.id, text, payloadAttachment);
 
   } catch (err) {
     console.log("Send message failed:", err);
   }
+ };
+
+ const handleDeleteMessage = async (messageId: string) => {
+   if (!activeChannel) return;
+   
+   try {
+     // 1. Optimistic UI update
+     setThreads((prev) => ({
+       ...prev,
+       [activeChannel.id]: (prev[activeChannel.id] || []).filter(m => m.id !== messageId),
+     }));
+
+     // 2. Broadcast deletion
+     if (socket.connected) {
+       socket.emit("message:delete", { messageId, groupId: activeChannel.id });
+     }
+
+     // 3. Fallback backend save
+     await deleteMessageApi(messageId);
+   } catch (err) {
+     console.log("Delete message failed:", err);
+   }
  };
 
   // Clear unread counts upon channel activation
@@ -590,6 +826,14 @@ useEffect(() => {
   }
 };
 
+  if (isLoading) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-[#030114]">
+        <LoaderCustom text="Establishing Secure Sync..." />
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Centered High-Tech Glass Workspace Frame */}
@@ -608,7 +852,11 @@ useEffect(() => {
               activeChannelType={activeChannel.type}
               messages={activeMessages}
               onSendMessage={handleSendMessage}
-              onInitiateCall={(type) => setCallType(type)}
+              onInitiateCall={(type) => {
+                if (type === "audio") void handleStartCall();
+                else toast.info("Video calls are not enabled yet");
+              }}
+              onDeleteMessage={handleDeleteMessage}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center text-center opacity-40 select-none">
@@ -633,9 +881,18 @@ useEffect(() => {
 
       {/* Futuristic Secure Call overlay */}
       <CallOverlay
-        callType={callType}
-        channelName={activeChannel?.name || "Secure Node"}
-        onHangUp={() => setCallType(null)}
+        call={currentCall}
+        currentUserId={
+          callRole === "caller"
+            ? currentCall?.caller.user_id
+            : currentCall?.recipient.user_id
+        }
+        credentials={callCredentials}
+        error={callError}
+        onAccept={() => void handleAcceptCall()}
+        onReject={() => void handleCallAction("call:reject")}
+        onCancel={() => void handleCallAction("call:cancel")}
+        onEnd={() => void handleCallAction("call:end")}
       />
 
       {/* New Sync Session creation modal */}

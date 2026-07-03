@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown } from "lucide-react";
+import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown, Trash2 } from "lucide-react";
 import { Message, Attachment } from "./types";
 
 interface ChatWindowProps {
@@ -11,6 +11,7 @@ interface ChatWindowProps {
   messages: Message[];
   onSendMessage: (text: string, attachment?: Attachment) => void;
   onInitiateCall: (type: "audio" | "video") => void;
+  onDeleteMessage?: (messageId: string) => void;
 }
 
 export default function ChatWindow({
@@ -19,9 +20,11 @@ export default function ChatWindow({
   messages,
   onSendMessage,
   onInitiateCall,
+  onDeleteMessage,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState("");
   const [selectedFile, setSelectedFile] = useState<Attachment | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,6 +41,17 @@ export default function ChatWindow({
     textarea.style.height = "0px";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
   }, [inputText]);
+
+  // Close lightbox on Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxImage(null);
+    };
+    if (lightboxImage) {
+      window.addEventListener("keydown", handleEsc);
+    }
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [lightboxImage]);
 
   const handleSend = () => {
     const trimmed = inputText.trim();
@@ -67,6 +81,7 @@ export default function ChatWindow({
       name: file.name,
       size: sizeStr,
       type: file.type || "application/octet-stream",
+      file: file,
     });
 
     // Reset input
@@ -154,7 +169,7 @@ export default function ChatWindow({
                   initial={{ opacity: 0, y: 15, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{ type: "spring", stiffness: 320, damping: 26 }}
-                  className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
+                  className={`flex w-full group ${isMe ? "justify-end" : "justify-start"}`}
                 >
                   <div className={`flex max-w-[80%] gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                     
@@ -183,24 +198,45 @@ export default function ChatWindow({
                       >
                         {/* Render Attached Files inside Message if any */}
                         {message.attachment && (
-                          <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
-                              <File size={16} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="truncate text-xs font-semibold text-white">
-                                {message.attachment.name}
-                              </p>
-                              <p className="text-[10px] text-white/40">
-                                {message.attachment.size}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer"
-                            >
-                              <Download size={14} />
-                            </button>
+                          <div className="mb-3">
+                            {message.attachment.type.startsWith("image") || message.attachment.name.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                              <div className="relative overflow-hidden rounded-xl border border-white/10 group inline-block">
+                                <img
+                                  src={message.attachment.url}
+                                  alt={message.attachment.name}
+                                  className="w-full max-w-[300px] h-auto object-cover rounded-xl block"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setLightboxImage(message.attachment?.url || null)}
+                                  className="absolute inset-0 w-full h-full bg-[#0a0826]/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white backdrop-blur-sm cursor-pointer border-none outline-none"
+                                >
+                                  <span className="bg-black/50 px-3 py-1.5 text-xs font-semibold rounded-full backdrop-blur-md">View Image</span>
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
+                                  <File size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="truncate text-xs font-semibold text-white">
+                                    {message.attachment.name}
+                                  </p>
+                                  <p className="text-[10px] text-white/40">
+                                    {message.attachment.size}
+                                  </p>
+                                </div>
+                                <a
+                                  href={message.attachment.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                                >
+                                  <Download size={14} />
+                                </a>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -210,14 +246,29 @@ export default function ChatWindow({
                           </p>
                         )}
                       </div>
-
-                      {/* Message Time stamp */}
-                      <p className={`text-[9px] uppercase tracking-wider font-semibold text-white/20 mt-1 ${
-                        isMe ? "text-right mr-1" : "text-left ml-1"
-                      }`}>
-                        {message.time}
-                      </p>
+                      
+                      <div className={`flex items-center mt-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                        <p className={`text-[10px] text-white/40 ${
+                          isMe ? "mr-1" : "ml-1"
+                        }`}>
+                          {message.time}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Delete Action Button (Visible on Hover for User's Own Messages) */}
+                    {isMe && onDeleteMessage && (
+                      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity px-1">
+                        <button
+                          type="button"
+                          onClick={() => onDeleteMessage(message.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-white/30 hover:bg-red-500/10 hover:text-red-400 transition cursor-pointer"
+                          title="Delete message"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               );
@@ -312,6 +363,35 @@ export default function ChatWindow({
         </div>
       </div>
 
+      {/* Lightbox Modal */}
+      {typeof window !== "undefined" && 
+        require("react-dom").createPortal(
+          <AnimatePresence>
+            {lightboxImage && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+                onClick={() => setLightboxImage(null)}
+              >
+                <button
+                  className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
+                  onClick={() => setLightboxImage(null)}
+                >
+                  <X size={24} />
+                </button>
+                <img
+                  src={lightboxImage}
+                  alt="Preview"
+                  className="max-h-[90vh] max-w-full rounded-md object-contain shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }

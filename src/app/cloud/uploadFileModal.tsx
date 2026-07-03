@@ -115,7 +115,8 @@ export default function UploadFileModal({
         setUploadStatus("Requesting upload ticket...");
         const presignedData = await getPresignedUrlApi(
           selectedFile.name,
-          selectedFile.type || "application/octet-stream"
+          selectedFile.type || "application/octet-stream",
+          process.env.NEXT_PUBLIC_DOC_BUCKET || "synergisuite-resources"
         );
         filePath = presignedData.filePath;
 
