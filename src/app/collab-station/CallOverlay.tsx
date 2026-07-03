@@ -1,225 +1,161 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Shield, Wifi, Radio } from "lucide-react";
-import { CallType } from "./types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Mic, MicOff, Phone, PhoneOff, Shield, X } from "lucide-react";
+import { Room, RoomEvent, Track } from "livekit-client";
+import { CallDto, CallTokenResponse } from "./callTypes";
 
 interface CallOverlayProps {
-  callType: CallType;
-  channelName: string;
-  onHangUp: () => void;
+  call: CallDto | null;
+  currentUserId?: number;
+  credentials: CallTokenResponse | null;
+  error?: string;
+  onAccept: () => void;
+  onReject: () => void;
+  onCancel: () => void;
+  onEnd: () => void;
 }
 
-export default function CallOverlay({ callType, channelName, onHangUp }: CallOverlayProps) {
-  const [seconds, setSeconds] = useState(0);
+export default function CallOverlay({
+  call,
+  currentUserId,
+  credentials,
+  error,
+  onAccept,
+  onReject,
+  onCancel,
+  onEnd,
+}: CallOverlayProps) {
+  const roomRef = useRef<Room | null>(null);
+  const audioContainerRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [isCamOff, setIsCamOff] = useState(callType === "audio");
-  const [connectionStage, setConnectionStage] = useState<"connecting" | "active">("connecting");
+  const [seconds, setSeconds] = useState(0);
+  const [mediaError, setMediaError] = useState("");
 
-  // Timer effect
+  const isRecipient = call?.recipient.user_id === currentUserId;
+  const otherUser = useMemo(() => {
+    if (!call) return null;
+    return call.caller.user_id === currentUserId ? call.recipient : call.caller;
+  }, [call, currentUserId]);
+
   useEffect(() => {
-    if (connectionStage === "connecting") {
-      const connectTimeout = setTimeout(() => {
-        setConnectionStage("active");
-      }, 2500);
-      return () => clearTimeout(connectTimeout);
+    if (call?.status !== "active" || !credentials) return;
+
+    const room = new Room({ adaptiveStream: true, dynacast: true });
+    roomRef.current = room;
+
+    const attachTrack = (track: { kind: Track.Kind; attach: () => HTMLMediaElement }) => {
+      if (track.kind !== Track.Kind.Audio || !audioContainerRef.current) return;
+      audioContainerRef.current.appendChild(track.attach());
+    };
+
+    const detachTrack = (track: { detach: () => HTMLMediaElement[] }) => {
+      track.detach().forEach((element) => element.remove());
+    };
+
+    room.on(RoomEvent.TrackSubscribed, attachTrack);
+    room.on(RoomEvent.TrackUnsubscribed, detachTrack);
+    room.on(RoomEvent.Disconnected, () => setMediaError("Media connection ended"));
+
+    room
+      .connect(credentials.url, credentials.token)
+      .then(() => room.localParticipant.setMicrophoneEnabled(true))
+      .catch((reason) => setMediaError(reason instanceof Error ? reason.message : "Unable to connect audio"));
+
+    return () => {
+      room.disconnect();
+      roomRef.current = null;
+      audioContainerRef.current?.replaceChildren();
+    };
+  }, [call?.status, credentials]);
+
+  useEffect(() => {
+    if (call?.status !== "active") {
+      setSeconds(0);
+      return;
     }
+    const startedAt = call.answeredAt ? new Date(call.answeredAt).getTime() : Date.now();
+    const update = () => setSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [call?.status, call?.answeredAt]);
 
-    const timer = setInterval(() => {
-      setSeconds((prev) => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [connectionStage]);
-
-  const formatTime = (secs: number) => {
-    const mins = Math.floor(secs / 60);
-    const remainingSecs = secs % 60;
-    return `${mins.toString().padStart(2, "0")}:${remainingSecs.toString().padStart(2, "0")}`;
+  const toggleMute = async () => {
+    const nextMuted = !isMuted;
+    await roomRef.current?.localParticipant.setMicrophoneEnabled(!nextMuted);
+    setIsMuted(nextMuted);
   };
 
-  const activeWaveBars = Array.from({ length: 15 });
+  const time = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
   return (
     <AnimatePresence>
-      {callType && (
+      {call && (call.status === "ringing" || call.status === "active") && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#030114]/95 backdrop-blur-2xl overflow-hidden"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#030114]/95 backdrop-blur-2xl"
         >
-          {/* Futuristic mesh background network */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_#5271ff_1px,_transparent_1px)] [background-size:24px_24px] pointer-events-none" />
-          
-          {/* Dynamic glows based on call state */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[450px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#5271ff]/[0.08] blur-[140px] animate-pulse" />
-          <div className="pointer-events-none absolute right-10 bottom-10 h-[300px] w-[300px] rounded-full bg-[#3a4ec4]/[0.05] blur-[100px]" />
+          <div ref={audioContainerRef} className="hidden" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_#5271ff_1px,_transparent_1px)] [background-size:24px_24px] opacity-10" />
+          <div className="pointer-events-none absolute h-[480px] w-[480px] rounded-full bg-[#5271ff]/10 blur-[140px]" />
 
-          {/* Secure indicator header */}
-          <motion.div
-            initial={{ y: -30, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="absolute top-10 flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-          >
-            <Shield size={12} className="animate-pulse" />
-            SynergiLink Secure QUANTUM line • Encrypted
-          </motion.div>
-
-          {/* Video stream backdrop simulator */}
-          {callType === "video" && !isCamOff && connectionStage === "active" && (
-            <motion.div
-              initial={{ scale: 1.05, opacity: 0 }}
-              animate={{ scale: 1, opacity: 0.25 }}
-              transition={{ duration: 1 }}
-              className="absolute inset-0 bg-gradient-to-tr from-[#0a0826] via-[#120e3a] to-[#22d3ee]/20 pointer-events-none"
-            >
-              {/* Abstract simulated camera grid particles */}
-              <div className="h-full w-full bg-[linear-gradient(to_right,rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]" />
-            </motion.div>
-          )}
-
-          {/* Visual Avatar Focus Section */}
-          <div className="relative flex flex-col items-center justify-center flex-1 max-w-lg px-6 text-center">
-            
-            {/* Connection / Pulse Ring Wrapper */}
-            <div className="relative mb-8 flex items-center justify-center">
-              {/* Outer pulsing ring */}
-              <motion.div
-                animate={{
-                  scale: connectionStage === "connecting" ? [1, 1.3, 1] : [1, 1.15, 1],
-                  opacity: connectionStage === "connecting" ? [0.2, 0.5, 0.2] : [0.15, 0.35, 0.15],
-                }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                className="absolute h-48 w-48 rounded-full border border-[#5271ff]/40 bg-[#5271ff]/5"
-              />
-              <motion.div
-                animate={{
-                  scale: connectionStage === "connecting" ? [1, 1.5, 1] : [1, 1.25, 1],
-                  opacity: connectionStage === "connecting" ? [0.1, 0.3, 0.1] : [0.08, 0.2, 0.08],
-                }}
-                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut", delay: 0.5 }}
-                className="absolute h-48 w-48 rounded-full border border-[#3a4ec4]/30"
-              />
-
-              {/* Central Avatar */}
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="relative z-10 flex h-32 w-32 items-center justify-center rounded-full bg-gradient-to-tr from-[#5271ff] to-[#3a4ec4] text-3xl font-extrabold text-white shadow-[0_0_30px_rgba(82,113,255,0.4)] border-2 border-white/10"
-              >
-                {channelName.startsWith("#") ? channelName.slice(1, 3).toUpperCase() : channelName.slice(0, 2).toUpperCase()}
-              </motion.div>
-
-              {/* Miniature overlay icon indicating status */}
-              <div className="absolute bottom-1 right-2 z-20 flex h-8 w-8 items-center justify-center rounded-full bg-[#0a0826] border border-white/15 text-[#5271ff] shadow-md">
-                {callType === "video" ? <Video size={14} /> : <Radio size={14} className="animate-spin-slow" />}
-              </div>
+          <div className="relative flex w-full max-w-md flex-col items-center px-6 text-center">
+            <div className="mb-8 flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+              <Shield size={12} /> Encrypted voice call
             </div>
 
-            {/* Calling Identity details */}
-            <h2 className="mb-2 text-2xl font-bold text-white tracking-wide">
-              {channelName}
-            </h2>
+            <div className="relative mb-7 flex h-36 w-36 items-center justify-center rounded-full border-2 border-white/10 bg-gradient-to-tr from-[#5271ff] to-[#3a4ec4] text-4xl font-bold text-white shadow-[0_0_40px_rgba(82,113,255,0.4)]">
+              {otherUser?.name?.slice(0, 2).toUpperCase() || "??"}
+              <motion.div
+                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute inset-0 -z-10 rounded-full border border-[#5271ff]"
+              />
+            </div>
 
-            {connectionStage === "connecting" ? (
-              <div className="flex flex-col items-center gap-1">
-                <p className="text-xs uppercase tracking-widest text-[#5271ff] font-bold">
-                  Establishing Connection Link
-                </p>
-                <div className="mt-2 flex gap-1">
-                  <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0 }} className="h-1.5 w-1.5 rounded-full bg-[#5271ff]" />
-                  <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.2 }} className="h-1.5 w-1.5 rounded-full bg-[#5271ff]" />
-                  <motion.span animate={{ opacity: [0.2, 1, 0.2] }} transition={{ repeat: Infinity, duration: 1.2, delay: 0.4 }} className="h-1.5 w-1.5 rounded-full bg-[#5271ff]" />
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <p className="text-xl font-mono text-white/90 font-medium">
-                  {formatTime(seconds)}
-                </p>
+            <h2 className="text-2xl font-bold text-white">{otherUser?.name || "Voice call"}</h2>
+            <p className="mt-2 text-xs uppercase tracking-[0.2em] text-white/45">
+              {call.status === "active"
+                ? credentials
+                  ? time
+                  : "Connecting audio…"
+                : isRecipient
+                  ? "Incoming voice call"
+                  : "Calling…"}
+            </p>
 
-                {/* Animated Voice/Frequency Waveform */}
-                <div className="flex h-8 items-center justify-center gap-1 px-4">
-                  {activeWaveBars.map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{
-                        height: isMuted ? 4 : [6, Math.floor(Math.random() * 22) + 8, 6],
-                      }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 0.6 + i * 0.03,
-                        ease: "easeInOut",
-                      }}
-                      className="w-1 rounded-full bg-gradient-to-t from-[#5271ff] to-[#22d3ee]"
-                    />
-                  ))}
-                </div>
-              </div>
+            {(error || mediaError) && (
+              <p className="mt-4 max-w-sm text-xs text-rose-400">{error || mediaError}</p>
             )}
+
+            <div className="mt-12 flex items-center gap-5 rounded-2xl border border-white/10 bg-[#0c0a2d]/80 px-6 py-4 backdrop-blur-lg">
+              {call.status === "ringing" && isRecipient ? (
+                <>
+                  <button onClick={onReject} className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-600 text-white" aria-label="Reject call">
+                    <X size={22} />
+                  </button>
+                  <button onClick={onAccept} className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white" aria-label="Accept call">
+                    <Phone size={22} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  {call.status === "active" && (
+                    <button onClick={toggleMute} className={`flex h-12 w-12 items-center justify-center rounded-full border ${isMuted ? "border-rose-500/40 bg-rose-500/25 text-rose-400" : "border-white/10 bg-white/5 text-white"}`} aria-label={isMuted ? "Unmute" : "Mute"}>
+                      {isMuted ? <MicOff size={19} /> : <Mic size={19} />}
+                    </button>
+                  )}
+                  <button onClick={call.status === "active" ? onEnd : onCancel} className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-600 text-white" aria-label="End call">
+                    <PhoneOff size={22} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-
-          {/* Picture-in-picture simulated inset web-camera for local video preview */}
-          {callType === "video" && !isCamOff && (
-            <motion.div
-              initial={{ opacity: 0, x: 50, scale: 0.9 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              transition={{ delay: 1 }}
-              className="absolute right-6 top-24 z-20 h-32 w-24 overflow-hidden rounded-xl border border-white/20 bg-[#0a0826] shadow-xl"
-            >
-              <div className="h-full w-full bg-gradient-to-b from-indigo-950 to-slate-900 flex items-center justify-center text-[10px] text-white/30 relative">
-                Local Feed
-                <div className="absolute inset-0 bg-cyan-500/10 opacity-30 animate-pulse pointer-events-none" />
-              </div>
-            </motion.div>
-          )}
-
-          {/* Controls Dock Bar */}
-          <motion.div
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24, delay: 0.3 }}
-            className="absolute bottom-16 flex items-center gap-5 rounded-2xl border border-white/[0.08] bg-[#0c0a2d]/80 px-6 py-4 shadow-[0_15px_35px_rgba(0,0,0,0.4)] backdrop-blur-lg"
-          >
-            {/* Audio Toggle button */}
-            <button
-              type="button"
-              onClick={() => setIsMuted((prev) => !prev)}
-              className={`flex h-12 w-12 items-center justify-center rounded-full border transition duration-300 ${
-                isMuted
-                  ? "bg-rose-500/25 border-rose-500/40 text-rose-400 hover:bg-rose-500/40"
-                  : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
-            </button>
-
-            {/* Video Toggle button */}
-            <button
-              type="button"
-              onClick={() => setIsCamOff((prev) => !prev)}
-              disabled={callType === "audio"}
-              className={`flex h-12 w-12 items-center justify-center rounded-full border transition duration-300 disabled:opacity-20 disabled:pointer-events-none ${
-                isCamOff
-                  ? "bg-rose-500/25 border-rose-500/40 text-rose-400 hover:bg-rose-500/40"
-                  : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white"
-              }`}
-            >
-              {isCamOff ? <VideoOff size={18} /> : <Video size={18} />}
-            </button>
-
-            {/* Call Terminate / Hangup Button */}
-            <button
-              type="button"
-              onClick={onHangUp}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-600 text-white hover:bg-rose-500 transition duration-300 shadow-[0_0_20px_rgba(225,29,72,0.4)] hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              <PhoneOff size={22} />
-            </button>
-          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

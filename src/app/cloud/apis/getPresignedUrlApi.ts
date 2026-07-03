@@ -7,7 +7,7 @@ export type PresignedUrlResponse = {
   filePath: string;
 };
 
-export async function getPresignedUrlApi(fileName: string, mimeType: string): Promise<PresignedUrlResponse> {
+export async function getPresignedUrlApi(fileName: string, mimeType: string, bucket: string): Promise<PresignedUrlResponse> {
   try {
     const token = await CookieManager("get", "access-token");
     const response = await fetch(`${requestBaseUrl}/resources/upload-url`, {
@@ -19,6 +19,7 @@ export async function getPresignedUrlApi(fileName: string, mimeType: string): Pr
       body: JSON.stringify({
         fileName,
         mimeType,
+        bucket,
       }),
     });
 
