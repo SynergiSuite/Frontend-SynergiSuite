@@ -39,6 +39,7 @@ export default function Signin() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify(userData),
       });
@@ -85,9 +86,27 @@ export default function Signin() {
         router.push("/session/register-business");
         toast.success("Logged in successfully, registration required.");
       } else {
-        CookieManager("set", "business-name", responseData.business_name);
-        CookieManager("set", "business-id", responseData.business_id);
-        CookieManager("set", "role", responseData.role.name);
+        const business =
+          typeof responseData.business === "object" && responseData.business !== null
+            ? responseData.business
+            : null;
+        const businessName = responseData.business_name ?? business?.name;
+        const businessId =
+          responseData.business_id ?? business?.business_id ?? business?.id ?? business?._id;
+        const roleName = responseData.role?.name ?? responseData.role_name;
+
+        if (!businessName || !businessId) {
+          CookieManager("set", "register-token", responseData.access_token);
+          router.push("/session/register-business");
+          toast.success("Logged in successfully, registration required.");
+          return;
+        }
+
+        CookieManager("set", "business-name", businessName);
+        CookieManager("set", "business-id", businessId);
+        if (roleName) {
+          CookieManager("set", "role", roleName);
+        }
         router.push("/dashboard");
         toast.success("Logged in successfully");
       }
