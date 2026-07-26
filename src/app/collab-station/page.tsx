@@ -261,7 +261,8 @@ const INITIAL_THREADS: ChatThreadMap = {
   ],
 };
 
-type TokenUser = { user_id?: number; sub?: number; email?: string };
+type UserId = number | string;
+type TokenUser = { user_id?: UserId; sub?: UserId; email?: string };
 
 const readTokenUser = (token: string): TokenUser => {
   try {
@@ -307,16 +308,35 @@ export default function CollabStationPage() {
   const [recentChats, setRecentChats] = useState<ChatChannel[]>(INITIAL_RECENT_CHATS);
   const [threads, setThreads] = useState<ChatThreadMap>({});
   const [currentCall, setCurrentCall] = useState<CallDto | null>(null);
+  const [callSide, setCallSide] = useState<"caller" | "recipient" | undefined>();
   const [callCredentials, setCallCredentials] = useState<CallTokenResponse | null>(null);
   const [callError, setCallError] = useState("");
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [currentUserId, setCurrentUserId] = useState<number | undefined>();
+  const [currentUserId, setCurrentUserId] = useState<UserId | undefined>();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const currentUserRef = useRef<TokenUser>({});
+  const currentUserIdRef = useRef<UserId | undefined>(undefined);
   const chatIdsRef = useRef<string[]>([]);
   const tokenRequestCallIdRef = useRef<string | null>(null);
+
+  const setCurrentUserIdentity = (userId?: UserId) => {
+    if (userId === undefined || userId === null) return;
+    currentUserIdRef.current = userId;
+    setCurrentUserId(userId);
+  };
+
+  const isCurrentUser = (userId?: UserId) =>
+    userId !== undefined &&
+    currentUserIdRef.current !== undefined &&
+    String(userId) === String(currentUserIdRef.current);
+
+  const getCallSide = (call: CallDto): "caller" | "recipient" | undefined => {
+    if (isCurrentUser(call.caller.user_id)) return "caller";
+    if (isCurrentUser(call.recipient.user_id)) return "recipient";
+    return undefined;
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -325,7 +345,7 @@ export default function CollabStationPage() {
       const token = await CookieManager("get", "access-token");
       if (cancelled || !token) return;
       currentUserRef.current = readTokenUser(token);
-      setCurrentUserId(currentUserRef.current.user_id ?? currentUserRef.current.sub);
+      setCurrentUserIdentity(currentUserRef.current.user_id ?? currentUserRef.current.sub);
       socket.auth = { token };
       socket.connect();
     };
@@ -347,21 +367,35 @@ export default function CollabStationPage() {
   }, []);
 
   useEffect(() => {
+    const isCallParticipant = (call: CallDto) =>
+      isCurrentUser(call.caller.user_id) || isCurrentUser(call.recipient.user_id);
+
     const setTerminalCall = (call: CallDto) => {
+      if (!isCallParticipant(call)) return;
+      setCallSide(getCallSide(call));
       setCurrentCall(call);
       setCallCredentials(null);
       tokenRequestCallIdRef.current = null;
-      window.setTimeout(() => setCurrentCall(null), 1200);
+      window.setTimeout(() => {
+        setCurrentCall(null);
+        setCallSide(undefined);
+      }, 1200);
     };
 
     const onIncoming = (call: CallDto) => {
+      if (!isCurrentUser(call.recipient.user_id)) return;
+      setCallSide("recipient");
       setCallError("");
       setCurrentCall(call);
     };
     const onRinging = (call: CallDto) => {
+      if (!isCurrentUser(call.caller.user_id)) return;
+      setCallSide("caller");
       setCurrentCall(call);
     };
     const onAccepted = (call: CallDto) => {
+      if (!isCallParticipant(call)) return;
+      setCallSide(getCallSide(call));
       setCallError("");
       setCurrentCall(call);
     };
@@ -390,9 +424,12 @@ export default function CollabStationPage() {
           if (response.ok) {
             const group = await response.json();
             const me = group.members?.find((member: any) => member.user?.email === email);
-            if (me?.userId) setCurrentUserId(me.userId);
+            setCurrentUserIdentity(me?.userId);
           }
         }
+        const restoredSide = getCallSide(call);
+        if (!restoredSide) return;
+        setCallSide(restoredSide);
         setCurrentCall(call);
       })
       .catch(() => undefined);
@@ -451,6 +488,7 @@ export default function CollabStationPage() {
     }
     try {
       setCallError("");
+      setCallSide("caller");
       setCurrentCall(await emitCallEvent("call:invite", { groupId: activeChannel.id }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to start call";
@@ -463,6 +501,7 @@ export default function CollabStationPage() {
     if (!currentCall) return;
     try {
       const call = await emitCallEvent("call:accept", { callId: currentCall.callId });
+      setCallSide("recipient");
       setCurrentCall(call);
     } catch (error) {
       setCallError(error instanceof Error ? error.message : "Unable to accept call");
@@ -473,10 +512,14 @@ export default function CollabStationPage() {
     if (!currentCall) return;
     try {
       const call = await emitCallEvent(event, { callId: currentCall.callId });
+      setCallSide(getCallSide(call));
       setCurrentCall(call);
       setCallCredentials(null);
       tokenRequestCallIdRef.current = null;
-      window.setTimeout(() => setCurrentCall(null), 600);
+      window.setTimeout(() => {
+        setCurrentCall(null);
+        setCallSide(undefined);
+      }, 600);
     } catch (error) {
       setCallError(error instanceof Error ? error.message : "Unable to update call");
     }
@@ -507,7 +550,7 @@ useEffect(() => {
       const token = await CookieManager("get", "access-token");
       const currentUser = token ? readTokenUser(token) : {};
       currentUserRef.current = currentUser;
-      setCurrentUserId(currentUser.user_id ?? currentUser.sub);
+      setCurrentUserIdentity(currentUser.user_id ?? currentUser.sub);
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/collab-station/groups`,
@@ -904,6 +947,7 @@ useEffect(() => {
       <CallOverlay
         call={currentCall}
         currentUserId={currentUserId}
+        callSide={callSide}
         credentials={callCredentials}
         error={callError}
         onAccept={() => void handleAcceptCall()}

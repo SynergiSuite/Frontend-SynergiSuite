@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Mic, MicOff, Phone, PhoneOff, Shield, X } from "lucide-react";
 import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
@@ -8,7 +8,8 @@ import { CallDto, CallTokenResponse } from "./callTypes";
 
 interface CallOverlayProps {
   call: CallDto | null;
-  currentUserId?: number;
+  currentUserId?: number | string;
+  callSide?: "caller" | "recipient";
   credentials: CallTokenResponse | null;
   error?: string;
   onAccept: () => void;
@@ -20,6 +21,7 @@ interface CallOverlayProps {
 export default function CallOverlay({
   call,
   currentUserId,
+  callSide,
   credentials,
   error,
   onAccept,
@@ -37,11 +39,23 @@ export default function CallOverlay({
   const [remoteAudioConnected, setRemoteAudioConnected] = useState(false);
   const isMutedRef = useRef(false);
 
-  const isRecipient = call?.recipient.user_id === currentUserId;
+  const isCurrentUser = useCallback(
+    (userId?: number | string) =>
+      userId !== undefined &&
+      currentUserId !== undefined &&
+      String(userId) === String(currentUserId),
+    [currentUserId]
+  );
+
+  const isRecipient = callSide
+    ? callSide === "recipient"
+    : isCurrentUser(call?.recipient.user_id);
   const otherUser = useMemo(() => {
     if (!call) return null;
-    return call.caller.user_id === currentUserId ? call.recipient : call.caller;
-  }, [call, currentUserId]);
+    if (callSide === "caller") return call.recipient;
+    if (callSide === "recipient") return call.caller;
+    return isCurrentUser(call.caller.user_id) ? call.recipient : call.caller;
+  }, [call, callSide, isCurrentUser]);
 
   useEffect(() => {
     isMutedRef.current = isMuted;
