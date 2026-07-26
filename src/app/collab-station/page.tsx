@@ -307,11 +307,11 @@ export default function CollabStationPage() {
   const [recentChats, setRecentChats] = useState<ChatChannel[]>(INITIAL_RECENT_CHATS);
   const [threads, setThreads] = useState<ChatThreadMap>({});
   const [currentCall, setCurrentCall] = useState<CallDto | null>(null);
-  const [callRole, setCallRole] = useState<"caller" | "recipient" | null>(null);
   const [callCredentials, setCallCredentials] = useState<CallTokenResponse | null>(null);
   const [callError, setCallError] = useState("");
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState<number | undefined>();
 
   const containerRef = useRef<HTMLDivElement>(null);
   const currentUserRef = useRef<TokenUser>({});
@@ -325,6 +325,7 @@ export default function CollabStationPage() {
       const token = await CookieManager("get", "access-token");
       if (cancelled || !token) return;
       currentUserRef.current = readTokenUser(token);
+      setCurrentUserId(currentUserRef.current.user_id ?? currentUserRef.current.sub);
       socket.auth = { token };
       socket.connect();
     };
@@ -354,12 +355,10 @@ export default function CollabStationPage() {
     };
 
     const onIncoming = (call: CallDto) => {
-      setCallRole("recipient");
       setCallError("");
       setCurrentCall(call);
     };
     const onRinging = (call: CallDto) => {
-      setCallRole((role) => role || "caller");
       setCurrentCall(call);
     };
     const onAccepted = (call: CallDto) => {
@@ -391,7 +390,7 @@ export default function CollabStationPage() {
           if (response.ok) {
             const group = await response.json();
             const me = group.members?.find((member: any) => member.user?.email === email);
-            setCallRole(me?.userId === call.recipient.user_id ? "recipient" : "caller");
+            if (me?.userId) setCurrentUserId(me.userId);
           }
         }
         setCurrentCall(call);
@@ -452,7 +451,6 @@ export default function CollabStationPage() {
     }
     try {
       setCallError("");
-      setCallRole("caller");
       setCurrentCall(await emitCallEvent("call:invite", { groupId: activeChannel.id }));
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unable to start call";
@@ -509,6 +507,7 @@ useEffect(() => {
       const token = await CookieManager("get", "access-token");
       const currentUser = token ? readTokenUser(token) : {};
       currentUserRef.current = currentUser;
+      setCurrentUserId(currentUser.user_id ?? currentUser.sub);
 
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/collab-station/groups`,
@@ -904,11 +903,7 @@ useEffect(() => {
       {/* Futuristic Secure Call overlay */}
       <CallOverlay
         call={currentCall}
-        currentUserId={
-          callRole === "caller"
-            ? currentCall?.caller.user_id
-            : currentCall?.recipient.user_id
-        }
+        currentUserId={currentUserId}
         credentials={callCredentials}
         error={callError}
         onAccept={() => void handleAcceptCall()}
