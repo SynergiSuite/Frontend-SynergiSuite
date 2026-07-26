@@ -35,6 +35,7 @@ export default function CallOverlay({
   const [audioPlaybackBlocked, setAudioPlaybackBlocked] = useState(false);
   const [microphonePublished, setMicrophonePublished] = useState(false);
   const [remoteAudioConnected, setRemoteAudioConnected] = useState(false);
+  const isMutedRef = useRef(false);
 
   const isRecipient = call?.recipient.user_id === currentUserId;
   const otherUser = useMemo(() => {
@@ -43,15 +44,54 @@ export default function CallOverlay({
   }, [call, currentUserId]);
 
   useEffect(() => {
-    if (call?.status !== "active" || !credentials) return;
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
+  useEffect(() => {
+    const credentialsUrl = credentials?.url;
+    const credentialsToken = credentials?.token;
+
+    if (call?.status !== "active" || !credentialsUrl || !credentialsToken) return;
 
     let disposed = false;
     let microphonePublishInFlight = false;
+    let microphoneRecoveryTimeout: number | undefined;
+    let microphoneWatchdog: number | undefined;
+    const audioContainer = audioContainerRef.current;
     const room = new Room({ adaptiveStream: true, dynacast: true });
     roomRef.current = room;
 
+    const getMicrophonePublication = () =>
+      room.localParticipant.getTrackPublication(Track.Source.Microphone);
+
+    const hasLiveMicrophonePublication = () => {
+      const publication = getMicrophonePublication();
+      const mediaTrack = publication?.track?.mediaStreamTrack;
+      return Boolean(publication && mediaTrack && mediaTrack.readyState === "live");
+    };
+
+    const updateMicrophoneState = () => {
+      setMicrophonePublished(hasLiveMicrophonePublication());
+    };
+
+    const scheduleMicrophoneRecovery = (delayMs = 800) => {
+      if (disposed || isMutedRef.current || microphoneRecoveryTimeout) return;
+
+      microphoneRecoveryTimeout = window.setTimeout(() => {
+        microphoneRecoveryTimeout = undefined;
+        void publishMicrophone();
+      }, delayMs);
+    };
+
     const publishMicrophone = async () => {
-      if (disposed || microphonePublishInFlight || room.state !== ConnectionState.Connected) return;
+      if (
+        disposed ||
+        isMutedRef.current ||
+        microphonePublishInFlight ||
+        room.state !== ConnectionState.Connected
+      ) {
+        return;
+      }
       microphonePublishInFlight = true;
       try {
         await room.localParticipant.setMicrophoneEnabled(true, {
@@ -60,9 +100,7 @@ export default function CallOverlay({
           autoGainControl: true,
         });
         if (!disposed) {
-          setMicrophonePublished(
-            Boolean(room.localParticipant.getTrackPublication(Track.Source.Microphone))
-          );
+          updateMicrophoneState();
           setMediaError("");
         }
       } catch (reason) {
@@ -82,36 +120,73 @@ export default function CallOverlay({
       }
     };
 
-    const attachTrack = (track: { kind: Track.Kind; attach: () => HTMLMediaElement }) => {
-      if (track.kind !== Track.Kind.Audio || !audioContainerRef.current) return;
+    const attachExistingRemoteAudio = () => {
+      room.remoteParticipants.forEach((participant) => {
+        participant.audioTrackPublications.forEach((publication) => {
+          if (publication.track) {
+            attachTrack(publication.track);
+          } else if (!publication.isSubscribed) {
+            publication.setSubscribed(true);
+          }
+        });
+      });
+    };
+
+    const attachTrack = (track: {
+      kind: Track.Kind;
+      sid?: string;
+      mediaStreamTrack?: MediaStreamTrack;
+      attach: () => HTMLMediaElement;
+    }) => {
+      if (track.kind !== Track.Kind.Audio || !audioContainer) return;
+      if (
+        audioContainer.querySelector(
+          `[data-livekit-track-id="${trackId(track)}"]`
+        )
+      ) {
+        return;
+      }
       const element = track.attach();
+      element.dataset.livekitTrackId = trackId(track);
       element.autoplay = true;
-      audioContainerRef.current.appendChild(element);
+      audioContainer.appendChild(element);
       setRemoteAudioConnected(true);
       void element.play().catch(() => setAudioPlaybackBlocked(true));
     };
 
+    const trackId = (track: { sid?: string; mediaStreamTrack?: MediaStreamTrack }) =>
+      track.sid || track.mediaStreamTrack?.id || "audio";
+
     const detachTrack = (track: { detach: () => HTMLMediaElement[] }) => {
       track.detach().forEach((element) => element.remove());
+      setRemoteAudioConnected(audioContainer?.children.length ? true : false);
     };
 
     room.on(RoomEvent.TrackSubscribed, attachTrack);
     room.on(RoomEvent.TrackUnsubscribed, detachTrack);
-    room.on(RoomEvent.Disconnected, () => setMediaError("Media connection ended"));
+    room.on(RoomEvent.Disconnected, () => {
+      setMicrophonePublished(false);
+      setRemoteAudioConnected(false);
+      setMediaError("Media connection ended");
+    });
     room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
       setAudioPlaybackBlocked(!room.canPlaybackAudio);
     });
     room.on(RoomEvent.LocalTrackPublished, (publication) => {
-      if (publication.source === Track.Source.Microphone) setMicrophonePublished(true);
+      if (publication.source === Track.Source.Microphone) updateMicrophoneState();
     });
     room.on(RoomEvent.LocalTrackUnpublished, (publication) => {
-      if (publication.source === Track.Source.Microphone) setMicrophonePublished(false);
+      if (publication.source === Track.Source.Microphone) {
+        setMicrophonePublished(false);
+        scheduleMicrophoneRecovery();
+      }
     });
     room.on(RoomEvent.LocalAudioSilenceDetected, () => {
       setMediaError("No microphone audio is being detected. Check the selected input device.");
     });
     room.on(RoomEvent.MediaDevicesError, (reason) => {
       setMediaError(reason.message || "The microphone could not be accessed");
+      scheduleMicrophoneRecovery(1500);
     });
     room.on(RoomEvent.TrackSubscriptionFailed, () => {
       setMediaError("The other participant's audio track could not be received");
@@ -120,15 +195,27 @@ export default function CallOverlay({
       if (!disposed) setMediaError("Media connection interrupted. Reconnecting…");
     });
     room.on(RoomEvent.Reconnected, () => {
-      if (!disposed) void publishMicrophone();
+      if (!disposed) {
+        setMediaError("");
+        attachExistingRemoteAudio();
+        void publishMicrophone();
+      }
     });
 
     room
-      .connect(credentials.url, credentials.token)
+      .connect(credentialsUrl, credentialsToken)
       .then(async () => {
         if (disposed) return;
         setAudioPlaybackBlocked(!room.canPlaybackAudio);
+        attachExistingRemoteAudio();
         await publishMicrophone();
+        microphoneWatchdog = window.setInterval(() => {
+          if (disposed || isMutedRef.current || room.state !== ConnectionState.Connected) return;
+          if (!hasLiveMicrophonePublication()) {
+            setMicrophonePublished(false);
+            scheduleMicrophoneRecovery();
+          }
+        }, 3000);
       })
       .catch((reason) => {
         if (!disposed) {
@@ -138,9 +225,11 @@ export default function CallOverlay({
 
     return () => {
       disposed = true;
+      if (microphoneRecoveryTimeout) window.clearTimeout(microphoneRecoveryTimeout);
+      if (microphoneWatchdog) window.clearInterval(microphoneWatchdog);
       room.disconnect();
       roomRef.current = null;
-      audioContainerRef.current?.replaceChildren();
+      audioContainer?.replaceChildren();
       setMicrophonePublished(false);
       setRemoteAudioConnected(false);
     };
@@ -162,6 +251,9 @@ export default function CallOverlay({
     const nextMuted = !isMuted;
     await roomRef.current?.localParticipant.setMicrophoneEnabled(!nextMuted);
     setIsMuted(nextMuted);
+    if (!nextMuted) {
+      setMediaError("");
+    }
   };
 
   const enableAudioPlayback = async () => {
