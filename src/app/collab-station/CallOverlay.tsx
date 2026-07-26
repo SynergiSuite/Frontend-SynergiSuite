@@ -1,25 +1,10 @@
 "use client";
 
-<<<<<<< Updated upstream
-import { useEffect, useMemo, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Mic, MicOff, Phone, PhoneOff, Shield, X } from "lucide-react";
-import { Room, RoomEvent, Track } from "livekit-client";
-import { CallDto, CallTokenResponse } from "./callTypes";
-=======
-<<<<<<< Updated upstream
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Shield, Wifi, Radio } from "lucide-react";
-import { CallType } from "./types";
-=======
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Mic, MicOff, Phone, PhoneOff, Shield, X } from "lucide-react";
 import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 import { CallDto, CallTokenResponse } from "./callTypes";
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
 interface CallOverlayProps {
   call: CallDto | null;
@@ -32,7 +17,6 @@ interface CallOverlayProps {
   onEnd: () => void;
 }
 
-<<<<<<< Updated upstream
 export default function CallOverlay({
   call,
   currentUserId,
@@ -48,48 +32,17 @@ export default function CallOverlay({
   const [isMuted, setIsMuted] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [mediaError, setMediaError] = useState("");
-=======
-export default function CallOverlay({ callType, channelName, onHangUp }: CallOverlayProps) {
-  const [seconds, setSeconds] = useState(0);
-<<<<<<< Updated upstream
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCamOff, setIsCamOff] = useState(callType === "audio");
-  const [connectionStage, setConnectionStage] = useState<"connecting" | "active">("connecting");
-=======
-  const [mediaError, setMediaError] = useState("");
   const [audioPlaybackBlocked, setAudioPlaybackBlocked] = useState(false);
   const [microphonePublished, setMicrophonePublished] = useState(false);
   const [remoteAudioConnected, setRemoteAudioConnected] = useState(false);
->>>>>>> Stashed changes
 
   const isRecipient = call?.recipient.user_id === currentUserId;
   const otherUser = useMemo(() => {
     if (!call) return null;
     return call.caller.user_id === currentUserId ? call.recipient : call.caller;
   }, [call, currentUserId]);
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
   useEffect(() => {
-<<<<<<< Updated upstream
-    if (call?.status !== "active" || !credentials) return;
-
-    const room = new Room({ adaptiveStream: true, dynacast: true });
-    roomRef.current = room;
-
-    const attachTrack = (track: { kind: Track.Kind; attach: () => HTMLMediaElement }) => {
-      if (track.kind !== Track.Kind.Audio || !audioContainerRef.current) return;
-      audioContainerRef.current.appendChild(track.attach());
-=======
-<<<<<<< Updated upstream
-    if (connectionStage === "connecting") {
-      const connectTimeout = setTimeout(() => {
-        setConnectionStage("active");
-      }, 2500);
-      return () => clearTimeout(connectTimeout);
-=======
     if (call?.status !== "active" || !credentials) return;
 
     let disposed = false;
@@ -136,7 +89,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
       audioContainerRef.current.appendChild(element);
       setRemoteAudioConnected(true);
       void element.play().catch(() => setAudioPlaybackBlocked(true));
->>>>>>> Stashed changes
     };
 
     const detachTrack = (track: { detach: () => HTMLMediaElement[] }) => {
@@ -146,20 +98,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
     room.on(RoomEvent.TrackSubscribed, attachTrack);
     room.on(RoomEvent.TrackUnsubscribed, detachTrack);
     room.on(RoomEvent.Disconnected, () => setMediaError("Media connection ended"));
-<<<<<<< Updated upstream
-
-    room
-      .connect(credentials.url, credentials.token)
-      .then(() => room.localParticipant.setMicrophoneEnabled(true))
-      .catch((reason) => setMediaError(reason instanceof Error ? reason.message : "Unable to connect audio"));
-
-    return () => {
-      room.disconnect();
-      roomRef.current = null;
-      audioContainerRef.current?.replaceChildren();
-    };
-  }, [call?.status, credentials]);
-=======
     room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
       setAudioPlaybackBlocked(!room.canPlaybackAudio);
     });
@@ -207,16 +145,11 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
       setRemoteAudioConnected(false);
     };
   }, [call?.callId, call?.status, credentials?.token, credentials?.url]);
->>>>>>> Stashed changes
 
   useEffect(() => {
     if (call?.status !== "active") {
       setSeconds(0);
       return;
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
     }
     const startedAt = call.answeredAt ? new Date(call.answeredAt).getTime() : Date.now();
     const update = () => setSeconds(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
@@ -231,12 +164,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
     setIsMuted(nextMuted);
   };
 
-<<<<<<< Updated upstream
-  const time = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-=======
-<<<<<<< Updated upstream
-  const activeWaveBars = Array.from({ length: 15 });
-=======
   const enableAudioPlayback = async () => {
     try {
       await roomRef.current?.startAudio();
@@ -247,8 +174,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
   };
 
   const time = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
   return (
     <AnimatePresence>
@@ -259,19 +184,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#030114]/95 backdrop-blur-2xl"
         >
-<<<<<<< Updated upstream
-          <div ref={audioContainerRef} className="hidden" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_#5271ff_1px,_transparent_1px)] [background-size:24px_24px] opacity-10" />
-          <div className="pointer-events-none absolute h-[480px] w-[480px] rounded-full bg-[#5271ff]/10 blur-[140px]" />
-=======
-<<<<<<< Updated upstream
-          {/* Futuristic mesh background network */}
-          <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_#5271ff_1px,_transparent_1px)] [background-size:24px_24px] pointer-events-none" />
-          
-          {/* Dynamic glows based on call state */}
-          <div className="pointer-events-none absolute left-1/2 top-1/2 h-[450px] w-[450px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#5271ff]/[0.08] blur-[140px] animate-pulse" />
-          <div className="pointer-events-none absolute right-10 bottom-10 h-[300px] w-[300px] rounded-full bg-[#3a4ec4]/[0.05] blur-[100px]" />
-=======
           <div
             ref={audioContainerRef}
             className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
@@ -279,8 +191,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
           />
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_#5271ff_1px,_transparent_1px)] [background-size:24px_24px] opacity-10" />
           <div className="pointer-events-none absolute h-[480px] w-[480px] rounded-full bg-[#5271ff]/10 blur-[140px]" />
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
           <div className="relative flex w-full max-w-md flex-col items-center px-6 text-center">
             <div className="mb-8 flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
@@ -310,10 +220,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
             {(error || mediaError) && (
               <p className="mt-4 max-w-sm text-xs text-rose-400">{error || mediaError}</p>
             )}
-<<<<<<< Updated upstream
-=======
-<<<<<<< Updated upstream
-=======
 
             {call.status === "active" && (
               <div className="mt-4 flex items-center gap-3 text-[10px] uppercase tracking-wider text-white/40">
@@ -336,7 +242,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
                 Enable speaker audio
               </button>
             )}
->>>>>>> Stashed changes
 
             <div className="mt-12 flex items-center gap-5 rounded-2xl border border-white/10 bg-[#0c0a2d]/80 px-6 py-4 backdrop-blur-lg">
               {call.status === "ringing" && isRecipient ? (
@@ -361,10 +266,6 @@ export default function CallOverlay({ callType, channelName, onHangUp }: CallOve
                 </>
               )}
             </div>
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
           </div>
         </motion.div>
       )}

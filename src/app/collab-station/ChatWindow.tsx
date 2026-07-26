@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown, Trash2 } from "lucide-react";
 import { Message, Attachment } from "./types";
@@ -165,10 +166,9 @@ export default function ChatWindow({
               return (
                 <motion.div
                   key={message.id}
-                  layout
-                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: "spring", stiffness: 320, damping: 26 }}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15 }}
                   className={`flex w-full group ${isMe ? "justify-end" : "justify-start"}`}
                 >
                   <div className={`flex max-w-[80%] gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
@@ -364,31 +364,30 @@ export default function ChatWindow({
       </div>
 
       {/* Lightbox Modal */}
-      {typeof window !== "undefined" && 
-        require("react-dom").createPortal(
+      {typeof window !== "undefined" &&
+        lightboxImage &&
+        createPortal(
           <AnimatePresence>
-            {lightboxImage && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+              onClick={() => setLightboxImage(null)}
+            >
+              <button
+                className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
                 onClick={() => setLightboxImage(null)}
               >
-                <button
-                  className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
-                  onClick={() => setLightboxImage(null)}
-                >
-                  <X size={24} />
-                </button>
-                <img
-                  src={lightboxImage}
-                  alt="Preview"
-                  className="max-h-[90vh] max-w-full rounded-md object-contain shadow-2xl"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </motion.div>
-            )}
+                <X size={24} />
+              </button>
+              <img
+                src={lightboxImage}
+                alt="Preview"
+                className="max-h-[90vh] max-w-full rounded-md object-contain shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
           </AnimatePresence>,
           document.body
         )}

@@ -314,64 +314,45 @@ export default function CollabStationPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   const containerRef = useRef<HTMLDivElement>(null);
-<<<<<<< Updated upstream
-  const currentUserRef = useRef<TokenUser>({});
-  const chatIdsRef = useRef<string[]>([]);
-=======
-<<<<<<< Updated upstream
-=======
   const currentUserRef = useRef<TokenUser>({});
   const chatIdsRef = useRef<string[]>([]);
   const tokenRequestCallIdRef = useRef<string | null>(null);
->>>>>>> Stashed changes
 
   useEffect(() => {
-  let cancelled = false;
+    let cancelled = false;
 
-  const connectSocket = async () => {
-    const token = await CookieManager("get", "access-token");
-    if (cancelled || !token) return;
-    currentUserRef.current = readTokenUser(token);
-    socket.auth = { token };
-    socket.connect();
-  };
+    const connectSocket = async () => {
+      const token = await CookieManager("get", "access-token");
+      if (cancelled || !token) return;
+      currentUserRef.current = readTokenUser(token);
+      socket.auth = { token };
+      socket.connect();
+    };
 
-  connectSocket();
+    connectSocket();
 
-  socket.on("connect", () => {
-    console.log("Socket connected:", socket.id);
-    chatIdsRef.current.forEach((groupId) => {
-      socket.emit("group:join", { groupId });
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+      chatIdsRef.current.forEach((groupId) => {
+        socket.emit("group:join", { groupId });
+      });
     });
-  });
 
-  return () => {
-    cancelled = true;
-    socket.off("connect");
-    socket.disconnect();
-  };
-}, []);
+    return () => {
+      cancelled = true;
+      socket.off("connect");
+      socket.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const setTerminalCall = (call: CallDto) => {
       setCurrentCall(call);
       setCallCredentials(null);
+      tokenRequestCallIdRef.current = null;
       window.setTimeout(() => setCurrentCall(null), 1200);
     };
 
-<<<<<<< Updated upstream
-    const activateCall = async (call: CallDto) => {
-      setCurrentCall(call);
-      setCallError("");
-      try {
-        setCallCredentials(await getCallToken(call.callId));
-      } catch (error) {
-        setCallError(error instanceof Error ? error.message : "Unable to join the voice call");
-      }
-    };
-
-=======
->>>>>>> Stashed changes
     const onIncoming = (call: CallDto) => {
       setCallRole("recipient");
       setCallError("");
@@ -381,14 +362,10 @@ export default function CollabStationPage() {
       setCallRole((role) => role || "caller");
       setCurrentCall(call);
     };
-<<<<<<< Updated upstream
-    const onAccepted = (call: CallDto) => void activateCall(call);
-=======
     const onAccepted = (call: CallDto) => {
       setCallError("");
       setCurrentCall(call);
     };
->>>>>>> Stashed changes
     const onError = (payload: { message?: string; error?: { message?: string } }) =>
       setCallError(payload.error?.message || payload.message || "Call operation failed");
 
@@ -417,12 +394,7 @@ export default function CollabStationPage() {
             setCallRole(me?.userId === call.recipient.user_id ? "recipient" : "caller");
           }
         }
-<<<<<<< Updated upstream
-        if (call.status === "active") await activateCall(call);
-        else setCurrentCall(call);
-=======
         setCurrentCall(call);
->>>>>>> Stashed changes
       })
       .catch(() => undefined);
 
@@ -438,8 +410,6 @@ export default function CollabStationPage() {
     };
   }, []);
 
-<<<<<<< Updated upstream
-=======
   // Token acquisition is centralized here so an accept acknowledgement and the
   // `call:accepted` broadcast cannot create two LiveKit room connections.
   useEffect(() => {
@@ -464,7 +434,6 @@ export default function CollabStationPage() {
     };
   }, [currentCall, callCredentials]);
 
->>>>>>> Stashed changes
   const emitCallEvent = async (event: string, payload: Record<string, string>) => {
     if (!socket.connected) throw new Error("Call signaling is disconnected");
     const acknowledgement = (await socket
@@ -497,10 +466,6 @@ export default function CollabStationPage() {
     try {
       const call = await emitCallEvent("call:accept", { callId: currentCall.callId });
       setCurrentCall(call);
-<<<<<<< Updated upstream
-      setCallCredentials(await getCallToken(call.callId));
-=======
->>>>>>> Stashed changes
     } catch (error) {
       setCallError(error instanceof Error ? error.message : "Unable to accept call");
     }
@@ -512,19 +477,12 @@ export default function CollabStationPage() {
       const call = await emitCallEvent(event, { callId: currentCall.callId });
       setCurrentCall(call);
       setCallCredentials(null);
-<<<<<<< Updated upstream
-=======
       tokenRequestCallIdRef.current = null;
->>>>>>> Stashed changes
       window.setTimeout(() => setCurrentCall(null), 600);
     } catch (error) {
       setCallError(error instanceof Error ? error.message : "Unable to update call");
     }
   };
-<<<<<<< Updated upstream
-=======
->>>>>>> Stashed changes
->>>>>>> Stashed changes
 
   // GSAP Entrance animation
   useEffect(() => {
@@ -791,7 +749,9 @@ useEffect(() => {
       fileUrl: fileUrl,
     });
 
-    await sendMessageApi(activeChannel.id, text, payloadAttachment);
+    sendMessageApi(activeChannel.id, text, payloadAttachment).catch((err) =>
+      console.log("Fallback message send failed:", err)
+    );
 
   } catch (err) {
     console.log("Send message failed:", err);
@@ -814,7 +774,9 @@ useEffect(() => {
      }
 
      // 3. Fallback backend save
-     await deleteMessageApi(messageId);
+     deleteMessageApi(messageId).catch((err) =>
+       console.log("Fallback delete message failed:", err)
+     );
    } catch (err) {
      console.log("Delete message failed:", err);
    }
