@@ -259,7 +259,7 @@ export default function CollabStationPage() {
   const [activeChannelId, setActiveChannelId] = useState("g-1");
   const [groups, setGroups] = useState<ChatChannel[]>(INITIAL_GROUPS);
   const [recentChats, setRecentChats] = useState<ChatChannel[]>(INITIAL_RECENT_CHATS);
-  const [threads, setThreads] = useState<ChatThreadMap>({});
+  const [threads, setThreads] = useState<ChatThreadMap>(INITIAL_THREADS);
   const [callType, setCallType] = useState<CallType>(null);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
 
