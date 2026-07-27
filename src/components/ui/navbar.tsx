@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { LogOut } from "lucide-react";
 import Logo from "@/assets/Logo.png";
 import { gsap } from "gsap";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import { socket } from "@/lib/socket";
 
 type NavItem = {
   name: string;
@@ -54,6 +56,7 @@ export default function Navbar() {
       CookieManager("delete", "user");
       CookieManager("delete", "business-name");
       CookieManager("delete", "business-id");
+      socket.disconnect();
       router.replace("/session");
       toast.success("Logged out successfully");
     } catch {
@@ -180,17 +183,20 @@ export default function Navbar() {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="h-9 w-9 shrink-0 cursor-pointer rounded-full border-2 border-[#5271ff]/30 hover:border-[#5271ff] hover:shadow-[0_0_12px_rgba(82,113,255,0.5)] transition-all duration-300 overflow-hidden"
-              onClick={() => setIsProfileOpen(true)}
-              aria-label="Open profile drawer"
-            >
-              <Avatar className="h-full w-full">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>CN</AvatarFallback>
-              </Avatar>
-            </button>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <button
+                type="button"
+                className="h-9 w-9 shrink-0 cursor-pointer rounded-full border-2 border-[#5271ff]/30 hover:border-[#5271ff] hover:shadow-[0_0_12px_rgba(82,113,255,0.5)] transition-all duration-300 overflow-hidden"
+                onClick={() => setIsProfileOpen(true)}
+                aria-label="Open profile drawer"
+              >
+                <Avatar className="h-full w-full">
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+              </button>
+            </div>
           </div>
         </div>
 

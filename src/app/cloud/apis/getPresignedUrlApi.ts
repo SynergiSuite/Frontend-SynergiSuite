@@ -5,6 +5,11 @@ const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 export type PresignedUrlResponse = {
   uploadUrl: string;
   filePath: string;
+  fileUrl?: string;
+  publicUrl?: string;
+  viewUrl?: string;
+  downloadUrl?: string;
+  url?: string;
 };
 
 export async function getPresignedUrlApi(fileName: string, mimeType: string, bucket: string): Promise<PresignedUrlResponse> {

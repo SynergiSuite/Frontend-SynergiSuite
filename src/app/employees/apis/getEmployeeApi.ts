@@ -45,8 +45,8 @@ export async function fetchEmployeesData(): Promise<MainPageData> {
         []) as EmployeeApiRecord[];
 
     const employees: UIEmployee[] = employeesArray.map((emp, index) => ({
-        id: emp?.user_id ?? index,
-        name: emp?.name || "Unknown",
+        id: emp?.user_id ?? (emp as any)?.user?.user_id ?? (emp as any)?.id ?? index,
+        name: emp?.name || (emp as any)?.user?.name || "Unknown",
         role: emp?.role?.name || "N/A",
         department: emp?.business?.name || "Unknown",
         status: emp?.isExpired === false ? "Active" : "Inactive",

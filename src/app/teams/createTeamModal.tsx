@@ -7,14 +7,15 @@ import {
   SelectValue,
   SelectContent,
   SelectItem 
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 import { X } from "lucide-react";
 import { Employee, Team } from "./schemas/types";
 import { toast } from "sonner";
+import { createTeamApi, CreateTeamPayload } from "./apis/createTeamApi";
 
 type CreateTeamModalProps = {
   onClose: () => void;
-  onCreate: (team: Team) => void;
+  onCreate: (team?: any) => void;
   employees: Employee[];
 };
 
@@ -33,6 +34,7 @@ export default function CreateTeamModal({
   });  
   const [members, setMembers] = useState<Employee[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const shellRef = useRef<HTMLDivElement>(null);
 
@@ -49,52 +51,104 @@ export default function CreateTeamModal({
 
   // ======= Helper Functions =======
   const stringToInt = (str: string) => {
-    const result = parseInt(str);
-    return result;
+    return parseInt(str, 10);
   };
 
   // ====== Handlers ======
   const handleAddMember = () => {
-    const selectedEmployee = employees.find((e) => e.user_id === stringToInt(selectedMemberId));
+    const selectedEmployee = employees.find((e) => Number(e.user_id) === stringToInt(selectedMemberId));
     if (selectedEmployee) {
-      setMembers((prev) => [...prev, selectedEmployee]);
-
-      setFormData((prev) => ({
-        ...prev,
-        members: [...(prev.members || []), selectedEmployee.user_id],
-      }));
-      
+      if (!members.some((m) => Number(m.user_id) === Number(selectedEmployee.user_id))) {
+        setMembers((prev) => [...prev, selectedEmployee]);
+      }
       setSelectedMemberId("");
     }
   };
 
   const handleRemoveMember = (idToRemove: string) => {
-    setMembers((prev) => prev.filter((member) => member.user_id !== stringToInt(idToRemove)));
+    const removeIdNum = stringToInt(idToRemove);
+    setMembers((prev) => prev.filter((member) => Number(member.user_id) !== removeIdNum));
+    if (Number(formData.leader_id) === removeIdNum) {
+      setFormData((prev) => ({ ...prev, leader_id: 0 }));
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
-    ...prev,
-    [name]: value, 
+      ...prev,
+      [name]: value, 
     }));
   };
-  
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(formData.members.length === 0) {
-      toast.warning("No Member or Leader selected.");
-    } else {
-      onCreate(formData);
-      onClose();
+
+    // 1. Name validation: letters and spaces only
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) {
+      toast.error("Team name is required.");
+      return;
     }
-    
+    if (!/^[A-Za-z\s]+$/.test(trimmedName)) {
+      toast.error("Team name must contain letters and spaces only.");
+      return;
+    }
+
+    // 2. Description validation: omit if empty, or 5-255 characters
+    const trimmedDesc = (formData.description || "").trim();
+    if (trimmedDesc.length > 0 && (trimmedDesc.length < 5 || trimmedDesc.length > 255)) {
+      toast.error("Description must be between 5 and 255 characters.");
+      return;
+    }
+
+    // 3. Leader ID validation: primitive number
+    const leaderIdNum = Number(formData.leader_id);
+    if (!leaderIdNum || isNaN(leaderIdNum) || leaderIdNum <= 0) {
+      toast.error("Please select a team leader.");
+      return;
+    }
+
+    // 4. Members validation: array of numeric user IDs
+    const memberIdsNum = members
+      .map((m) => Number(m.user_id))
+      .filter((id) => !isNaN(id) && id > 0);
+
+    if (memberIdsNum.length === 0) {
+      toast.error("Please add at least one team member.");
+      return;
+    }
+
+    // Ensure leader is included in members array if not already present
+    const numericMembers = Array.from(new Set([...memberIdsNum, leaderIdNum]));
+
+    // Construct Payload according to spec
+    const payload: CreateTeamPayload = {
+      name: trimmedName,
+      leader_id: leaderIdNum,
+      members: numericMembers,
+    };
+
+    if (trimmedDesc.length >= 5 && trimmedDesc.length <= 255) {
+      payload.description = trimmedDesc;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await createTeamApi(payload);
+      toast.success("Team created successfully");
+      onCreate(payload);
+      onClose();
+    } catch (err) {
+      console.error("Create team failed:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to create team");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const availableEmployees = employees.filter(
-    (emp) => !members.some((member) => member.user_id === emp.user_id)
+    (emp) => !members.some((member) => Number(member.user_id) === Number(emp.user_id))
   );
 
   // ====== Render ======
@@ -144,7 +198,7 @@ export default function CreateTeamModal({
 
         <form onSubmit={handleSubmit} className="relative z-10 flex flex-col flex-1 overflow-hidden">
           {/* Body */}
-          <div className="px-6 py-6 sm:px-8 space-y-6 overflow-y-auto max-h-[calc(100vh-14rem)]">
+          <div className="px-6 py-6 sm:px-8 space-y-6 overflow-y-auto max-h-[calc(100vh-14rem)] custom-scrollbar">
             {/* Team Info */}
             <div className="space-y-4">
               <div>
@@ -157,7 +211,7 @@ export default function CreateTeamModal({
                   type="text"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="Enter team name"
+                  placeholder="Enter team name (letters and spaces only)"
                   className="w-full h-11 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
                   required
                 />
@@ -165,7 +219,7 @@ export default function CreateTeamModal({
 
               <div>
                 <label htmlFor="description" className="block text-sm font-semibold text-white/70 mb-1.5">
-                  Description
+                  Description <span className="text-xs text-white/40 font-normal">(Optional, 5-255 chars)</span>
                 </label>
                 <textarea
                   name="description"
@@ -186,7 +240,7 @@ export default function CreateTeamModal({
                   Team Members
                 </h3>
                 <button
-                  className="relative overflow-hidden bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-xs font-semibold h-9 px-4 rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
+                  className="relative overflow-hidden bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-xs font-semibold h-9 px-4 rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                   type="button"
                   onClick={handleAddMember}
                   disabled={!selectedMemberId}
@@ -199,7 +253,7 @@ export default function CreateTeamModal({
                 value={selectedMemberId}
                 onValueChange={(value) => setSelectedMemberId(value)}
               >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left">
+                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left cursor-pointer">
                   <SelectValue placeholder="Select a Member" />
                 </SelectTrigger>
 
@@ -248,14 +302,15 @@ export default function CreateTeamModal({
                 Team Leader
               </h3>
               <Select
-                value={String(formData.leader_id)}
+                value={String(formData.leader_id || "")}
                 onValueChange={(value) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                leader_id: stringToInt(value),
-                              }))}
+                  setFormData((prev) => ({
+                    ...prev,
+                    leader_id: stringToInt(value),
+                  }))
+                }
               >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left">
+                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left cursor-pointer">
                   <SelectValue placeholder="Select a Lead" />
                 </SelectTrigger>
 
@@ -275,15 +330,16 @@ export default function CreateTeamModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-white/70 hover:bg-white/[0.08] hover:text-white transition-all"
+              className="px-5 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-white/70 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer"
             >
               Cancel
             </button>
             <button
-              className="px-6 py-2.5 bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-sm font-medium rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 hover:scale-[1.02] active:scale-[0.98]"
+              disabled={isSubmitting}
+              className="px-6 py-2.5 bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-sm font-medium rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-40"
               type="submit"
             >
-              Create Team
+              {isSubmitting ? "Creating..." : "Create Team"}
             </button>
           </div>
         </form>

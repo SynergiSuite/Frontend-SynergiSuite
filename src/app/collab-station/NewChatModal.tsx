@@ -5,11 +5,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Users, User, Sparkles } from "lucide-react";
 import { ChatChannel } from "./types";
 import { fetchEmployeesData } from "@/app/employees/apis/getEmployeeApi";
+import { CookieManager } from "@/lib/cookieManager";
+import { readTokenUser } from "./helpers/mainHelper";
 
 interface NewChatModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreateChannel: (channel: Omit<ChatChannel, "unreadCount" | "lastMessage" | "time">) => void;
+  onCreateChannel: (channel: Omit<ChatChannel, "unreadCount" | "lastMessage" | "time"> & { description?: string; avatarUrl?: string; selectedMemberIds?: string[] }) => void;
 }
 
 interface Teammate {
@@ -23,9 +25,13 @@ interface Teammate {
 export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewChatModalProps) {
   const [activeTab, setActiveTab] = useState<"direct" | "group">("direct");
   const [searchQuery, setSearchQuery] = useState("");
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [groupDescription, setGroupDescription] = useState("");
+  const [groupAvatarUrl, setGroupAvatarUrl] = useState("");
   const [selectedGroupType, setSelectedGroupType] = useState<"team" | "project" | "custom">("team");
   const [selectedTeammate, setSelectedTeammate] = useState<string | null>(null);
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [teammates, setTeammates] = useState<Teammate[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -39,23 +45,29 @@ export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewCh
         const data = await fetchEmployeesData();
         if (!active) return;
 
-        const mapped: Teammate[] = data.employees.map((emp) => {
-          const initials = emp.name
-            ? emp.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .substring(0, 2)
-                .toUpperCase()
-            : "??";
-          return {
-            id: String(emp.id),
-            name: emp.name,
-            role: emp.role,
-            avatar: initials,
-            online: emp.status === "Active",
-          };
-        });
+        const token = await CookieManager("get", "access-token");
+        const currentUser = token ? readTokenUser(token) : {};
+        const myUserId = currentUser.user_id ?? currentUser.sub;
+
+        const mapped: Teammate[] = data.employees
+          .filter((emp) => myUserId === undefined || String(emp.id) !== String(myUserId))
+          .map((emp) => {
+            const initials = emp.name
+              ? emp.name
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .substring(0, 2)
+                  .toUpperCase()
+              : "??";
+            return {
+              id: String(emp.id),
+              name: emp.name,
+              role: emp.role,
+              avatar: initials,
+              online: emp.status === "Active",
+            };
+          });
         setTeammates(mapped);
       } catch (err) {
         console.error("Failed to load employees for new chat modal:", err);
@@ -77,18 +89,34 @@ export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewCh
     member.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filteredGroupTeammates = teammates.filter((member) =>
+    member.name.toLowerCase().includes(memberSearchQuery.toLowerCase())
+  );
+
+  const toggleSelectMember = (id: string) => {
+    setSelectedMemberIds((prev) =>
+      prev.includes(id) ? prev.filter((mId) => mId !== id) : [...prev, id]
+    );
+  };
+
   const handleCreate = () => {
     if (activeTab === "group") {
       if (!groupName.trim()) return;
-      const formattedName = groupName.trim().startsWith("#") ? groupName.trim() : `#${groupName.trim()}`;
       onCreateChannel({
         id: `g-${Date.now()}`,
-        name: formattedName,
+        name: groupName.trim(),
+        description: groupDescription.trim() || undefined,
+        avatarUrl: groupAvatarUrl.trim() || undefined,
+        selectedMemberIds,
         type: "group",
         groupType: selectedGroupType,
-        membersCount: Math.floor(Math.random() * 5) + 3,
+        membersCount: selectedMemberIds.length + 1,
       });
       setGroupName("");
+      setGroupDescription("");
+      setGroupAvatarUrl("");
+      setSelectedMemberIds([]);
+      setMemberSearchQuery("");
     } else {
       if (!selectedTeammate) return;
       const teammate = teammates.find((t) => t.id === selectedTeammate);
@@ -205,15 +233,109 @@ export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewCh
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">
-                      Group Channel Identifier
+                      Group Name
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. #frontend-synergi"
+                      placeholder="e.g. Design Team"
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
                       className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#030114]/60 px-4 text-xs font-medium text-white placeholder:text-white/30 outline-none transition focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+                      Description (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Design team collaboration channel"
+                      value={groupDescription}
+                      onChange={(e) => setGroupDescription(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#030114]/60 px-4 text-xs font-medium text-white placeholder:text-white/30 outline-none transition focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+                      Avatar URL (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. https://example.com/avatar.png"
+                      value={groupAvatarUrl}
+                      onChange={(e) => setGroupAvatarUrl(e.target.value)}
+                      className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#030114]/60 px-4 text-xs font-medium text-white placeholder:text-white/30 outline-none transition focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30"
+                    />
+                  </div>
+
+                  <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+                        Add Group Members ({selectedMemberIds.length} selected)
+                      </label>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search members to add..."
+                        value={memberSearchQuery}
+                        onChange={(e) => setMemberSearchQuery(e.target.value)}
+                        className="h-10 w-full rounded-xl border border-white/[0.08] bg-[#030114]/60 pl-10 pr-4 text-xs font-medium text-white placeholder:text-white/30 outline-none transition focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30"
+                      />
+                      <Search className="absolute left-3.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/30" />
+                    </div>
+
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                      {isLoading ? (
+                        <p className="py-3 text-center text-xs text-white/50 animate-pulse">
+                          Loading members...
+                        </p>
+                      ) : filteredGroupTeammates.length > 0 ? (
+                        filteredGroupTeammates.map((member) => {
+                          const isSelected = selectedMemberIds.includes(member.id);
+                          return (
+                            <button
+                              key={member.id}
+                              type="button"
+                              onClick={() => toggleSelectMember(member.id)}
+                              className={`flex w-full items-center justify-between rounded-xl p-2.5 border transition-all duration-200 ${
+                                isSelected
+                                  ? "border-[#5271ff] bg-[#5271ff]/15 text-white"
+                                  : "border-white/[0.04] bg-white/[0.01] hover:bg-white/[0.04] text-white/80"
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#5271ff]/20 text-[10px] font-bold text-white relative">
+                                  {member.avatar}
+                                  {member.online && (
+                                    <span className="absolute bottom-0 right-0 h-1.5 w-1.5 rounded-full bg-emerald-500 ring-1 ring-[#0c0a2f]" />
+                                  )}
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-xs font-medium">{member.name}</p>
+                                  <p className="text-[9px] text-white/40">{member.role}</p>
+                                </div>
+                              </div>
+                              <div className={`flex h-4 w-4 items-center justify-center rounded border transition-colors ${
+                                isSelected ? "border-[#5271ff] bg-[#5271ff] text-white" : "border-white/20 bg-transparent"
+                              }`}>
+                                {isSelected && (
+                                  <svg className="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                                    <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                                  </svg>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })
+                      ) : (
+                        <p className="py-3 text-center text-xs text-white/30">
+                          No members matching query.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               ) : (

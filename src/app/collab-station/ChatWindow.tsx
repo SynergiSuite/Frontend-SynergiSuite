@@ -13,6 +13,49 @@ interface ChatWindowProps {
   onSendMessage: (text: string, attachment?: Attachment) => void;
   onInitiateCall: (type: "audio" | "video") => void;
   onDeleteMessage?: (messageId: string) => void;
+  onOpenDetails?: () => void;
+}
+
+function ImageAttachmentPreview({
+  attachment,
+  onOpen,
+}: {
+  attachment: Attachment;
+  onOpen: () => void;
+}) {
+  const [hasError, setHasError] = useState(false);
+
+  if (!attachment.url || hasError) {
+    return (
+      <div className="flex max-w-[300px] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
+          <File size={16} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-white">{attachment.name}</p>
+          <p className="text-[10px] text-white/40">Preview unavailable</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 group">
+      <img
+        src={attachment.url}
+        alt={attachment.name}
+        className="block h-auto max-w-[300px] rounded-xl object-cover"
+        onError={() => setHasError(true)}
+      />
+      <button
+        type="button"
+        onClick={onOpen}
+        className="absolute inset-0 flex h-full w-full cursor-pointer items-center justify-center border-none bg-[#0a0826]/40 text-white opacity-0 outline-none backdrop-blur-sm transition group-hover:opacity-100"
+      >
+        <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold backdrop-blur-md">View Image</span>
+      </button>
+    </div>
+  );
 }
 
 export default function ChatWindow({
@@ -22,6 +65,7 @@ export default function ChatWindow({
   onSendMessage,
   onInitiateCall,
   onDeleteMessage,
+  onOpenDetails,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState("");
   const [selectedFile, setSelectedFile] = useState<Attachment | null>(null);
@@ -71,21 +115,15 @@ export default function ChatWindow({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    const sizeKB = Math.round(file.size / 1024);
-    const sizeStr = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
-
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
     setSelectedFile({
       name: file.name,
-      size: sizeStr,
-      type: file.type || "application/octet-stream",
-      file: file,
+      size: `${(file.size / 1024).toFixed(1)} KB`,
+      type: isImage ? "image" : "file",
+      file,
     });
-
-    // Reset input
     e.target.value = "";
   };
 
@@ -94,8 +132,13 @@ export default function ChatWindow({
       
       {/* Header Panel */}
       <div className="shrink-0 border-b border-white/[0.08] bg-[#0c0a2d]/25 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff] shadow-[inset_0_0_10px_rgba(82,113,255,0.2)] font-bold text-sm relative">
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          className="flex items-center gap-3 text-left group cursor-pointer border-none bg-transparent p-1 -ml-1 rounded-xl hover:bg-white/[0.04] transition duration-200 outline-none"
+          title="Click for chat details & settings"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff] shadow-[inset_0_0_10px_rgba(82,113,255,0.2)] font-bold text-sm relative group-hover:border-[#5271ff]/50 transition">
             {(activeChannelName || "Unknown").startsWith("#") 
               ? (activeChannelName || "Unknown").slice(1, 3).toUpperCase() 
               : (activeChannelName || "Unknown").slice(0, 2).toUpperCase()}
@@ -104,7 +147,9 @@ export default function ChatWindow({
             )}
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white tracking-wide">{activeChannelName || "Unknown"}</h2>
+            <h2 className="text-sm font-bold text-white tracking-wide group-hover:text-[#5271ff] transition flex items-center gap-1.5">
+              {activeChannelName || "Unknown"}
+            </h2>
             <p className="text-[10px] text-white/40 flex items-center gap-1">
               {activeChannelType === "group" ? (
                 <>
@@ -119,7 +164,7 @@ export default function ChatWindow({
               )}
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Call Controls Area */}
         <div className="flex items-center gap-3">
@@ -200,20 +245,10 @@ export default function ChatWindow({
                         {message.attachment && (
                           <div className="mb-3">
                             {message.attachment.type.startsWith("image") || message.attachment.name.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                              <div className="relative overflow-hidden rounded-xl border border-white/10 group inline-block">
-                                <img
-                                  src={message.attachment.url}
-                                  alt={message.attachment.name}
-                                  className="w-full max-w-[300px] h-auto object-cover rounded-xl block"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => setLightboxImage(message.attachment?.url || null)}
-                                  className="absolute inset-0 w-full h-full bg-[#0a0826]/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white backdrop-blur-sm cursor-pointer border-none outline-none"
-                                >
-                                  <span className="bg-black/50 px-3 py-1.5 text-xs font-semibold rounded-full backdrop-blur-md">View Image</span>
-                                </button>
-                              </div>
+                              <ImageAttachmentPreview
+                                attachment={message.attachment}
+                                onOpen={() => setLightboxImage(message.attachment?.url || null)}
+                              />
                             ) : (
                               <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
                                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">

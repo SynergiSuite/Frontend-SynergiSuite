@@ -59,22 +59,7 @@ const FileRow = ({
       : "N/A";
   };
 
-  let canDelete = false;
-  const userRole = role.toLowerCase();
-  
-  if (file.referenceType === "user" || file.labelType === 1) {
-    canDelete = String(userId) === String(file.referenceId || file.teamId);
-  } else if (file.referenceType === "team" || file.labelType === 2) {
-    const team = teams.find((t) => String(t.id || t.team_id || t.teamId) === String(file.referenceId || file.teamId));
-    if (team) {
-      const leaderId = team.leader?.user_id || team.leader_id || team.leaderId;
-      canDelete = String(userId) === String(leaderId);
-    }
-  } else if (file.referenceType === "project" || file.labelType === 3) {
-    canDelete = ["manager", "founder"].includes(userRole);
-  } else if (file.referenceType === "client" || file.labelType === 4) {
-    canDelete = ["client", "manager", "founder"].includes(userRole);
-  }
+  let canDelete = true;
 
   return (
     <>

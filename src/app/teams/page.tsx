@@ -91,31 +91,8 @@ export default function Page() {
     fetchEmployeesData();
   }, [reload]);
 
-  const handleSubmitOnCreate = async(formData: Team) => {
-    if (!canManageTeamActions) {
-      toast.error("You do not have permission to create teams.");
-      return;
-    }
-
-    const accessToken = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/teams/create`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      },
-    );
-
-    if(!response.ok) {
-      toast.error(response.statusText);
-      return;
-    }
-    setIsModalOpen(false);
+  const handleSubmitOnCreate = () => {
     setReload((prev) => !prev);
-    toast.success("Team created successfully");
   };
 
   const states = [

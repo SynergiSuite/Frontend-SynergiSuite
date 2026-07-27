@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, Image as ImageIcon, Video, FolderArchive, File, DollarSign, Calendar, Activity, X, ExternalLink } from "lucide-react";
+import { FileText, Image as ImageIcon, Video, FolderArchive, File, DollarSign, Calendar, Activity, X, ExternalLink, Trash } from "lucide-react";
 import { FileType } from "./statesCards";
 import { getViewUrlApi } from "./apis/getViewUrlApi";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ type FileDetailProps = {
   file: FileType | null;
   open: boolean;
   onClose: () => void;
+  onDelete?: (id: string) => void;
 };
 
 const getCategoryIcon = (category: string) => {
@@ -90,6 +91,7 @@ export default function FileDetailModal({
   file,
   open,
   onClose,
+  onDelete,
 }: FileDetailProps) {
   const [isViewing, setIsViewing] = useState(false);
 
@@ -229,11 +231,26 @@ export default function FileDetailModal({
             </div>
 
             <div className="flex justify-end gap-3 border-t border-white/[0.08] px-6 py-4 sm:px-8 bg-[#0a0826]/40 backdrop-blur-md">
+              {onDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (file) {
+                      onClose();
+                      onDelete(file.id);
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 rounded-xl border border-rose-500/30 bg-rose-500/10 px-5 py-2.5 text-sm font-semibold text-rose-400 transition-all duration-300 hover:bg-rose-500/20 hover:text-rose-300 active:scale-95 cursor-pointer"
+                >
+                  <Trash className="h-4 w-4" />
+                  Delete Asset
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleViewDocument}
                 disabled={isViewing}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-6 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_15px_rgba(82,113,255,0.35)] active:scale-95 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-6 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_15px_rgba(82,113,255,0.35)] active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 <ExternalLink className="h-4 w-4" />
                 {isViewing ? "Opening..." : "View Document"}

@@ -170,11 +170,17 @@ export default function TeamTable({
 
       <div className="space-y-3 md:hidden">
         {teams.map((team, index) => (
-          <button
+          <div
             key={index}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => setSelectedTeam(team)}
-            className="w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 p-4 text-left shadow-sm transition hover:bg-white/[0.04]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                setSelectedTeam(team);
+              }
+            }}
+            className="w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 p-4 text-left shadow-sm transition hover:bg-white/[0.04] cursor-pointer"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -235,7 +241,7 @@ export default function TeamTable({
                 ) : null}
               </div>
             </div>
-          </button>
+          </div>
         ))}
       </div>
 

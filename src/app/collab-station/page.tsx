@@ -1,11 +1,9 @@
 "use client";
-
-import { CookieManager } from "@/lib/cookieManager";
 import { socket } from "@/lib/socket";
-
 import React, { useState, useEffect, useRef } from "react";
 import { getMessagesApi } from "./apis/DirectChats/getMessageApi";
 import { CreateDirectChatApi } from "./apis/DirectChats/createDirectChatsApi";
+import { createCustomGroupApi } from "./apis/DirectChats/CustomGroups/createCustomGroupApi";
 import { sendMessageApi } from "./apis/DirectChats/sendMessageApi";
 import { deleteMessageApi } from "./apis/DirectChats/deleteMessageApi";
 import { getPresignedUrlApi } from "../cloud/apis/getPresignedUrlApi";
@@ -19,300 +17,34 @@ import { ChatChannel, Message, ChatThreadMap, Attachment } from "./types";
 import { CallAcknowledgement, CallDto, CallTokenResponse } from "./callTypes";
 import { getCallToken, getCurrentCall } from "./apis/callApi";
 import { toast } from "sonner";
+import { authHeaders, backendBaseUrl, getAccessToken, readTokenUser, TokenUser, UserId } from "./helpers/mainHelper";
+import { formatMissedCallMessage, getMissedCallPreview } from "./helpers/callHelperFunctions";
+import { formatChatTime, formatMessage, getUploadedFileUrl } from "./helpers/chatHelperFunctions";
+import { ChatDetailsModal, EditChatModal, DeleteChatModal, AddMemberModal } from "./popupModels";
+import { playNotificationSound as triggerGlobalSound } from "@/lib/soundUtils";
+import { getChatUploadUrlApi } from "./apis/getChatUploadUrlApi";
 
 
-// Setup Initial Mock Channels
-const INITIAL_GROUPS: ChatChannel[] = [
-  {
-    id: "g-1",
-    name: "#development-team",
-    type: "group",
-    groupType: "team",
-    lastMessage: "Alex Mercer: All features are locked for testing",
-    time: "2 days ago",
-    unreadCount: 1,
-    membersCount: 8,
-  },
-  {
-    id: "g-2",
-    name: "#marketing-team",
-    type: "group",
-    groupType: "team",
-    lastMessage: "Elena Rostova: The video presentation is ready",
-    time: "Yesterday",
-    unreadCount: 0,
-    membersCount: 4,
-  },
-  {
-    id: "g-3",
-    name: "#synergy-portal",
-    type: "group",
-    groupType: "project",
-    lastMessage: "Sarah Connor: We updated the primary color shades",
-    time: "10:30 AM",
-    unreadCount: 2,
-    membersCount: 5,
-  },
-  {
-    id: "g-4",
-    name: "#ideas-lounge",
-    type: "group",
-    groupType: "custom",
-    lastMessage: "Sarah Connor: Love it. Let's dump all feature ideas here.",
-    time: "11:20 AM",
-    unreadCount: 0,
-    membersCount: 12,
-  },
-];
 
-const INITIAL_RECENT_CHATS: ChatChannel[] = [
-  {
-    id: "d-1",
-    name: "Sarah Connor",
-    type: "direct",
-    lastMessage: "Can we hop on a quick call?",
-    time: "11:15 AM",
-    unreadCount: 0,
-    status: "online",
-    avatar: "SC",
-  },
-  {
-    id: "d-2",
-    name: "Alex Mercer",
-    type: "direct",
-    lastMessage: "Code reviewed, looking clean!",
-    time: "9:45 AM",
-    unreadCount: 0,
-    status: "offline",
-    avatar: "AM",
-  },
-  {
-    id: "d-3",
-    name: "Elena Rostova",
-    type: "direct",
-    lastMessage: "Let's sync up on the dashboard design",
-    time: "Yesterday",
-    unreadCount: 0,
-    status: "online",
-    avatar: "ER",
-  },
-];
-
-// Setup Initial Mock Messages mapped by Channel ID
-const INITIAL_THREADS: ChatThreadMap = {
-  "g-1": [
-    {
-      id: "m1",
-      sender: "them",
-      senderName: "Alex Mercer",
-      text: "Staging build is deployed and ready for security scanner audit.",
-      time: "2 days ago",
-      avatar: "AM",
-    },
-    {
-      id: "m2",
-      sender: "me",
-      senderName: "Me",
-      text: "I'll execute the cypress integration scripts right away.",
-      time: "2 days ago",
-    },
-    {
-      id: "m3",
-      sender: "them",
-      senderName: "Alex Mercer",
-      text: "Sounds like a plan. All features are locked for testing, let's keep the pipeline green.",
-      time: "2 days ago",
-      avatar: "AM",
-    },
-  ],
-  "g-2": [
-    {
-      id: "m4",
-      sender: "them",
-      senderName: "Elena Rostova",
-      text: "Working on the teaser for our June release.",
-      time: "Yesterday",
-      avatar: "ER",
-    },
-    {
-      id: "m5",
-      sender: "me",
-      senderName: "Me",
-      text: "Excellent. Let me review the draft assets in the Cloud sync drive.",
-      time: "Yesterday",
-    },
-    {
-      id: "m6",
-      sender: "them",
-      senderName: "Elena Rostova",
-      text: "Perfect, the video presentation is ready for founder review in cloud storage.",
-      time: "Yesterday",
-      avatar: "ER",
-    },
-  ],
-  "g-3": [
-    {
-      id: "m7",
-      sender: "them",
-      senderName: "Sarah Connor",
-      text: "Hey team! Pushed the updated styling specifications to Figma.",
-      time: "10:15 AM",
-      avatar: "SC",
-    },
-    {
-      id: "m8",
-      sender: "me",
-      senderName: "Me",
-      text: "Prone to verify. Do we have the updated branding guidelines in the project?",
-      time: "10:20 AM",
-    },
-    {
-      id: "m9",
-      sender: "them",
-      senderName: "Alex Mercer",
-      text: "Pristine. I synchronised the next.js and tailwind variables with the Figma styling variables.",
-      time: "10:25 AM",
-      avatar: "AM",
-    },
-    {
-      id: "m10",
-      sender: "them",
-      senderName: "Sarah Connor",
-      text: "Indeed. We updated the primary color shades to match our futuristic dark premium palette.",
-      time: "10:30 AM",
-      avatar: "SC",
-    },
-  ],
-  "g-4": [
-    {
-      id: "m11_c",
-      sender: "me",
-      senderName: "Me",
-      text: "Hey team, this lounge is for raw ideation and brainstorming! Let's build something epic.",
-      time: "11:10 AM",
-    },
-    {
-      id: "m12_c",
-      sender: "them",
-      senderName: "Sarah Connor",
-      text: "Love it. Let's dump all feature ideas here. I'm already drafting a glassmorphic sidebar layout concept.",
-      time: "11:20 AM",
-      avatar: "SC",
-    },
-  ],
-  "d-1": [
-    {
-      id: "m11",
-      sender: "them",
-      senderName: "Sarah Connor",
-      text: "Hello! Did you get a chance to check the custom glassmorphism panels?",
-      time: "11:00 AM",
-      avatar: "SC",
-    },
-    {
-      id: "m12",
-      sender: "me",
-      senderName: "Me",
-      text: "Yes, they look gorgeous! The transitions are super clean and professional.",
-      time: "11:10 AM",
-    },
-    {
-      id: "m13",
-      sender: "them",
-      senderName: "Sarah Connor",
-      text: "Awesome! Can we hop on a quick call to map out the dashboard graphs?",
-      time: "11:15 AM",
-      avatar: "SC",
-    },
-  ],
-  "d-2": [
-    {
-      id: "m14",
-      sender: "me",
-      senderName: "Me",
-      text: "Hey Alex, are we good to approve the TypeORM delete guard pull request?",
-      time: "9:30 AM",
-    },
-    {
-      id: "m15",
-      sender: "them",
-      senderName: "Alex Mercer",
-      text: "Yes, just ran the test suites against local docker services. Code reviewed, looking clean!",
-      time: "9:45 AM",
-      avatar: "AM",
-    },
-  ],
-  "d-3": [
-    {
-      id: "m16",
-      sender: "them",
-      senderName: "Elena Rostova",
-      text: "Hey! Let's sync up on the dashboard design changes when you have a slot.",
-      time: "Yesterday",
-      avatar: "ER",
-    },
-    {
-      id: "m17",
-      sender: "me",
-      senderName: "Me",
-      text: "Definitely. Let's schedule an Orbit link tomorrow afternoon.",
-      time: "Yesterday",
-    },
-  ],
-};
-
-type UserId = number | string;
-type TokenUser = { user_id?: UserId; sub?: UserId; email?: string };
-
-const readTokenUser = (token: string): TokenUser => {
-  try {
-    const payload = token.split(".")[1];
-    return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-  } catch {
-    return {};
-  }
-};
-
-const formatMessage = (message: any, currentUser: TokenUser): Message => {
-  const sender = message.sender || {};
-  const isMe =
-    (currentUser.user_id ?? currentUser.sub) === message.senderId ||
-    (!!currentUser.email && currentUser.email === sender.email);
-
-  return {
-    id: message.id,
-    sender: isMe ? "me" : "them",
-    senderName: isMe ? "Me" : sender.name || sender.email || "Unknown user",
-    text: message.text || "",
-    time: message.createdAt
-      ? new Date(message.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
-      : "",
-    avatar: sender.name
-      ? sender.name.split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()
-      : undefined,
-    attachment: message.fileUrl
-      ? { 
-          name: decodeURIComponent(message.fileUrl.split("/").pop()?.split("?")[0] || "Attachment"), 
-          size: "", 
-          type: message.fileUrl.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i) ? "image" : "file", 
-          url: message.fileUrl 
-        }
-      : undefined,
-  };
-};
 
 export default function CollabStationPage() {
-  // Wait for the API to provide a real UUID before loading message history.
   const [activeChannelId, setActiveChannelId] = useState("");
-  const [groups, setGroups] = useState<ChatChannel[]>(INITIAL_GROUPS);
-  const [recentChats, setRecentChats] = useState<ChatChannel[]>(INITIAL_RECENT_CHATS);
+  const [groups, setGroups] = useState<ChatChannel[]>([]);
+  const [recentChats, setRecentChats] = useState<ChatChannel[]>([]);
   const [threads, setThreads] = useState<ChatThreadMap>({});
   const [currentCall, setCurrentCall] = useState<CallDto | null>(null);
   const [callSide, setCallSide] = useState<"caller" | "recipient" | undefined>();
   const [callCredentials, setCallCredentials] = useState<CallTokenResponse | null>(null);
   const [callError, setCallError] = useState("");
-  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isNewChatOpen, setIsNewChatOpen] = useState(false);
+
+  // Popups state
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [rawGroupsDataMap, setRawGroupsDataMap] = useState<Record<string, any>>({});
   const [currentUserId, setCurrentUserId] = useState<UserId | undefined>();
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -320,11 +52,25 @@ export default function CollabStationPage() {
   const currentUserIdRef = useRef<UserId | undefined>(undefined);
   const chatIdsRef = useRef<string[]>([]);
   const tokenRequestCallIdRef = useRef<string | null>(null);
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
+  const notificationAudioUnlockedRef = useRef(false);
 
   const setCurrentUserIdentity = (userId?: UserId) => {
     if (userId === undefined || userId === null) return;
     currentUserIdRef.current = userId;
     setCurrentUserId(userId);
+  };
+
+  // Reads the token, parses it, and syncs both the ref (for sync access in
+  // callbacks/sockets) and state (for renders). Returns the token + parsed user
+  // so callers needing the raw token (e.g. for Authorization headers) don't
+  // have to re-read the cookie.
+  const identifyCurrentUser = () => {
+    const token = getAccessToken();
+    const user = token ? readTokenUser(token) : {};
+    currentUserRef.current = user;
+    setCurrentUserIdentity(user.user_id ?? user.sub);
+    return { token, user };
   };
 
   const isCurrentUser = (userId?: UserId) =>
@@ -338,31 +84,59 @@ export default function CollabStationPage() {
     return undefined;
   };
 
-  useEffect(() => {
-    let cancelled = false;
+  const playNotificationSound = () => {
+    triggerGlobalSound();
+  };
 
-    const connectSocket = async () => {
-      const token = await CookieManager("get", "access-token");
-      if (cancelled || !token) return;
-      currentUserRef.current = readTokenUser(token);
-      setCurrentUserIdentity(currentUserRef.current.user_id ?? currentUserRef.current.sub);
-      socket.auth = { token };
-      socket.connect();
+  useEffect(() => {
+    const audio = new Audio("/sounds/sound.wav");
+    audio.preload = "auto";
+    audio.volume = 0.65;
+    notificationAudioRef.current = audio;
+
+    const unlockAudio = () => {
+      audio.muted = true;
+      void audio
+        .play()
+        .then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+          notificationAudioUnlockedRef.current = true;
+        })
+        .catch(() => undefined);
     };
 
-    connectSocket();
+    window.addEventListener("click", unlockAudio, { once: true });
+    window.addEventListener("touchstart", unlockAudio, { once: true });
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+      audio.pause();
+      notificationAudioRef.current = null;
+      notificationAudioUnlockedRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const { token } = identifyCurrentUser();
+    const joinKnownGroups = () => {
       chatIdsRef.current.forEach((groupId) => {
         socket.emit("group:join", { groupId });
       });
-    });
+    };
+
+    if (token) {
+      socket.auth = { token };
+      if (!socket.connected) socket.connect();
+      else joinKnownGroups();
+    }
+
+    socket.on("connect", joinKnownGroups);
 
     return () => {
-      cancelled = true;
-      socket.off("connect");
-      socket.disconnect();
+      socket.off("connect", joinKnownGroups);
     };
   }, []);
 
@@ -384,6 +158,7 @@ export default function CollabStationPage() {
 
     const onIncoming = (call: CallDto) => {
       if (!isCurrentUser(call.recipient.user_id)) return;
+      playNotificationSound();
       setCallSide("recipient");
       setCallError("");
       setCurrentCall(call);
@@ -414,12 +189,12 @@ export default function CollabStationPage() {
     getCurrentCall()
       .then(async (call) => {
         if (!call) return;
-        const token = await CookieManager("get", "access-token");
+        const token = getAccessToken();
         const email = token ? readTokenUser(token).email : undefined;
         if (email) {
           const response = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/collab-station/groups/${call.groupId}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            `${backendBaseUrl}/collab-station/groups/${call.groupId}`,
+            { headers: authHeaders(token) }
           );
           if (response.ok) {
             const group = await response.json();
@@ -446,8 +221,8 @@ export default function CollabStationPage() {
     };
   }, []);
 
-  // Token acquisition is centralized here so an accept acknowledgement and the
-  // `call:accepted` broadcast cannot create two LiveKit room connections.
+  // Centralized so an accept acknowledgement and the `call:accepted` broadcast
+  // cannot create two LiveKit room connections.
   useEffect(() => {
     if (!currentCall || currentCall.status !== "active" || callCredentials) return;
     if (tokenRequestCallIdRef.current === currentCall.callId) return;
@@ -525,370 +300,382 @@ export default function CollabStationPage() {
     }
   };
 
-  // GSAP Entrance animation
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.fromTo(
         ".collab-panel-wrapper",
         { opacity: 0, y: 30, scale: 0.98 },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.65,
-          ease: "power3.out",
-        }
+        { opacity: 1, y: 0, scale: 1, duration: 0.65, ease: "power3.out" }
       );
     }, containerRef);
 
     return () => ctx.revert();
   }, []);
 
-useEffect(() => {
-  const fetchChats = async () => {
-    try {
-      const token = await CookieManager("get", "access-token");
-      const currentUser = token ? readTokenUser(token) : {};
-      currentUserRef.current = currentUser;
-      setCurrentUserIdentity(currentUser.user_id ?? currentUser.sub);
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const { token, user: currentUser } = identifyCurrentUser();
 
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_BASE_URL}/collab-station/groups`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      const data = await res.json();
-
-      let loadedGroups: any[] = [];
-      let loadedDirects: any[] = [];
-
-      if (Array.isArray(data)) {
-        const mappedChats = data.map((c) => {
-          const otherMember = c.type === "direct"
-            ? c.members?.find((member: any) => {
-                const user = member.user || {};
-                const myId = currentUser.user_id ?? currentUser.sub;
-                return myId ? member.userId !== myId : user.email !== currentUser.email;
-              })
-            : undefined;
-          const displayUser = otherMember?.user;
-
-          return {
-          id: c.id,
-          name: c.type === "direct"
-            ? displayUser?.name || displayUser?.email || "Unknown user"
-            : c.name,
-          type: c.type,
-          groupType: c.type === "direct" ? undefined : c.type,
-          lastMessage: c.latestMessage ? c.latestMessage.m_text : "No messages yet",
-          time: c.latestMessage ? new Date(c.latestMessage.m_createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "",
-          unreadCount: 0,
-          status: "online",
-          avatar: c.avatarUrl || (displayUser?.name
-            ? displayUser.name.split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()
-            : undefined),
-          membersCount: c.members?.length || 0,
-        };});
-
-        loadedGroups = mappedChats.filter((c) => c.type !== "direct");
-        loadedDirects = mappedChats.filter((c) => c.type === "direct");
-      } else {
-        loadedGroups = data.groups || [];
-        loadedDirects = data.directChats || [];
-      }
-
-      setGroups(loadedGroups);
-      setRecentChats(loadedDirects);
-      const loadedChats = [...loadedGroups, ...loadedDirects];
-      chatIdsRef.current = loadedChats.map((chat) => chat.id);
-      setActiveChannelId((currentId) =>
-        loadedChats.some((chat) => chat.id === currentId)
-          ? currentId
-          : loadedChats[0]?.id || ""
-      );
-
-      // Join all chat rooms so we can receive messages in real-time
-      if (socket.connected) {
-        chatIdsRef.current.forEach((groupId) => {
-          socket.emit("group:join", { groupId });
+        const res = await fetch(`${backendBaseUrl}/collab-station/groups`, {
+          headers: authHeaders(token),
         });
+
+        const data = await res.json();
+
+        let loadedGroups: any[] = [];
+        let loadedDirects: any[] = [];
+
+        if (Array.isArray(data)) {
+          const rawMap: Record<string, any> = {};
+          data.forEach((c) => {
+            if (c.id) rawMap[c.id] = c;
+          });
+          setRawGroupsDataMap(rawMap);
+
+          const mappedChats = data.map((c) => {
+            const otherMember =
+              c.type === "direct"
+                ? c.members?.find((member: any) => {
+                    const user = member.user || {};
+                    const myId = currentUser.user_id ?? currentUser.sub;
+                    return myId ? member.userId !== myId : user.email !== currentUser.email;
+                  })
+                : undefined;
+            const displayUser = otherMember?.user;
+            const missedCalls = Array.isArray(c.missedCalls) ? c.missedCalls : [];
+            const latestMissedCall = missedCalls[0];
+            const latestMessageText = c.latestMessage?.m_text;
+            const latestMessageTime = c.latestMessage?.m_createdAt;
+
+            return {
+              id: c.id,
+              name: c.type === "direct" ? displayUser?.name || displayUser?.email || "Unknown user" : c.name,
+              type: c.type,
+              groupType: c.type === "direct" ? undefined : c.type,
+              lastMessage:
+                latestMessageText || getMissedCallPreview(latestMissedCall, currentUser) || "No messages yet",
+              time: formatChatTime(latestMessageTime || latestMissedCall?.endedAt || latestMissedCall?.createdAt),
+              unreadCount: 0,
+              status: "online",
+              avatar:
+                c.avatarUrl ||
+                (displayUser?.name
+                  ? displayUser.name.split(" ").map((part: string) => part[0]).join("").slice(0, 2).toUpperCase()
+                  : undefined),
+              membersCount: c.members?.length || 0,
+              missedCalls,
+              missedCallCount: c.missedCallCount ?? missedCalls.length,
+            };
+          });
+
+          loadedGroups = mappedChats.filter((c) => c.type !== "direct");
+          loadedDirects = mappedChats.filter((c) => c.type === "direct");
+        } else {
+          loadedGroups = data.groups || [];
+          loadedDirects = data.directChats || [];
+        }
+
+        setGroups(loadedGroups);
+        setRecentChats(loadedDirects);
+        const loadedChats = [...loadedGroups, ...loadedDirects];
+        chatIdsRef.current = loadedChats.map((chat) => chat.id);
+        setActiveChannelId((currentId) =>
+          loadedChats.some((chat) => chat.id === currentId) ? currentId : loadedChats[0]?.id || ""
+        );
+
+        if (socket.connected) {
+          chatIdsRef.current.forEach((groupId) => {
+            socket.emit("group:join", { groupId });
+          });
+        }
+      } catch (err) {
+        console.log("Failed to load chats", err);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (err) {
-      console.log("Failed to load chats", err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  fetchChats();
-}, []);
-
-useEffect(() => {
-  if (!activeChannelId) return;
-
-  socket.emit("group:join", { groupId: activeChannelId });
-
-  let cancelled = false;
-  getMessagesApi(activeChannelId)
-    .then((data) => {
-      if (cancelled) return;
-      const messages = Array.isArray(data) ? data : data.messages || [];
-      setThreads((prev) => ({
-        ...prev,
-        [activeChannelId]: messages.map((message: any) =>
-          formatMessage(message, currentUserRef.current)
-        ),
-      }));
-    })
-    .catch((err) => console.log("Failed to load messages", err));
-
-  return () => {
-    cancelled = true;
-  };
-}, [activeChannelId]);
-  
-useEffect(() => {
-  const receiveMessage = (message: any) => {
-    const roomId = message.groupId;
-    const formatted = formatMessage(message, currentUserRef.current);
-
-    setThreads((prev) => {
-      const roomThreads = prev[roomId] || [];
-      
-      // Find matching temporary message by text or attachment name
-      let tempIndexToRemove = roomThreads.findIndex((m) => {
-        if (!m.id.startsWith("temp-")) return false;
-        const textMatch = m.text && formatted.text && m.text === formatted.text;
-        const attachmentMatch = m.attachment?.name && formatted.attachment?.name && m.attachment.name === formatted.attachment.name;
-        return textMatch || attachmentMatch;
-      });
-
-      // If we found a matching temp message, it means this incoming message is actually ours echoing back!
-      if (tempIndexToRemove !== -1) {
-        formatted.sender = "me";
-      }
-
-      const newThreads = roomThreads.filter(
-        (item, idx) => item.id !== formatted.id && idx !== tempIndexToRemove
-      );
-
-      return {
-        ...prev,
-        [roomId]: [...newThreads, formatted],
-      };
-    });
-  };
-
-  const handleMessageDeleted = (data: { messageId: string, groupId: string }) => {
-    setThreads((prev) => ({
-      ...prev,
-      [data.groupId]: (prev[data.groupId] || []).filter((item) => item.id !== data.messageId),
-    }));
-  };
-
-  socket.on("message:received", receiveMessage);
-  socket.on("message:deleted", handleMessageDeleted);
-
-  return () => {
-    socket.off("message:received", receiveMessage);
-    socket.off("message:deleted", handleMessageDeleted);
-  };
-}, []);
-
-  // Find active channel metadata
-  const activeChannel =
-    groups.find((g) => g.id === activeChannelId) ||
-    recentChats.find((c) => c.id === activeChannelId);
-
-  const activeMessages = threads[activeChannelId] || [];
-  const handleSelectChannel = (id: string) => setActiveChannelId(id);
-  // Handle message dispatching
- const handleSendMessage = async (text: string, attachment?: Attachment) => {
-  if (!activeChannel) return;
-
-  try {
-    const timeString = new Date().toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-
-    if (!socket.connected) {
-      throw new Error("Chat connection is not available");
-    }
-
-    // 1. Optimistic UI Update immediately!
-    const tempId = `temp-${Date.now()}`;
-    const previewUrl = attachment?.file ? URL.createObjectURL(attachment.file) : attachment?.url;
-    
-    const tempMessage: Message = {
-      id: tempId,
-      sender: "me",
-      senderName: "Me",
-      text,
-      time: timeString,
-      avatar: "",
-      attachment: attachment ? {
-        name: attachment.name,
-        size: attachment.size,
-        type: attachment.type,
-        url: previewUrl || ""
-      } : undefined
     };
 
-    setThreads((prev) => ({
-      ...prev,
-      [activeChannel.id]: [...(prev[activeChannel.id] || []), tempMessage],
-    }));
+    fetchChats();
+  }, []);
 
-    const lastMsgDisplay = attachment ? `Sent a file: ${attachment.name}` : text;
-    
-    setGroups((prev) => prev.map((g) =>
-      g.id === activeChannel.id ? { ...g, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString } : g
-    ));
-
-    setRecentChats((prev) => prev.map((c) =>
-      c.id === activeChannel.id ? { ...c, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString } : c
-    ));
-
-    // 2. Perform the slow network operations silently in the background
-    let fileUrl = attachment?.url;
-
-    if (attachment?.file) {
-      const presignedData = await getPresignedUrlApi(
-        attachment.file.name,
-        attachment.file.type || "application/octet-stream",
-        process.env.NEXT_PUBLIC_CHAT_BUCKET || "synergi-chat-attachments"
-      );
-      
-      const uploadRes = await fetch(presignedData.uploadUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": attachment.file.type || "application/octet-stream",
-        },
-        body: attachment.file,
-      });
-
-      if (!uploadRes.ok) {
-        throw new Error("Failed to upload attachment");
-      }
-      
-      fileUrl = presignedData.filePath;
-    }
-
-    const payloadAttachment = attachment 
-      ? { name: attachment.name, size: attachment.size, type: attachment.type, url: fileUrl } 
-      : undefined;
-
-    // 3. Emit to backend 
-    socket.emit("message:send", {
-      groupId: activeChannel.id,
-      text,
-      type: attachment ? "file" : "text",
-      fileUrl: fileUrl,
-    });
-
-    sendMessageApi(activeChannel.id, text, payloadAttachment).catch((err) =>
-      console.log("Fallback message send failed:", err)
-    );
-
-  } catch (err) {
-    console.log("Send message failed:", err);
-  }
- };
-
- const handleDeleteMessage = async (messageId: string) => {
-   if (!activeChannel) return;
-   
-   try {
-     // 1. Optimistic UI update
-     setThreads((prev) => ({
-       ...prev,
-       [activeChannel.id]: (prev[activeChannel.id] || []).filter(m => m.id !== messageId),
-     }));
-
-     // 2. Broadcast deletion
-     if (socket.connected) {
-       socket.emit("message:delete", { messageId, groupId: activeChannel.id });
-     }
-
-     // 3. Fallback backend save
-     deleteMessageApi(messageId).catch((err) =>
-       console.log("Fallback delete message failed:", err)
-     );
-   } catch (err) {
-     console.log("Delete message failed:", err);
-   }
- };
-
-  // Clear unread counts upon channel activation
   useEffect(() => {
-    setGroups((prev) =>
-      prev.map((g) => (g.id === activeChannelId ? { ...g, unreadCount: 0 } : g))
-    );
-    setRecentChats((prev) =>
-      prev.map((c) => (c.id === activeChannelId ? { ...c, unreadCount: 0 } : c))
-    );
+    if (!activeChannelId) return;
+
+    socket.emit("group:join", { groupId: activeChannelId });
+
+    let cancelled = false;
+    getMessagesApi(activeChannelId)
+      .then((data) => {
+        if (cancelled) return;
+        const messages = Array.isArray(data) ? data : data.messages || [];
+        setThreads((prev) => ({
+          ...prev,
+          [activeChannelId]: messages.map((message: any) => formatMessage(message, currentUserRef.current)),
+        }));
+      })
+      .catch((err) => console.log("Failed to load messages", err));
+
+    return () => {
+      cancelled = true;
+    };
   }, [activeChannelId]);
 
-  // Handle channel creation
-  const handleCreateChannel = async (
-  newChan: Omit<ChatChannel, "unreadCount" | "lastMessage" | "time">
- ) => {
-  try {
-    const timeString = new Date().toLocaleTimeString([], {
-      hour: "numeric",
-      minute: "2-digit",
-    });
+  useEffect(() => {
+    const receiveMessage = (message: any) => {
+      const roomId = message.groupId;
+      const formatted = formatMessage(message, currentUserRef.current);
+      if (formatted.sender !== "me") {
+        playNotificationSound();
+      }
 
-    // 👇 CALL BACKEND API HERE
-    const targetUserId = newChan.type === "direct" ? newChan.id.split('-')[1] : newChan.id;
-    const data = await CreateDirectChatApi(targetUserId);
+      setThreads((prev) => {
+        const roomThreads = prev[roomId] || [];
 
-    const chat = data.chat || data;
+        // Find matching temporary message by text or attachment name — if
+        // found, this incoming message is actually our own echoing back.
+        const tempIndexToRemove = roomThreads.findIndex((m) => {
+          if (!m.id.startsWith("temp-")) return false;
+          const textMatch = m.text && formatted.text && m.text === formatted.text;
+          const attachmentMatch =
+            m.attachment?.name && formatted.attachment?.name && m.attachment.name === formatted.attachment.name;
+          return textMatch || attachmentMatch;
+        });
 
-    const fullChannel: ChatChannel = {
-      id: chat.id,
-      name: chat.type === "direct" ? newChan.name : chat.name,
-      type: chat.type,
-      groupType: chat.groupType,
-      lastMessage: "Secure sync session established",
-      time: timeString,
-      unreadCount: 0,
-      status: chat.status || "online",
-      avatar: chat.avatarUrl || newChan.avatar || "",
-      membersCount: chat.membersCount,
+        if (tempIndexToRemove !== -1) {
+          formatted.sender = "me";
+        }
+
+        const newThreads = roomThreads.filter((item, idx) => item.id !== formatted.id && idx !== tempIndexToRemove);
+
+        return {
+          ...prev,
+          [roomId]: [...newThreads, formatted],
+        };
+      });
     };
 
-    if (fullChannel.type === "group") {
-      setGroups((prev) => [fullChannel, ...prev]);
-    } else {
-      setRecentChats((prev) => [fullChannel, ...prev]);
+    const handleMessageDeleted = (data: { messageId: string; groupId: string }) => {
+      setThreads((prev) => ({
+        ...prev,
+        [data.groupId]: (prev[data.groupId] || []).filter((item) => item.id !== data.messageId),
+      }));
+    };
+
+    socket.on("message:received", receiveMessage);
+    socket.on("message:deleted", handleMessageDeleted);
+
+    return () => {
+      socket.off("message:received", receiveMessage);
+      socket.off("message:deleted", handleMessageDeleted);
+    };
+  }, []);
+
+  const activeChannel =
+    groups.find((g) => g.id === activeChannelId) || recentChats.find((c) => c.id === activeChannelId);
+
+  const activeMessages = threads[activeChannelId] || [];
+  const activeMissedCallMessages =
+    activeChannel?.missedCalls?.map((call) => formatMissedCallMessage(call, currentUserRef.current)) || [];
+  const visibleMessages = [...activeMissedCallMessages, ...activeMessages];
+  const handleSelectChannel = (id: string) => setActiveChannelId(id);
+
+  const handleSendMessage = async (text: string, attachment?: Attachment) => {
+    if (!activeChannel) return;
+
+    try {
+      const timeString = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+      if (!socket.connected) {
+        throw new Error("Chat connection is not available");
+      }
+
+      const tempId = `temp-${Date.now()}`;
+      const previewUrl = attachment?.file ? URL.createObjectURL(attachment.file) : attachment?.url;
+
+      const tempMessage: Message = {
+        id: tempId,
+        sender: "me",
+        senderName: "Me",
+        text,
+        time: timeString,
+        avatar: "",
+        attachment: attachment
+          ? { name: attachment.name, size: attachment.size, type: attachment.type, url: previewUrl || "" }
+          : undefined,
+      };
+
+      setThreads((prev) => ({
+        ...prev,
+        [activeChannel.id]: [...(prev[activeChannel.id] || []), tempMessage],
+      }));
+
+      const lastMsgDisplay = attachment ? `Sent a file: ${attachment.name}` : text;
+
+      setGroups((prev) =>
+        prev.map((g) => (g.id === activeChannel.id ? { ...g, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString } : g))
+      );
+
+      setRecentChats((prev) =>
+        prev.map((c) => (c.id === activeChannel.id ? { ...c, lastMessage: `Me: ${lastMsgDisplay}`, time: timeString } : c))
+      );
+
+      let finalFilePath = attachment?.url;
+
+      if (attachment?.file) {
+        // 1. Get presigned upload URL & relative filePath from /resources/chat/upload-url
+        const { uploadUrl, filePath } = await getChatUploadUrlApi(
+          attachment.file.name,
+          attachment.file.type || "application/octet-stream"
+        );
+
+        // 2. Upload file directly to MinIO/S3 via PUT
+        const uploadRes = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": attachment.file.type || "application/octet-stream",
+          },
+          body: attachment.file,
+        });
+
+        if (!uploadRes.ok) {
+          // Clean up optimistic temp message on upload failure
+          setThreads((prev) => ({
+            ...prev,
+            [activeChannel.id]: (prev[activeChannel.id] || []).filter((m) => m.id !== tempId),
+          }));
+          toast.error("Failed to upload attachment file");
+          return;
+        }
+
+        finalFilePath = filePath;
+
+        // 3. Send socket chat message using filePath (relative path, not full URL)
+        const msgType = (attachment.file.type || "").startsWith("image/") ? "image" : "file";
+        socket.emit("message:send", {
+          groupId: activeChannel.id,
+          text: text || "",
+          type: msgType,
+          fileUrl: filePath,
+          fileName: attachment.file.name,
+          mimeType: attachment.file.type || "application/octet-stream",
+          fileSize: attachment.file.size,
+        });
+      } else {
+        socket.emit("message:send", {
+          groupId: activeChannel.id,
+          text,
+          type: "text",
+        });
+      }
+
+      const payloadAttachment = attachment
+        ? { name: attachment.name, size: attachment.size, type: attachment.type, url: finalFilePath }
+        : undefined;
+
+      sendMessageApi(activeChannel.id, text, payloadAttachment).catch((err) =>
+        console.log("Fallback message send failed:", err)
+      );
+    } catch (err) {
+      console.log("Send message failed:", err);
+      toast.error("Failed to send message");
     }
+  };
 
-    setThreads((prev) => ({
-      ...prev,
-      [fullChannel.id]: [
-        {
-          id: `sys-${Date.now()}`,
-          sender: "them",
-          senderName: "System",
-          text: `Quantum connection initialized for ${fullChannel.name}. End-to-end cryptographic lock established.`,
-          time: timeString,
-          avatar: "SY",
-        },
-      ],
-    }));
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!activeChannel) return;
 
-    setActiveChannelId(fullChannel.id);
-    socket.emit("group:join", { groupId: fullChannel.id });
-  } catch (err) {
-    console.log("Create channel failed:", err);
-  }
-};
+    try {
+      setThreads((prev) => ({
+        ...prev,
+        [activeChannel.id]: (prev[activeChannel.id] || []).filter((m) => m.id !== messageId),
+      }));
+
+      if (socket.connected) {
+        socket.emit("message:delete", { messageId, groupId: activeChannel.id });
+      }
+
+      deleteMessageApi(messageId).catch((err) => console.log("Fallback delete message failed:", err));
+    } catch (err) {
+      console.log("Delete message failed:", err);
+    }
+  };
+
+  useEffect(() => {
+    setGroups((prev) => prev.map((g) => (g.id === activeChannelId ? { ...g, unreadCount: 0 } : g)));
+    setRecentChats((prev) => prev.map((c) => (c.id === activeChannelId ? { ...c, unreadCount: 0 } : c)));
+  }, [activeChannelId]);
+
+  const handleCreateChannel = async (
+    newChan: Omit<ChatChannel, "unreadCount" | "lastMessage" | "time"> & {
+      description?: string;
+      avatarUrl?: string;
+      selectedMemberIds?: string[];
+    }
+  ) => {
+    try {
+      const timeString = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+
+      let data;
+      if (newChan.type === "group") {
+        // Members are now attached at creation time — no follow-up call needed.
+        const memberIds = (newChan.selectedMemberIds || [])
+          .map((id) => Number(id))
+          .filter((id) => !isNaN(id));
+
+        data = await createCustomGroupApi({
+          name: newChan.name,
+          description: newChan.description,
+          avatarUrl: newChan.avatarUrl,
+          members: memberIds,
+        });
+      } else {
+        const targetUserId = newChan.id.split("-")[1] || newChan.id;
+        data = await CreateDirectChatApi(targetUserId);
+      }
+
+      const chat = data.chat || data;
+
+      const fullChannel: ChatChannel = {
+        id: chat.id,
+        name: chat.name || newChan.name,
+        type: chat.type || newChan.type,
+        groupType: chat.groupType || newChan.groupType || "custom",
+        lastMessage: "Secure sync session established",
+        time: timeString,
+        unreadCount: 0,
+        status: chat.status || "online",
+        avatar: chat.avatarUrl || newChan.avatar || "",
+        membersCount: chat.membersCount || chat.members?.length || 1,
+      };
+
+      if (fullChannel.type === "group") {
+        setGroups((prev) => [fullChannel, ...prev]);
+      } else {
+        setRecentChats((prev) => [fullChannel, ...prev]);
+      }
+
+      setThreads((prev) => ({
+        ...prev,
+        [fullChannel.id]: [
+          {
+            id: `sys-${Date.now()}`,
+            sender: "them",
+            senderName: "System",
+            text: `Quantum connection initialized for ${fullChannel.name}. End-to-end cryptographic lock established.`,
+            time: timeString,
+            avatar: "SY",
+          },
+        ],
+      }));
+
+      setActiveChannelId(fullChannel.id);
+      socket.emit("group:join", { groupId: fullChannel.id });
+    } catch (err) {
+      console.log("Create channel failed:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to create channel");
+    }
+  };
 
   if (isLoading) {
     return (
@@ -900,27 +687,24 @@ useEffect(() => {
 
   return (
     <div ref={containerRef} className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* Centered High-Tech Glass Workspace Frame */}
       <div className="collab-panel-wrapper relative flex h-full min-h-0 overflow-hidden bg-[#030114] border border-white/[0.08] shadow-2xl md:rounded-3xl">
-        
-        {/* Ambient futuristic background glows */}
         <div className="pointer-events-none absolute -top-32 left-1/4 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#5271ff]/[0.06] blur-[130px]" />
         <div className="pointer-events-none absolute top-1/2 right-0 h-[400px] w-[400px] rounded-full bg-[#3a4ec4]/[0.06] blur-[120px]" />
         <div className="pointer-events-none absolute bottom-0 left-1/3 h-[300px] w-[300px] rounded-full bg-[#22d3ee]/[0.04] blur-[100px]" />
 
-        {/* Left Side: Centered Chat Focus Area */}
         <div className="flex-1 min-w-0 h-full relative z-10">
           {activeChannel ? (
             <ChatWindow
               activeChannelName={activeChannel.name}
               activeChannelType={activeChannel.type}
-              messages={activeMessages}
+              messages={visibleMessages}
               onSendMessage={handleSendMessage}
               onInitiateCall={(type) => {
                 if (type === "audio") void handleStartCall();
                 else toast.info("Video calls are not enabled yet");
               }}
               onDeleteMessage={handleDeleteMessage}
+              onOpenDetails={() => setIsDetailsModalOpen(true)}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center text-center opacity-40 select-none">
@@ -930,7 +714,6 @@ useEffect(() => {
           )}
         </div>
 
-        {/* Right Side: Integrated Right Sidebar */}
         <div className="hidden lg:block w-[320px] shrink-0 border-l border-white/[0.08] relative z-10">
           <RightSidebar
             activeId={activeChannelId}
@@ -940,10 +723,8 @@ useEffect(() => {
             onOpenNewChat={() => setIsNewChatOpen(true)}
           />
         </div>
-
       </div>
 
-      {/* Futuristic Secure Call overlay */}
       <CallOverlay
         call={currentCall}
         currentUserId={currentUserId}
@@ -956,11 +737,118 @@ useEffect(() => {
         onEnd={() => void handleCallAction("call:end")}
       />
 
-      {/* New Sync Session creation modal */}
-      <NewChatModal
-        isOpen={isNewChatOpen}
-        onClose={() => setIsNewChatOpen(false)}
-        onCreateChannel={handleCreateChannel}
+      <NewChatModal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} onCreateChannel={handleCreateChannel} />
+
+      {/* Chat Details Popup */}
+      <ChatDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        channel={activeChannel || null}
+        rawGroupData={activeChannelId ? rawGroupsDataMap[activeChannelId] : null}
+        currentUserId={currentUserId}
+        onOpenEdit={() => {
+          setIsDetailsModalOpen(false);
+          setIsEditModalOpen(true);
+        }}
+        onOpenDelete={() => {
+          setIsDetailsModalOpen(false);
+          setIsDeleteModalOpen(true);
+        }}
+        onOpenAddMember={() => {
+          setIsAddMemberModalOpen(true);
+        }}
+        onMemberRemoved={(removedId) => {
+          setRawGroupsDataMap((prev) => {
+            const currentRaw = prev[activeChannelId];
+            if (!currentRaw) return prev;
+            const updatedMembers = (currentRaw.members || []).filter(
+              (m: any) => String(m.userId ?? m.user?.user_id) !== String(removedId)
+            );
+            return {
+              ...prev,
+              [activeChannelId]: {
+                ...currentRaw,
+                members: updatedMembers,
+              },
+            };
+          });
+          setGroups((prev) =>
+            prev.map((g) =>
+              g.id === activeChannelId ? { ...g, membersCount: Math.max(1, (g.membersCount || 1) - 1) } : g
+            )
+          );
+        }}
+      />
+
+      {/* Edit Chat Popup */}
+      <EditChatModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        channel={activeChannel || null}
+        rawGroupData={activeChannelId ? rawGroupsDataMap[activeChannelId] : null}
+        onSaveSuccess={(updated) => {
+          setGroups((prev) =>
+            prev.map((g) =>
+              g.id === activeChannelId
+                ? { ...g, name: updated.name, avatar: updated.avatarUrl || g.avatar }
+                : g
+            )
+          );
+          setRawGroupsDataMap((prev) => ({
+            ...prev,
+            [activeChannelId]: {
+              ...prev[activeChannelId],
+              name: updated.name,
+              description: updated.description,
+              avatarUrl: updated.avatarUrl,
+            },
+          }));
+        }}
+      />
+
+      {/* Delete Chat Confirmation Popup */}
+      <DeleteChatModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        channel={activeChannel || null}
+        onDeleteSuccess={(deletedId) => {
+          setGroups((prev) => prev.filter((g) => g.id !== deletedId));
+          setRecentChats((prev) => prev.filter((c) => c.id !== deletedId));
+          const remaining = [
+            ...groups.filter((g) => g.id !== deletedId),
+            ...recentChats.filter((c) => c.id !== deletedId),
+          ];
+          setActiveChannelId(remaining[0]?.id || "");
+          setIsDetailsModalOpen(false);
+          setIsEditModalOpen(false);
+          setIsDeleteModalOpen(false);
+        }}
+      />
+
+      {/* Add Group Member Popup */}
+      <AddMemberModal
+        isOpen={isAddMemberModalOpen}
+        onClose={() => setIsAddMemberModalOpen(false)}
+        channel={activeChannel || null}
+        existingMemberIds={(activeChannelId && rawGroupsDataMap[activeChannelId]?.members || []).map((m: any) => m.userId ?? m.user?.user_id ?? m.id)}
+        onMembersAdded={() => {
+          // Trigger re-fetch of chats to sync state
+          const token = getAccessToken();
+          fetch(`${backendBaseUrl}/collab-station/groups`, {
+            headers: authHeaders(token),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (Array.isArray(data)) {
+                const rawMap: Record<string, any> = {};
+                data.forEach((c) => {
+                  if (c.id) rawMap[c.id] = c;
+                });
+                setRawGroupsDataMap(rawMap);
+              }
+            })
+            .catch((err) => console.error("Re-fetch failed after adding members:", err));
+        }}
       />
     </div>
   );
