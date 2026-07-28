@@ -95,10 +95,12 @@ export default function Page() {
     setReload((prev) => !prev);
   };
 
+  const pendingTasksSum = teams.reduce((acc, t) => acc + (t.ongoingTasks ?? 0), 0);
+
   const states = [
     { title: "Total Teams", value: count, change: "" },
     { title: "Active Projects", value: 8, change: "" },
-    { title: "Pending Tasks", value: 24, change: "" },
+    { title: "Pending Tasks", value: pendingTasksSum, change: "Across all active teams" },
     { title: "Reports", value: 15, change: "" },
   ];
 
@@ -127,10 +129,10 @@ export default function Page() {
 
           <div className="gsap-fade-in grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <TeamActivitiesChart />
+              <TeamActivitiesChart teams={teams} />
             </div>
             <div className="lg:col-span-1">
-              <TeamPerformanceChart />
+              <TeamPerformanceChart teams={teams} />
             </div>
           </div>
 

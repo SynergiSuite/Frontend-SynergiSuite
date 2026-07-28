@@ -28,8 +28,9 @@ export type NotificationPage = {
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const baseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-  const token = CookieManager("get", "access-token");
-  if (!baseUrl || typeof token !== "string") {
+  const rawToken = await CookieManager("get", "access-token");
+  const token = typeof rawToken === "string" ? rawToken : String(rawToken || "");
+  if (!baseUrl || !token) {
     throw new Error("Notification service is unavailable");
   }
 

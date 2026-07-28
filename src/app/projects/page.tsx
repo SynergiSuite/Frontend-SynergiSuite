@@ -7,10 +7,11 @@ import { Projects } from "./schemas/project";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { getProjectsApi } from "./apis/getProjectsApi";
 import { getTeamsApi } from "./apis/getAllTeamsApi";
-import { Team } from "./schemas/team"
+import { Team } from "./schemas/team";
 import { getClientsApi } from "./apis/getAllClients";
 import { Client } from "./schemas/client";
 import { toast } from "sonner";
+import { CookieManager } from "@/lib/cookieManager";
 
 export default function Page() {
   const [filter, setFilter] = useState("All");
@@ -18,8 +19,13 @@ export default function Page() {
   const [projects, setProjects] = useState<Projects[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
+  const [role, setRole] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setRole(String(CookieManager("get", "role") || ""));
+  }, []);
 
   const getProjects = useCallback(async () => {
     setIsLoading(true);
@@ -29,7 +35,7 @@ export default function Page() {
     } catch (error) {
       toast.error("Failed to fetch projects" + error);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
   }, []);
 
@@ -46,9 +52,9 @@ export default function Page() {
       } catch (error) {
         toast.error("Failed to fetch teams" + error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
     getTeams();
   }, []);
 
@@ -61,9 +67,9 @@ export default function Page() {
       } catch (error) {
         toast.error("Failed to fetch clients" + error);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    }
+    };
     getClients();
   }, []);
 
@@ -90,7 +96,9 @@ export default function Page() {
 
   return (
     <>
-      {isLoading ? <LoaderCustom /> : (
+      {isLoading ? (
+        <LoaderCustom />
+      ) : (
         <div ref={containerRef} className="relative min-h-screen text-white bg-[#030114] px-4 py-6 sm:px-6 lg:px-8 overflow-hidden">
           {/* Accent radial glow overlay */}
           <div className="absolute left-0 top-0 h-[500px] w-[500px] bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.06),transparent_55%)] pointer-events-none" />
@@ -105,7 +113,15 @@ export default function Page() {
               clients={clients}
               onProjectCreated={getProjects}
             />
-            <ProjectCards filter={filter} searchQuery={searchQuery} projects={projects} />
+            <ProjectCards
+              filter={filter}
+              searchQuery={searchQuery}
+              projects={projects}
+              teams={teams}
+              clients={clients}
+              role={role}
+              onRefresh={getProjects}
+            />
           </div>
         </div>
       )}

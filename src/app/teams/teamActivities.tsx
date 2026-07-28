@@ -10,16 +10,20 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import { Teams } from "./schemas/types";
 
-// ✅ Sample dataset
-const data = [
+interface TeamActivitiesChartProps {
+  teams?: Teams[];
+}
+
+// Fallback dataset if teams array is empty
+const defaultData = [
   { name: "Design", Completed: 40, Ongoing: 10 },
   { name: "Development", Completed: 70, Ongoing: 15 },
   { name: "Marketing", Completed: 25, Ongoing: 8 },
   { name: "Sales", Completed: 50, Ongoing: 18 },
 ];
 
-// ✅ Reusable wrapper for all charts
 export function ChartContainer({
   title,
   children,
@@ -35,13 +39,22 @@ export function ChartContainer({
   );
 }
 
-// ✅ Main component
-export default function TeamActivitiesChart() {
+export default function TeamActivitiesChart({ teams }: TeamActivitiesChartProps) {
+  const chartData =
+    Array.isArray(teams) && teams.length > 0
+      ? teams.map((team) => ({
+          name: team.name || "Unnamed Team",
+          Completed: team.completedTasks ?? 0,
+          Ongoing: team.ongoingTasks ?? 0,
+          Total: team.totalTasks ?? 0,
+        }))
+      : defaultData;
+
   return (
     <ChartContainer title="Team Activities">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
-          data={data}
+          data={chartData}
           margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
           barGap={6}
         >

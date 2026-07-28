@@ -83,31 +83,45 @@ export default function NotificationBell() {
 
   useEffect(() => {
     void loadNotifications();
+    const interval = setInterval(() => {
+      void loadNotifications();
+    }, 15000);
+    return () => clearInterval(interval);
   }, [loadNotifications]);
 
   useEffect(() => {
-    const token = CookieManager("get", "access-token");
-    if (typeof token !== "string") return;
+    let isSubscribed = true;
 
-    socket.auth = { token };
-    if (!socket.connected) socket.connect();
+    const setupSocket = async () => {
+      const rawToken = await CookieManager("get", "access-token");
+      const token = typeof rawToken === "string" ? rawToken : String(rawToken || "");
+      if (!token || !isSubscribed) return;
 
-    const handleNotification = (notification: AppNotification) => {
-      if (seenIdsRef.current.has(notification.id)) return;
-      seenIdsRef.current.add(notification.id);
-      setNotifications((current) => [notification, ...current]);
-      if (!notification.isRead) {
-        setUnreadCount((count) => count + 1);
-      }
-      playNotificationSound();
-      toast(notification.title, {
-        description: notification.body || undefined,
-      });
+      socket.auth = { token };
+      if (!socket.connected) socket.connect();
+
+      const handleNotification = (notification: AppNotification) => {
+        if (!isSubscribed) return;
+        if (seenIdsRef.current.has(notification.id)) return;
+        seenIdsRef.current.add(notification.id);
+        setNotifications((current) => [notification, ...current]);
+        if (!notification.isRead) {
+          setUnreadCount((count) => count + 1);
+        }
+        playNotificationSound();
+        toast(notification.title, {
+          description: notification.body || undefined,
+        });
+      };
+
+      socket.on("notification:new", handleNotification);
     };
 
-    socket.on("notification:new", handleNotification);
+    void setupSocket();
+
     return () => {
-      socket.off("notification:new", handleNotification);
+      isSubscribed = false;
+      socket.off("notification:new");
     };
   }, []);
 

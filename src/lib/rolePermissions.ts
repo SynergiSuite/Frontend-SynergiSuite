@@ -24,3 +24,8 @@ export const canDeleteTasks = (role?: string | null) =>
   taskDeleteRoles.includes(
     normalizeRole(role) as (typeof taskDeleteRoles)[number]
   );
+
+export const canManageProjects = (role?: string | null) =>
+  milestoneManagerRoles.includes(
+    normalizeRole(role) as (typeof milestoneManagerRoles)[number]
+  );

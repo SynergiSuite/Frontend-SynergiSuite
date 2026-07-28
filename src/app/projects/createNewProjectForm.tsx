@@ -1,6 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
+import { X } from "lucide-react";
 import ModalFooter from "./createprojectformfooter";
 import { Team } from "./schemas/team";
 import { Client } from "./schemas/client";
@@ -33,12 +35,18 @@ export default function NewProjectModal({
   teams,
   clients,
 }: NewProjectModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [statusValue, setStatusValue] = useState<string>(""); 
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [duration, setDuration] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   const priorityOptions = Object.entries(PriorityLevel)
     .filter((entry): entry is [string, number] => typeof entry[1] === "number")
@@ -62,9 +70,9 @@ export default function NewProjectModal({
     );
   };
 
-  return (
+  const modalContent = (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -74,7 +82,7 @@ export default function NewProjectModal({
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md z-45"
+        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md cursor-pointer border-0"
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -84,7 +92,7 @@ export default function NewProjectModal({
 
       {/* Modal Container Shell */}
       <motion.div
-        className="relative z-50 flex flex-col w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#0a0826]/90 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[calc(100vh-4rem)]"
+        className="relative z-10 flex flex-col w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.8)] overflow-hidden max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]"
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -97,11 +105,20 @@ export default function NewProjectModal({
         <div className="absolute -left-20 -top-20 h-[300px] w-[300px] bg-[radial-gradient(circle,rgba(82,113,255,0.12),transparent_65%)] pointer-events-none" />
 
         {/* Header */}
-        <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01]">
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            Create New Project
-          </h2>
-          <p className="text-xs text-white/40 mt-1 font-medium">Enter project parameters and assign team structure</p>
+        <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01] flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              Create New Project
+            </h2>
+            <p className="text-xs text-white/40 mt-1 font-medium">Enter project parameters and assign team structure</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Body (Scrollable Content) */}
@@ -132,7 +149,7 @@ export default function NewProjectModal({
               <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
                 <SelectValue placeholder="Select Client" />
               </SelectTrigger>
-              <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
+              <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl z-[110]">
                 {clients.map((client) => (
                   <SelectItem
                     key={client.id}
@@ -197,7 +214,7 @@ export default function NewProjectModal({
                 <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
+                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl z-[110]">
                   {priorityOptions.map((option) => (
                     <SelectItem
                       key={option.value}
@@ -260,4 +277,8 @@ export default function NewProjectModal({
       </motion.div>
     </motion.div>
   );
+
+  if (!mounted) return null;
+
+  return createPortal(modalContent, document.body);
 }
