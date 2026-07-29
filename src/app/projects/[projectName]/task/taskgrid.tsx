@@ -122,6 +122,7 @@ export default function TaskGrid({
               setEditingTask(null);
             }}
             statusOptions={statusOptions}
+            canEdit={canEditTasks}
           />
         ) : null}
       </AnimatePresence>

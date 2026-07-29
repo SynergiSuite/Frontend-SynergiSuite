@@ -38,8 +38,9 @@ export default function TaskPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   const projectName = useParams().projectName as string;
-  const canEditTasks = true;
-  const canDeleteTask = true;
+  const isClientRole = role.trim().toLowerCase() === "client";
+  const canEditTasks = !isClientRole;
+  const canDeleteTask = !isClientRole;
 
   const getTasks = async(resolvedProjectId: string) => {
     try {

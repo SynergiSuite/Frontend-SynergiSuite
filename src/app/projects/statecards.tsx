@@ -107,7 +107,12 @@ export default function ProjectCards({
     const safeName = encodeURIComponent(projectName || "");
     CookieManager("set", "client-name", clientName);
     CookieManager("set", "project-id", projectID);
-    router.push(`/projects/${safeName}/overview`);
+    const userRole = String(role || CookieManager("get", "role") || "").toLowerCase();
+    if (userRole === "client") {
+      router.push(`/projects/${safeName}/task`);
+    } else {
+      router.push(`/projects/${safeName}/overview`);
+    }
   };
 
   const gridKey = `${filter || "all"}-${searchQuery || ""}`;

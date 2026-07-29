@@ -7,6 +7,7 @@ import TeamPerformance from "./teamperformance";
 import RecentActivities from "./recentactivities";
 import UpcomingDeadlines from "./upcomingdeadlines";
 import ResourceAllocation from "./resourceallocation";
+import { useRouter } from "next/navigation";
 import { CookieManager } from "@/lib/cookieManager";
 
 const cardsData: Card[] = [
@@ -17,10 +18,18 @@ const cardsData: Card[] = [
 ];
 
 export default function Page() {
+  const router = useRouter();
   const headerRef = useRef<HTMLDivElement>(null);
   const statsRef = useRef<HTMLDivElement>(null);
   const chartsRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+    if (userRole === "client") {
+      router.replace("/projects");
+    }
+  }, [router]);
 
   // Read user name from cookie for greeting
   const userName = typeof window !== "undefined"

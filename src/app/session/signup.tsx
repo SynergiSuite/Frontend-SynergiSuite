@@ -1,11 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { signupScheme } from "./schema/signupSchema";
 import { ZodError } from "zod";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { LockKeyhole, Mail, Terminal, UserRound } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/global/buttons";
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CookieManager } from "@/lib/cookieManager";
 
@@ -25,7 +24,7 @@ export default function Signup() {
     const data = {
       name,
       email,
-      password: password,
+      password,
     };
 
     try {

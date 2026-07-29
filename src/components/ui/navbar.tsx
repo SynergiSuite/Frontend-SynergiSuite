@@ -133,9 +133,19 @@ export default function Navbar() {
     ],
   };
 
+  const isClientRole = role.toLowerCase() === "client";
+
   const getRouteNavs = (path: string) => {
     if (path.startsWith("/projects/")) {
+      if (isClientRole) {
+        return [
+          { name: "Tasks", param: "task", route: `/projects/${projectName}/task` },
+        ];
+      }
       return routeNavs["/details"] || [];
+    }
+    if (isClientRole) {
+      return [];
     }
     return routeNavs[path] || [];
   };
@@ -164,7 +174,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   className="flex min-w-0 cursor-pointer items-center gap-2 sm:gap-3"
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => router.push(isClientRole ? "/projects" : "/dashboard")}
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-[#5271ff] to-[#3a4ec4] shadow-[0_0_10px_rgba(82,113,255,0.4)] transition-transform duration-300 group-hover:scale-105">
                     <Image

@@ -21,6 +21,8 @@ const access_secret = new TextEncoder().encode("synergi_user");
 const protectedRoutes = [
   "/dashboard",
   "/employees",
+  "/analytics",
+  "/analytics/*",
   "/settings",
   "/projects",
   "/projects/*",
@@ -36,7 +38,11 @@ const protectedRoutes = [
   "/cloud",
   "/cloud/*",
   "/collab-station",
-  "/collab-station/*"
+  "/collab-station/*",
+  "/feedback",
+  "/feedback/*",
+  "/client",
+  "/client/*"
 ];
 
 const publicRoutes = ["/session", "/login", "/signup", "/forgot-password"];
@@ -198,6 +204,12 @@ export default function RootLayout({
               return;
             }
 
+            const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+            if (userRole === "client") {
+              router.replace("/projects");
+              return;
+            }
+
             router.replace("/dashboard");
             return;
           } catch {
@@ -214,6 +226,17 @@ export default function RootLayout({
 
         if (registerToken) {
           router.replace("/session/register-business");
+          return;
+        }
+
+        const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+        const allowedClientRoutes = ["/projects", "/feedback", "/client", "/cloud", "/task"];
+        const isAllowedClientRoute = allowedClientRoutes.some(
+          (route) => pathName === route || pathName.startsWith(route + "/")
+        );
+
+        if (userRole === "client" && !isAllowedClientRoute) {
+          router.replace("/projects");
           return;
         }
 

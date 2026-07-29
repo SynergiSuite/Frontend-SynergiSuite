@@ -7,9 +7,6 @@ export enum DocumentLabel {
 }
 
 export const DOCUMENT_LABEL_OPTIONS = [
-  { label: "Personal", value: DocumentLabel.PERSONAL },
-  { label: "Team", value: DocumentLabel.TEAM },
   { label: "Project", value: DocumentLabel.PROJECT },
   { label: "Client", value: DocumentLabel.CLIENT },
-  { label: "Other", value: DocumentLabel.OTHER },
 ];

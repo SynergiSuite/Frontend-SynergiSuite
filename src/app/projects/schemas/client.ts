@@ -5,4 +5,6 @@ export type Client = {
     email: string;
     phone?: string;
     priority: number;
+    paymentType?: string;
+    amount?: number;
 }

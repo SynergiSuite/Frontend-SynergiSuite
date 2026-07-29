@@ -15,10 +15,12 @@ import {
   Orbit,
   Boxes,
   Cloud,
+  MessageSquareQuote,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { ComponentProps } from "react";
+import { ComponentProps, useState } from "react";
 import { gsap } from "gsap";
+import { CookieManager } from "@/lib/cookieManager";
 
 type SidebarItem = {
   label: string;
@@ -41,8 +43,16 @@ export default function Sidebar({
   const router = useRouter();
   const pathname = usePathname();
   const navRef = useRef<HTMLDivElement | null>(null);
+  const [role, setRole] = useState<string>("");
 
-  const sidebarItems: SidebarItem[] = [
+  useEffect(() => {
+    const userRole = CookieManager("get", "role");
+    setRole(String(userRole || "").toLowerCase());
+  }, []);
+
+  const isClientRole = role === "client";
+
+  const allSidebarItems: SidebarItem[] = [
     { label: "Dashboard", route: "/dashboard", icon: LayoutDashboard },
     { label: "Employees", route: "/employees", icon: Users },
     { label: "Teams", route: "/teams", icon: UserRoundCog },
@@ -57,6 +67,14 @@ export default function Sidebar({
     { label: "Settings", route: "/settings", icon: Settings },
     { label: "Support", route: "/support", icon: LifeBuoy },
   ];
+
+  const clientSidebarItems: SidebarItem[] = [
+    { label: "Projects", route: "/projects", icon: FolderKanban },
+    { label: "Feedback", route: "/feedback", icon: MessageSquareQuote },
+    { label: "Cloud", route: "/cloud", icon: Cloud },
+  ];
+
+  const sidebarItems = isClientRole ? clientSidebarItems : allSidebarItems;
 
   const isActiveRoute = (route: string) =>
     pathname === route || pathname.startsWith(`${route}/`);

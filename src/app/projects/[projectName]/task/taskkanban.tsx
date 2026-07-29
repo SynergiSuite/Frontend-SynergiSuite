@@ -245,7 +245,7 @@ export default function TaskKanban({
       </AnimatePresence>
 
       <AnimatePresence>
-        {editingTask && canEditTasks ? (
+        {editingTask ? (
           <ViewAndEditModal
             data={{
               id: editingTask.id,
@@ -262,6 +262,7 @@ export default function TaskKanban({
               setEditingTask(null);
             }}
             statusOptions={statusOptions}
+            canEdit={canEditTasks}
           />
         ) : null}
       </AnimatePresence>

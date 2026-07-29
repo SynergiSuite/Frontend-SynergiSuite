@@ -7,6 +7,8 @@ import { FileType } from "./statesCards";
 import { DocumentLabel, DOCUMENT_LABEL_OPTIONS } from "@/app/enums/documentLabel.enum";
 import { getPresignedUrlApi } from "./apis/getPresignedUrlApi";
 import { createDocumentApi } from "./apis/createDocumentApi";
+import { getProjectsApi } from "@/app/projects/apis/getProjectsApi";
+import { Projects } from "@/app/projects/schemas/project";
 import { toast } from "sonner";
 
 type UploadFileModalProps = {
@@ -14,8 +16,6 @@ type UploadFileModalProps = {
   onSave: (payload: Omit<FileType, "id" | "uploadedAt" | "sizeBytes"> & { document_id?: number; file_path?: string }) => Promise<void>;
   teams: any[];
 };
-
-const MOCK_PROJECTS = ["SynergiSuite Frontend", "NextGen Mobile Client", "Enterprise CRM Integrator", "AI Analytics Node"];
 
 export default function UploadFileModal({
   onClose,
@@ -26,12 +26,25 @@ export default function UploadFileModal({
   const [category, setCategory] = useState<"Document" | "Image" | "Media" | "Archive" | "Other">("Document");
   const [size, setSize] = useState("");
   const [userLabel, setUserLabel] = useState("");
-  const [labelType, setLabelType] = useState<number>(DocumentLabel.PERSONAL);
+  const [labelType, setLabelType] = useState<number>(DocumentLabel.PROJECT);
   const [teamId, setTeamId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [apiProjects, setApiProjects] = useState<Projects[]>([]);
   const [isClient, setIsClient] = useState(true);
   const [forClient, setForClient] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const data = await getProjectsApi();
+        setApiProjects(data);
+      } catch (error) {
+        console.error("Failed to load projects for dropdown:", error);
+      }
+    };
+    loadProjects();
+  }, []);
 
   // Real Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -139,21 +152,15 @@ export default function UploadFileModal({
       setUploadStatus("Creating database entry...");
       
       // Determine reference type and reference ID mapping
-      let reference_type = "personal";
-      let reference_id = "personal";
+      let reference_type = "project";
+      let reference_id = projectId || "project";
 
-      if (labelType === DocumentLabel.TEAM) {
-        reference_type = "team";
-        reference_id = teamId;
-      } else if (labelType === DocumentLabel.PROJECT) {
-        reference_type = "project";
-        reference_id = projectId;
-      } else if (labelType === DocumentLabel.CLIENT) {
+      if (labelType === DocumentLabel.CLIENT) {
         reference_type = "client";
         reference_id = "client";
-      } else if (labelType === DocumentLabel.OTHER) {
-        reference_type = "other";
-        reference_id = "other";
+      } else {
+        reference_type = "project";
+        reference_id = projectId || "project";
       }
 
       // Build label value
@@ -413,9 +420,11 @@ export default function UploadFileModal({
                       required
                       className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                     >
-                      <option value="">-- Choose Project --</option>
-                      {MOCK_PROJECTS.map((p) => (
-                        <option key={p} value={p}>{p}</option>
+                      <option value="" className="bg-[#0c0a2f] text-white">-- Choose Project --</option>
+                      {apiProjects.map((p) => (
+                        <option key={p.id} value={String(p.id)} className="bg-[#0c0a2f] text-white">
+                          {p.name}
+                        </option>
                       ))}
                     </select>
                     <ChevronDown

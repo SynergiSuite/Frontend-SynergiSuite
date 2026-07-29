@@ -2,7 +2,7 @@
 
 import React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, Mail, MapPin, Phone, Star, X } from "lucide-react";
+import { Building2, Mail, MapPin, Phone, Star, X, CreditCard, DollarSign } from "lucide-react";
 import { ClientPriority } from "../enums/clientPriority.enum";
 import type { ClientType } from "./page";
 
@@ -158,6 +158,26 @@ export default function ClientDetailModal({
                 icon={<MapPin className="h-4 w-4" />}
                 label="Address"
                 value={client.address || "N/A"}
+              />
+              <DetailRow
+                icon={<CreditCard className="h-4 w-4" />}
+                label="Payment Type"
+                value={
+                  client.paymentType === "per_hour"
+                    ? "Per Hour"
+                    : client.paymentType === "each_milestone"
+                    ? "Each Milestone"
+                    : client.paymentType || "N/A"
+                }
+              />
+              <DetailRow
+                icon={<DollarSign className="h-4 w-4" />}
+                label="Billing Amount"
+                value={
+                  client.amount != null
+                    ? `$${client.amount}${client.paymentType === "per_hour" ? " / hr" : " / milestone"}`
+                    : "N/A"
+                }
               />
             </div>
           </motion.div>

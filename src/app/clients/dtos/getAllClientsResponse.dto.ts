@@ -7,4 +7,6 @@ export type GetAllClientsResponseDto = {
   phone?: string;
   address?: string;
   priority: number;
+  paymentType?: string;
+  amount?: number;
 };
