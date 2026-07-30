@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Sparkles, Calendar, Activity } from "lucide-react";
+import { Sparkles, Calendar, Activity, Zap } from "lucide-react";
 
 export type AnalyticsTab = "all" | "employee" | "client" | "team" | "business";
 export type TimeRange = "7d" | "30d" | "90d" | "ytd";
@@ -10,6 +10,7 @@ interface AnalyticsHeaderProps {
   setActiveTab: (tab: AnalyticsTab) => void;
   timeRange: TimeRange;
   setTimeRange: (range: TimeRange) => void;
+  calculatedAt?: string;
 }
 
 export default function AnalyticsHeader({
@@ -17,6 +18,7 @@ export default function AnalyticsHeader({
   setActiveTab,
   timeRange,
   setTimeRange,
+  calculatedAt,
 }: AnalyticsHeaderProps) {
   const tabs: { id: AnalyticsTab; label: string }[] = [
     { id: "all", label: "Overview" },
@@ -38,11 +40,17 @@ export default function AnalyticsHeader({
       {/* Top Header Row */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-[#5271ff]/30 bg-[#5271ff]/15 px-3 py-1 text-[11px] font-semibold text-[#5271ff] shadow-[0_0_12px_rgba(82,113,255,0.2)]">
               <Activity className="h-3 w-3 animate-pulse" />
               Live Workspace Telemetry
             </span>
+            {calculatedAt && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-[#0c0a2f]/80 px-3 py-1 text-[11px] font-medium text-white/70 backdrop-blur-md shadow-sm">
+                <Zap className="h-3 w-3 text-[#5271ff]" />
+                Calculated: {new Date(calculatedAt).toLocaleString()}
+              </span>
+            )}
           </div>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">
             Analytics Overview

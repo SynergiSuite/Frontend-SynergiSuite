@@ -274,6 +274,7 @@ export default function CloudStoragePage() {
             onClose={() => setIsUploadOpen(false)}
             onSave={handleUploadFile}
             teams={teams}
+            role={role}
           />
         ) : null}
 

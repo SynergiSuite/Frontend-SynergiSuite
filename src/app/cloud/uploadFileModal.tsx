@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, CloudUpload, X } from "lucide-react";
 import { FileType } from "./statesCards";
-import { DocumentLabel, DOCUMENT_LABEL_OPTIONS } from "@/app/enums/documentLabel.enum";
+import {
+  DocumentLabel,
+  ALL_DOCUMENT_LABEL_OPTIONS,
+  CLIENT_DOCUMENT_LABEL_OPTIONS,
+} from "@/app/enums/documentLabel.enum";
 import { getPresignedUrlApi } from "./apis/getPresignedUrlApi";
 import { createDocumentApi } from "./apis/createDocumentApi";
 import { getProjectsApi } from "@/app/projects/apis/getProjectsApi";
@@ -15,18 +19,23 @@ type UploadFileModalProps = {
   onClose: () => void;
   onSave: (payload: Omit<FileType, "id" | "uploadedAt" | "sizeBytes"> & { document_id?: number; file_path?: string }) => Promise<void>;
   teams: any[];
+  role?: string;
 };
 
 export default function UploadFileModal({
   onClose,
   onSave,
   teams,
+  role,
 }: UploadFileModalProps) {
+  const isClientRole = role?.toLowerCase() === "client";
+  const labelOptions = isClientRole ? CLIENT_DOCUMENT_LABEL_OPTIONS : ALL_DOCUMENT_LABEL_OPTIONS;
+
   const [name, setName] = useState("");
   const [category, setCategory] = useState<"Document" | "Image" | "Media" | "Archive" | "Other">("Document");
   const [size, setSize] = useState("");
   const [userLabel, setUserLabel] = useState("");
-  const [labelType, setLabelType] = useState<number>(DocumentLabel.PROJECT);
+  const [labelType, setLabelType] = useState<number>(isClientRole ? DocumentLabel.PROJECT : DocumentLabel.PROJECT);
   const [teamId, setTeamId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [apiProjects, setApiProjects] = useState<Projects[]>([]);
@@ -155,12 +164,21 @@ export default function UploadFileModal({
       let reference_type = "project";
       let reference_id = projectId || "project";
 
-      if (labelType === DocumentLabel.CLIENT) {
-        reference_type = "client";
-        reference_id = "client";
-      } else {
+      if (labelType === DocumentLabel.PERSONAL) {
+        reference_type = "personal";
+        reference_id = "personal";
+      } else if (labelType === DocumentLabel.TEAM) {
+        reference_type = "team";
+        reference_id = teamId || "team";
+      } else if (labelType === DocumentLabel.PROJECT) {
         reference_type = "project";
         reference_id = projectId || "project";
+      } else if (labelType === DocumentLabel.CLIENT) {
+        reference_type = "client";
+        reference_id = "client";
+      } else if (labelType === DocumentLabel.OTHER) {
+        reference_type = "other";
+        reference_id = "other";
       }
 
       // Build label value
@@ -313,11 +331,11 @@ export default function UploadFileModal({
                     onChange={(event) => setCategory(event.target.value as any)}
                     className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                   >
-                    <option value="Document">Document</option>
-                    <option value="Image">Image</option>
-                    <option value="Media">Media</option>
-                    <option value="Archive">Archive</option>
-                    <option value="Other">Other</option>
+                    <option value="Document" className="bg-[#0c0a2f] text-white">Document</option>
+                    <option value="Image" className="bg-[#0c0a2f] text-white">Image</option>
+                    <option value="Media" className="bg-[#0c0a2f] text-white">Media</option>
+                    <option value="Archive" className="bg-[#0c0a2f] text-white">Archive</option>
+                    <option value="Other" className="bg-[#0c0a2f] text-white">Other</option>
                   </select>
                   <ChevronDown
                     size={16}
@@ -367,8 +385,8 @@ export default function UploadFileModal({
                     onChange={(event) => setLabelType(Number(event.target.value))}
                     className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                   >
-                    {DOCUMENT_LABEL_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
+                    {labelOptions.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-[#0c0a2f] text-white">
                         {option.label}
                       </option>
                     ))}
@@ -393,9 +411,9 @@ export default function UploadFileModal({
                       required
                       className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                     >
-                      <option value="">-- Choose Team --</option>
+                      <option value="" className="bg-[#0c0a2f] text-white">-- Choose Team --</option>
                       {teams.map((t) => (
-                        <option key={t.id || t.team_id || t.name} value={String(t.id || t.team_id || t.name)}>
+                        <option key={t.id || t.team_id || t.name} value={String(t.id || t.team_id || t.name)} className="bg-[#0c0a2f] text-white">
                           {t.name || t.team_name || "Unnamed Team"}
                         </option>
                       ))}

@@ -49,6 +49,162 @@ export type QuarterlyGrowth = {
   weights?: Record<string, number>;
 };
 
+export type ClientAnalyticsItem = {
+  clientId: string;
+  clientName: string;
+  clientEmail?: string;
+  company?: string;
+  paymentType?: string;
+  amount?: number;
+  totalProjects?: number;
+  activeProjects?: number;
+  completedProjects?: number;
+  totalTasks?: number;
+  completedTasks?: number;
+  taskCompletionRate?: number;
+  totalFeedback?: number;
+  averageRating?: number;
+  openFeedback?: number;
+  inProgressFeedback?: number;
+  inReviewFeedback?: number;
+  resolvedFeedback?: number;
+  rejectedFeedback?: number;
+  feedbackWithReplies?: number;
+  unansweredFeedback?: number;
+  replyCount?: number;
+  lastReplyAt?: string;
+  responseRate?: number;
+  resolvedFeedbackRate?: number;
+  healthScore?: number;
+};
+
+export type ClientAnalyticsSummary = {
+  totalClients?: number;
+  totalPortfolioValue?: number;
+  averageHealthScore?: number;
+  totalFeedback?: number;
+  totalReplies?: number;
+  topClient?: Partial<ClientAnalyticsItem> | null;
+  atRiskClients?: number;
+};
+
+// Employee Telemetry Analytics Schemas
+export type EmployeeRole = {
+  id?: number;
+  name?: string;
+};
+
+export type EmployeeTeamItem = {
+  teamId: string;
+  teamName: string;
+};
+
+export type EmployeeProjectItem = {
+  projectId: string;
+  projectName: string;
+  status?: number;
+  duration?: string;
+};
+
+export type EmployeeAnalyticsData = {
+  productivityIndex: number;
+  statusMovementScore: number;
+  taskUpdateScore: number;
+  statusChanges: number;
+  taskUpdates: number;
+  totalActivities: number;
+};
+
+export type EmployeeTaskAnalytics = {
+  totalAssignedTasks: number;
+  completedTasks: number;
+  tasksCompletedInRange: number;
+  todoTasks: number;
+  inProgressTasks: number;
+  reviewTasks: number;
+  onHoldTasks: number;
+  blockedTasks: number;
+  completionRate: number;
+  weightedCompletedScore: number;
+};
+
+export type UpcomingDeadlineItem = {
+  taskId: string;
+  taskTitle: string;
+  projectId: string;
+  projectName: string;
+  dueDate: string;
+  status: string;
+  priority: string;
+};
+
+export type EmployeeDeadlineAnalytics = {
+  totalTasksWithDeadline: number;
+  overdueTasks: number;
+  upcomingDeadlines: UpcomingDeadlineItem[];
+};
+
+export type EmployeeMeetingAnalytics = {
+  totalCalls: number;
+  callsStarted: number;
+  callsReceived: number;
+  endedCalls: number;
+  missedCalls: number;
+  rejectedCalls: number;
+  totalMeetingMinutes: number;
+};
+
+export type EmployeeCollaborationAnalytics = {
+  messagesSent: number;
+};
+
+export type EmployeeRecentActivity = {
+  activityId: string;
+  action?: string;
+  module?: string;
+  entityType?: string;
+  entityId?: string;
+  entityName?: string;
+  fieldChanged?: string;
+  oldValue?: string;
+  newValue?: string;
+  score?: number;
+  createdAt?: string;
+};
+
+export type EmployeeTelemetryItem = {
+  userId: number;
+  userName: string;
+  userEmail: string;
+  role?: EmployeeRole;
+  teams?: EmployeeTeamItem[];
+  projects?: EmployeeProjectItem[];
+  analytics?: EmployeeAnalyticsData;
+  taskAnalytics?: EmployeeTaskAnalytics;
+  deadlineAnalytics?: EmployeeDeadlineAnalytics;
+  meetingAnalytics?: EmployeeMeetingAnalytics;
+  collaborationAnalytics?: EmployeeCollaborationAnalytics;
+  recentActivities?: EmployeeRecentActivity[];
+};
+
+export type EmployeeTelemetrySummary = {
+  totalEmployees?: number;
+  averageProductivityIndex?: number;
+  totalAssignedTasks?: number;
+  completedTasks?: number;
+  averageTaskCompletionRate?: number;
+  totalOverdueTasks?: number;
+  totalMessagesSent?: number;
+  totalCalls?: number;
+  topEmployee?: Partial<EmployeeTelemetryItem> | null;
+};
+
+export type EmployeeTelemetryResponse = {
+  range?: { startDate?: string; endDate?: string };
+  summary?: EmployeeTelemetrySummary;
+  employees: EmployeeTelemetryItem[];
+};
+
 export type KpiOverview = {
   employeeProductivity?: {
     totalEmployees: number;
@@ -81,6 +237,9 @@ export type AnalyticsData = {
     teams?: TeamExecutionVelocity[];
   };
   quarterlyGrowth?: QuarterlyGrowth;
+  clients?: ClientAnalyticsItem[];
+  summary?: ClientAnalyticsSummary;
+  range?: Record<string, any>;
 };
 
 export type AnalyticsIndexesResponse = {

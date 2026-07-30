@@ -376,13 +376,25 @@ export default function CollabStationPage() {
           loadedDirects = data.directChats || [];
         }
 
-        setGroups(loadedGroups);
-        setRecentChats(loadedDirects);
-        const loadedChats = [...loadedGroups, ...loadedDirects];
-        chatIdsRef.current = loadedChats.map((chat) => chat.id);
-        setActiveChannelId((currentId) =>
-          loadedChats.some((chat) => chat.id === currentId) ? currentId : loadedChats[0]?.id || ""
-        );
+          setGroups(loadedGroups);
+          setRecentChats(loadedDirects);
+          const loadedChats = [...loadedGroups, ...loadedDirects];
+          chatIdsRef.current = loadedChats.map((chat) => chat.id);
+          
+          const targetActiveId = activeChannelId && loadedChats.some((chat) => chat.id === activeChannelId)
+            ? activeChannelId
+            : loadedChats[0]?.id || "";
+            
+          setActiveChannelId(targetActiveId);
+
+          if (targetActiveId) {
+            setGroups((prev) =>
+              prev.map((g) => (g.id === targetActiveId ? { ...g, missedCallCount: 0, unreadCount: 0 } : g))
+            );
+            setRecentChats((prev) =>
+              prev.map((c) => (c.id === targetActiveId ? { ...c, missedCallCount: 0, unreadCount: 0 } : c))
+            );
+          }
 
         if (socket.connected) {
           chatIdsRef.current.forEach((groupId) => {
@@ -401,6 +413,14 @@ export default function CollabStationPage() {
 
   useEffect(() => {
     if (!activeChannelId) return;
+
+    // Reset missed call count and unread badge for the currently selected active channel
+    setGroups((prev) =>
+      prev.map((g) => (g.id === activeChannelId ? { ...g, missedCallCount: 0, unreadCount: 0 } : g))
+    );
+    setRecentChats((prev) =>
+      prev.map((c) => (c.id === activeChannelId ? { ...c, missedCallCount: 0, unreadCount: 0 } : c))
+    );
 
     socket.emit("group:join", { groupId: activeChannelId });
 
@@ -478,7 +498,16 @@ export default function CollabStationPage() {
   const activeMissedCallMessages =
     activeChannel?.missedCalls?.map((call) => formatMissedCallMessage(call, currentUserRef.current)) || [];
   const visibleMessages = [...activeMissedCallMessages, ...activeMessages];
-  const handleSelectChannel = (id: string) => setActiveChannelId(id);
+  
+  const handleSelectChannel = (id: string) => {
+    setActiveChannelId(id);
+    setGroups((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, missedCallCount: 0, unreadCount: 0 } : g))
+    );
+    setRecentChats((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, missedCallCount: 0, unreadCount: 0 } : c))
+    );
+  };
 
   const handleSendMessage = async (text: string, attachment?: Attachment) => {
     if (!activeChannel) return;

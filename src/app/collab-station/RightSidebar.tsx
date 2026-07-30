@@ -332,7 +332,7 @@ export default function RightSidebar({
                       </span>
                     </div>
                     <p className="truncate text-[11px] text-white/40 mt-0.5">
-                      {chat.missedCallCount ? (
+                      {chat.id !== activeId && chat.missedCallCount ? (
                         <span className="inline-flex items-center gap-1 text-rose-300/80">
                           <PhoneMissed size={11} />
                           {chat.lastMessage}
@@ -344,13 +344,13 @@ export default function RightSidebar({
                   </div>
                 </div>
 
-                {Boolean(chat.missedCallCount) && (
+                {chat.id !== activeId && Boolean(chat.missedCallCount) && (
                   <span className="absolute bottom-3 right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-[0_0_8px_rgba(244,63,94,0.8)]">
                     {chat.missedCallCount}
                   </span>
                 )}
 
-                {chat.unreadCount > 0 && !chat.missedCallCount && (
+                {chat.id !== activeId && chat.unreadCount > 0 && !chat.missedCallCount && (
                   <span className="absolute bottom-3 right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#5271ff] px-1 text-[9px] font-bold text-white shadow-[0_0_8px_#5271ff]">
                     {chat.unreadCount}
                   </span>

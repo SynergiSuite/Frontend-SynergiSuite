@@ -58,6 +58,7 @@ export default function Sidebar({
     { label: "Teams", route: "/teams", icon: UserRoundCog },
     { label: "Projects", route: "/projects", icon: FolderKanban },
     { label: "Clients", route: "/clients", icon: Component },
+    { label: "Feedback", route: "/feedback", icon: MessageSquareQuote },
     { label: "Resources", route: "/resources", icon: Boxes },
     { label: "Cloud", route: "/cloud", icon: Cloud },
     { label: "AI Assistant", route: "/chatbot", icon: BrainCircuit },

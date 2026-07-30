@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown, Trash2 } from "lucide-react";
+import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown, Trash2, PhoneMissed } from "lucide-react";
 import { Message, Attachment } from "./types";
 
 interface ChatWindowProps {
@@ -208,6 +208,30 @@ export default function ChatWindow({
           <div className="flex flex-col gap-6">
             {messages.map((message) => {
               const isMe = message.sender === "me";
+              const isMissedCall = message.id.startsWith("missed-call-") || message.senderName === "Missed Call";
+
+              if (isMissedCall) {
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex w-full justify-center my-2"
+                  >
+                    <div className="flex items-center gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.15)] backdrop-blur-md">
+                      <PhoneMissed size={15} className="text-rose-400 shrink-0" />
+                      <span>{message.text}</span>
+                      {message.time && (
+                        <span className="text-[10px] text-rose-300/70 border-l border-rose-500/30 pl-2 font-mono">
+                          {message.time}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              }
+
               return (
                 <motion.div
                   key={message.id}

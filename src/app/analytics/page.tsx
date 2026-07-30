@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { gsap } from "gsap";
-import { Loader2, RefreshCw, CheckCircle2, Zap } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import AnalyticsHeader, { AnalyticsTab, TimeRange } from "./analyticsHeader";
 import AnalyticsKpiCards from "./analyticsKpiCards";
@@ -10,7 +10,12 @@ import ClientAnalytics from "./clientAnalytics";
 import TeamAnalytics from "./teamAnalytics";
 import BusinessAnalytics from "./businessAnalytics";
 import { getAnalyticsIndexesApi } from "./apis/getAnalyticsIndexesApi";
-import { AnalyticsData, AnalyticsIndexesResponse } from "./schemas/analytics";
+import getEmployeeAnalyticsApi from "./apis/getEmployeeAnalyticsApi";
+import {
+  AnalyticsData,
+  AnalyticsIndexesResponse,
+  EmployeeTelemetryResponse,
+} from "./schemas/analytics";
 
 function formatDate(date: Date): string {
   const yyyy = date.getFullYear();
@@ -50,6 +55,10 @@ export default function AnalyticsPage() {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [employeeTelemetry, setEmployeeTelemetry] = useState<EmployeeTelemetryResponse | null>(null);
+  const [isEmployeeLoading, setIsEmployeeLoading] = useState<boolean>(false);
+  const [employeeError, setEmployeeError] = useState<string | null>(null);
+
   const [telemetryInfo, setTelemetryInfo] = useState<{
     source: "cache" | "calculated";
     calculatedAt: string;
@@ -69,6 +78,18 @@ export default function AnalyticsPage() {
         source: res.source,
         calculatedAt: res.calculatedAt,
       });
+
+      setIsEmployeeLoading(true);
+      setEmployeeError(null);
+      try {
+        const empRes = await getEmployeeAnalyticsApi({ startDate, endDate });
+        setEmployeeTelemetry(empRes);
+      } catch (empErr) {
+        console.warn("Could not fetch detailed employee telemetry:", empErr);
+        setEmployeeError(empErr instanceof Error ? empErr.message : "Failed to fetch employee telemetry");
+      } finally {
+        setIsEmployeeLoading(false);
+      }
     } catch (err) {
       console.error("Failed to load analytics data:", err);
       const msg = err instanceof Error ? err.message : "Failed to load analytics indexes";
@@ -120,24 +141,9 @@ export default function AnalyticsPage() {
             setActiveTab={setActiveTab}
             timeRange={timeRange}
             setTimeRange={setTimeRange}
+            calculatedAt={telemetryInfo?.calculatedAt}
           />
         </div>
-
-        {/* Telemetry Status Bar */}
-        {telemetryInfo && !isLoading && (
-          <div className="flex items-center justify-between text-xs text-white/50 bg-[#0c0a2f]/40 border border-white/[0.06] rounded-xl px-4 py-2 backdrop-blur-md">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]" />
-              <span>
-                Telemetry Source: <strong className="text-white capitalize">{telemetryInfo.source}</strong>
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-white/40">
-              <Zap className="h-3 w-3 text-[#5271ff]" />
-              Calculated: {new Date(telemetryInfo.calculatedAt).toLocaleString()}
-            </div>
-          </div>
-        )}
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3 text-white/50">
@@ -164,7 +170,15 @@ export default function AnalyticsPage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]" />
                     Employee Performance Telemetry
                   </div>
-                  <EmployeeAnalytics employees={analyticsData?.employeeProductivity?.employees} />
+                  <EmployeeAnalytics
+                    employees={employeeTelemetry?.employees}
+                    summary={employeeTelemetry?.summary}
+                    startDate={getDateRange(timeRange).startDate}
+                    endDate={getDateRange(timeRange).endDate}
+                    isLoading={isEmployeeLoading}
+                    error={employeeError}
+                    onRetry={() => void fetchAnalyticsData(timeRange)}
+                  />
                 </div>
               )}
 
@@ -175,7 +189,10 @@ export default function AnalyticsPage() {
                     <span className="h-1.5 w-1.5 rounded-full bg-[#5271ff] shadow-[0_0_8px_#5271ff]" />
                     Client Account & Revenue Analytics
                   </div>
-                  <ClientAnalytics />
+                  <ClientAnalytics
+                    clients={analyticsData?.clients}
+                    summary={analyticsData?.summary}
+                  />
                 </div>
               )}
 

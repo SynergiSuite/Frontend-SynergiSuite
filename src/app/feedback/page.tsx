@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageSquareQuote,
@@ -21,16 +21,78 @@ import { toast } from "sonner";
 import { CookieManager } from "@/lib/cookieManager";
 import { getProjectsApi } from "@/app/projects/apis/getProjectsApi";
 import { Projects } from "@/app/projects/schemas/project";
+import {
+  submitClientFeedbackApi,
+  FeedbackCategory,
+} from "./apis/submitClientFeedbackApi";
+import { getMyFeedbackApi, ClientFeedbackResponse } from "./apis/getMyFeedbackApi";
+import FeedbackDetailModal from "./feedbackDetailModal";
+import LoaderCustom from "@/components/ui/loader-custom";
 
 interface FeedbackItem {
+  rawId?: string | number;
   id: string;
   title: string;
-  category: "Project Feedback" | "Feature Request" | "Bug Report" | "General Support";
+  category: string;
   projectName: string;
   message: string;
-  status: "In Review" | "In Progress" | "Resolved" | "Closed";
+  status: "Open" | "In Review" | "In Progress" | "Resolved" | "Rejected";
   rating?: number;
   createdAt: string;
+  clientName?: string;
+  clientEmail?: string;
+  reply?: string;
+  replyAt?: string;
+}
+
+function normalizeFeedbackStatus(rawStatus?: string): FeedbackItem["status"] {
+  const norm = (rawStatus || "").trim().toLowerCase();
+  if (norm === "in_progress" || norm === "in progress") return "In Progress";
+  if (norm === "in_review" || norm === "in review") return "In Review";
+  if (norm === "resolved") return "Resolved";
+  if (norm === "rejected") return "Rejected";
+  return "Open";
+}
+
+function mapFeedbackResponse(
+  item: ClientFeedbackResponse,
+  projectMap: Record<string, string>
+): FeedbackItem {
+  const rawId = item.id;
+  const displayId = typeof rawId === "number" ? `FB-${rawId}` : String(rawId || `FB-${Math.floor(1000 + Math.random() * 9000)}`);
+  
+  const title = item.titleOfFeedback || item.feedbackTitle || item.title || "Feedback Submission";
+  const category = item.feedbackType || item.category || "general";
+
+  const projectId = item.typeId || item.projectId || item.project_id || item.project?.id;
+  const projectName =
+    item.projectName ||
+    item.project?.name ||
+    (projectId ? projectMap[String(projectId)] : undefined) ||
+    "General Project";
+
+  const rating =
+    typeof item.starRating === "number"
+      ? item.starRating
+      : typeof item.rating === "number"
+      ? item.rating
+      : undefined;
+
+  return {
+    rawId,
+    id: displayId,
+    title,
+    category,
+    projectName,
+    message: item.feedback || item.message || "",
+    status: normalizeFeedbackStatus(item.status),
+    rating,
+    createdAt: item.createdAt || item.created_at || new Date().toISOString(),
+    clientName: item.client?.name,
+    clientEmail: item.client?.email,
+    reply: item.reply || item.response,
+    replyAt: item.replyAt,
+  };
 }
 
 const mockFeedbackList: FeedbackItem[] = [
@@ -66,36 +128,66 @@ const mockFeedbackList: FeedbackItem[] = [
 ];
 
 export default function ClientFeedbackPage() {
-  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(mockFeedbackList);
+  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
+  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
+  const [isLoadingPage, setIsLoadingPage] = useState(true);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"All" | "In Progress" | "In Review" | "Resolved">("All");
+  const [activeTab, setActiveTab] = useState<string>("All");
+  const [role, setRole] = useState<string>("");
+
+  useEffect(() => {
+    const userRole = CookieManager("get", "role");
+    setRole(String(userRole || "").toLowerCase());
+  }, []);
+
+  const isClientRole = role === "client";
 
   // Form State
   const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<FeedbackItem["category"]>("Project Feedback");
-  const [projectName, setProjectName] = useState("");
+  const [category, setCategory] = useState<FeedbackCategory>("review");
+  const [selectedProjectId, setSelectedProjectId] = useState("");
   const [projects, setProjects] = useState<Projects[]>([]);
+  const [projectMap, setProjectMap] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
-  const [rating, setRating] = useState<number>(5);
+  const [rating, setRating] = useState<number>(4);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const userName = (typeof window !== "undefined" ? CookieManager("get", "user") as string : "") || "Client";
 
-  useEffect(() => {
-    const loadProjects = async () => {
-      try {
-        const data = await getProjectsApi();
-        setProjects(data);
-      } catch (err) {
-        console.error("Failed to load projects for feedback:", err);
-      }
-    };
-    loadProjects();
+  const fetchFeedbackData = useCallback(async (map: Record<string, string>) => {
+    try {
+      setIsLoadingPage(true);
+      const apiRes = await getMyFeedbackApi();
+      const mapped = apiRes.map((item) => mapFeedbackResponse(item, map));
+      setFeedbackList(mapped);
+    } catch (error) {
+      console.error("Failed to load client feedback:", error);
+    } finally {
+      setIsLoadingPage(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (containerRef.current) {
+    const loadInitial = async () => {
+      const map: Record<string, string> = {};
+      try {
+        const projData = await getProjectsApi();
+        setProjects(projData);
+        projData.forEach((p) => {
+          map[String(p.id)] = p.name;
+        });
+        setProjectMap(map);
+      } catch (err) {
+        console.error("Failed to load projects:", err);
+      }
+      await fetchFeedbackData(map);
+    };
+    loadInitial();
+  }, [fetchFeedbackData]);
+
+  useEffect(() => {
+    if (!isLoadingPage && containerRef.current) {
       gsap.fromTo(
         containerRef.current.querySelectorAll(".animate-item"),
         { opacity: 0, y: 20 },
@@ -108,34 +200,34 @@ export default function ClientFeedbackPage() {
         }
       );
     }
-  }, []);
+  }, [isLoadingPage]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title || !message) {
+    if (!title.trim() || !message.trim()) {
       toast.error("Please fill in required fields.");
       return;
     }
 
     try {
       setIsSubmitting(true);
-      const newFeedback: FeedbackItem = {
-        id: `FB-${Math.floor(1000 + Math.random() * 9000)}`,
-        title,
+      await submitClientFeedbackApi({
+        feedbackTitle: title.trim(),
         category,
-        projectName: projectName || "General Project",
-        message,
-        status: "In Review",
+        projectId: selectedProjectId || undefined,
+        feedback: message.trim(),
         rating,
-        createdAt: new Date().toISOString(),
-      };
+      });
 
-      setFeedbackList((prev) => [newFeedback, ...prev]);
       toast.success("Feedback submitted successfully!");
       setTitle("");
       setMessage("");
-      setProjectName("");
+      setSelectedProjectId("");
       setIsSubmitModalOpen(false);
+      await fetchFeedbackData(projectMap);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to submit feedback";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -168,13 +260,43 @@ export default function ClientFeedbackPage() {
             Resolved
           </span>
         );
+      case "Rejected":
+        return (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.15)]">
+            Rejected
+          </span>
+        );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/5 px-3 py-1 text-xs font-semibold text-white/60">
-            Closed
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
+            Open
           </span>
         );
     }
+  };
+
+  const handleUpdateFeedbackLocal = (updated: { id: string; status: string; reply?: string }) => {
+    setSelectedFeedback((prev) =>
+      prev && prev.id === updated.id
+        ? {
+            ...prev,
+            status: updated.status as FeedbackItem["status"],
+            reply: updated.reply ?? prev.reply,
+          }
+        : prev
+    );
+
+    setFeedbackList((prevList) =>
+      prevList.map((item) =>
+        item.id === updated.id
+          ? {
+              ...item,
+              status: updated.status as FeedbackItem["status"],
+              reply: updated.reply ?? item.reply,
+            }
+          : item
+      )
+    );
   };
 
   return (
@@ -188,34 +310,44 @@ export default function ClientFeedbackPage() {
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#5271ff]">
             <Sparkles className="h-4 w-4" />
-            <span>Client Feedback & Collaboration Hub</span>
+            <span>
+              {isClientRole
+                ? "Client Feedback & Collaboration Hub"
+                : "Client Feedback & Operations"}
+            </span>
           </div>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            Project Feedback & Support
+            {isClientRole
+              ? "Project Feedback & Support"
+              : "Manage & Reply Feedback"}
           </h1>
           <p className="mt-1 text-xs text-white/50">
-            Share feedback, track request resolution, and collaborate with your project management team.
+            {isClientRole
+              ? "Share feedback, track request resolution, and collaborate with your project management team."
+              : "Manage and reply to client feedback, track request resolution, and maintain client satisfaction."}
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsSubmitModalOpen(true)}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(82,113,255,0.3)] transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_25px_rgba(82,113,255,0.45)] active:scale-95 cursor-pointer"
-        >
-          <PlusCircle className="h-4 w-4" />
-          <span>Submit New Feedback</span>
-        </button>
+        {isClientRole && (
+          <button
+            type="button"
+            onClick={() => setIsSubmitModalOpen(true)}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(82,113,255,0.3)] transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_25px_rgba(82,113,255,0.45)] active:scale-95 cursor-pointer"
+          >
+            <PlusCircle className="h-4 w-4" />
+            <span>Submit New Feedback</span>
+          </button>
+        )}
       </div>
 
       {/* Tabs Filter */}
       <div className="animate-item flex flex-wrap items-center justify-between gap-4">
-        <div className="flex rounded-xl border border-white/[0.08] bg-[#0c0a2f]/60 p-1.5 backdrop-blur-md">
-          {(["All", "In Progress", "In Review", "Resolved"] as const).map((tab) => (
+        <div className="flex rounded-xl border border-white/[0.08] bg-[#0c0a2f]/60 p-1.5 backdrop-blur-md flex-wrap gap-1">
+          {(["All", "Open", "In Review", "In Progress", "Resolved", "Rejected"] as const).map((tab) => (
             <button
               key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-all duration-300 ${
+              onClick={() => setActiveTab(tab as any)}
+              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-300 ${
                 activeTab === tab
                   ? "bg-[#5271ff] text-white shadow-[0_0_12px_rgba(82,113,255,0.4)]"
                   : "text-white/50 hover:text-white hover:bg-white/5"
@@ -232,63 +364,89 @@ export default function ClientFeedbackPage() {
       </div>
 
       {/* Feedback List Grid */}
-      <div className="grid gap-4">
-        {filteredItems.map((item) => (
-          <motion.div
-            key={item.id}
-            layout
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="animate-item relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0a2f]/60 p-6 backdrop-blur-md transition-all duration-300 hover:border-white/[0.15] hover:shadow-[0_8px_32px_rgba(0,0,0,0.37)]"
-          >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">
-                    {item.id}
-                  </span>
-                  <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-[#5271ff]">
-                    {item.category}
-                  </span>
-                  <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-white/60">
-                    {item.projectName}
-                  </span>
+      {isLoadingPage ? (
+        <div className="flex flex-col items-center justify-center py-20">
+          <LoaderCustom />
+        </div>
+      ) : filteredItems.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center border border-white/[0.08] bg-[#0c0a2f]/40 rounded-2xl p-8 backdrop-blur-md">
+          <MessageSquareQuote className="h-10 w-10 text-white/20 mb-3" />
+          <h3 className="text-base font-bold text-white/80">No Feedback Submissions Found</h3>
+          <p className="text-xs text-white/40 max-w-sm mt-1">
+            You haven't submitted any feedback for this filter view yet. Click "Submit New Feedback" to share your thoughts with your project team.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {filteredItems.map((item) => (
+            <motion.div
+              key={item.id}
+              layout
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              onClick={() => setSelectedFeedback(item)}
+              className="animate-item relative cursor-pointer overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0a2f]/60 p-6 backdrop-blur-md transition-all duration-300 hover:border-[#5271ff]/40 hover:shadow-[0_8px_32px_rgba(82,113,255,0.15)]"
+            >
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">
+                      {item.id}
+                    </span>
+                    <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-[#5271ff] uppercase">
+                      {item.category}
+                    </span>
+                    <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-white/60">
+                      {item.projectName}
+                    </span>
+                  </div>
+
+                  <h3 className="text-lg font-bold text-white tracking-tight">{item.title}</h3>
+                  <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{item.message}</p>
                 </div>
 
-                <h3 className="text-lg font-bold text-white tracking-tight">{item.title}</h3>
-                <p className="text-sm text-white/70 leading-relaxed">{item.message}</p>
+                <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
+                  {getStatusBadge(item.status)}
+
+                  {item.rating && (
+                    <div className="flex items-center gap-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-3.5 w-3.5 ${
+                            i < (item.rating || 0)
+                              ? "fill-amber-400 text-amber-400"
+                              : "text-white/20"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  <span className="text-[10px] text-white/30">
+                    {new Date(item.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
+                  </span>
+                </div>
               </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
 
-              <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
-                {getStatusBadge(item.status)}
-
-                {item.rating && (
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-3.5 w-3.5 ${
-                          i < (item.rating || 0)
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-white/20"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                <span className="text-[10px] text-white/30">
-                  {new Date(item.createdAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
+      {/* Feedback Detail & Management Modal */}
+      {selectedFeedback && (
+        <FeedbackDetailModal
+          feedback={selectedFeedback}
+          onClose={() => setSelectedFeedback(null)}
+          onRefresh={() => fetchFeedbackData(projectMap)}
+          onUpdateFeedback={handleUpdateFeedbackLocal}
+          isManagementRole={!isClientRole}
+        />
+      )}
 
       {/* Submit Feedback Modal */}
       <AnimatePresence>
@@ -342,13 +500,15 @@ export default function ClientFeedbackPage() {
                     </label>
                     <select
                       value={category}
-                      onChange={(e) => setCategory(e.target.value as FeedbackItem["category"])}
+                      onChange={(e) => setCategory(e.target.value as FeedbackCategory)}
                       className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50"
                     >
-                      <option value="Project Feedback">Project Feedback</option>
-                      <option value="Feature Request">Feature Request</option>
-                      <option value="Bug Report">Bug Report</option>
-                      <option value="General Support">General Support</option>
+                      <option value="request">Request</option>
+                      <option value="review">Review</option>
+                      <option value="issue">Issue</option>
+                      <option value="question">Question</option>
+                      <option value="approval">Approval</option>
+                      <option value="general">General</option>
                     </select>
                   </div>
 
@@ -358,13 +518,13 @@ export default function ClientFeedbackPage() {
                     </label>
                     <div className="relative">
                       <select
-                        value={projectName}
-                        onChange={(e) => setProjectName(e.target.value)}
+                        value={selectedProjectId}
+                        onChange={(e) => setSelectedProjectId(e.target.value)}
                         className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50"
                       >
                         <option value="" className="bg-[#0c0a2f] text-white">-- Select Project --</option>
                         {projects.map((p) => (
-                          <option key={p.id} value={p.name} className="bg-[#0c0a2f] text-white">
+                          <option key={p.id} value={String(p.id)} className="bg-[#0c0a2f] text-white">
                             {p.name}
                           </option>
                         ))}

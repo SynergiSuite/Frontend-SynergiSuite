@@ -62,6 +62,18 @@ export default function AnalyticsKpiCards({
   const growthChangePercent = quarterlyGrowth?.growthChangePercent ?? 5.2;
   const growthChange = `${growthChangePercent >= 0 ? "+" : ""}${growthChangePercent.toFixed(1)}%`;
 
+  // Client Analytics KPI Data
+  const clientSummary = analyticsData?.summary;
+  const clientsList = analyticsData?.clients || [];
+  const clientHealthScore = clientSummary?.averageHealthScore ?? (
+    clientsList.length > 0
+      ? clientsList.reduce((acc, curr) => acc + (curr.healthScore || 0), 0) / clientsList.length
+      : 96.8
+  );
+  const totalPortfolioValue = clientSummary?.totalPortfolioValue ?? (
+    clientsList.reduce((acc, curr) => acc + (curr.amount || 0), 0)
+  );
+
   const kpis: KpiItem[] = [
     {
       id: "employee",
@@ -79,13 +91,15 @@ export default function AnalyticsKpiCards({
     },
     {
       id: "client",
-      title: "Client Retention & Value",
+      title: "Client Retention & Health",
       domain: "client",
-      value: 96.8,
+      value: Number(clientHealthScore.toFixed(1)),
       suffix: "%",
       change: "+2.4%",
       isPositive: true,
-      subtitle: "$142.5k avg. annual contract value",
+      subtitle: totalPortfolioValue > 0
+        ? `$${totalPortfolioValue.toLocaleString()} portfolio value`
+        : `${clientsList.length || 1} client accounts monitored`,
       color: "#5271ff",
       glow: "rgba(82,113,255,0.3)",
     },
