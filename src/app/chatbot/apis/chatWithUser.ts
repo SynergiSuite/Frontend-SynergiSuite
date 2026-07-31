@@ -6,6 +6,7 @@ type ChatPayload = {
   message: string;
   session_id: string;
   model: "llama" | "gpt" | "gemma";
+  selected_id?: string;
 };
 
 export type ChatApiResponse = {
@@ -24,6 +25,7 @@ export async function chatWithUser(
   message: string,
   sessionId: string,
   model: "llama" | "gpt" | "gemma",
+  selectedId?: string,
 ) {
   try {
     const userId = CookieManager("get", "user-id");
@@ -39,9 +41,15 @@ export async function chatWithUser(
       model,
     };
 
+    if (selectedId) {
+      payload.selected_id = selectedId;
+    }
+
+    const headers = await getChatApiHeaders();
+
     const response = await fetch(`${requestBaseUrl}/api/users/chat`, {
       method: "POST",
-      headers: getChatApiHeaders(),
+      headers,
       body: JSON.stringify(payload),
     });
 

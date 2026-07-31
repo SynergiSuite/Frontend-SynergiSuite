@@ -34,11 +34,13 @@ export async function deleteSession(sessionId: string) {
       throw new Error("Session id is required");
     }
 
+    const headers = await getChatApiHeaders();
+
     const response = await fetch(
       `${requestBaseUrl}/api/users/${userId}/sessions/${sessionId}`,
       {
         method: "DELETE",
-        headers: getChatApiHeaders(),
+        headers,
       },
     );
 

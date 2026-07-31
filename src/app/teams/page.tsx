@@ -10,9 +10,8 @@ import CreateTeamModal from "./createTeamModal";
 import { Button } from "@/global/buttons";
 import { CookieManager } from "@/lib/cookieManager";
 import LoaderCustom from "@/components/ui/loader-custom";
-import { Employee, Team, Teams } from "./schemas/types";
-import { toast } from "sonner";
-import { getTeamsApi } from "./apis/getTeamsApi";
+import { Employee, Teams } from "./schemas/types";
+import { getTeamsWithTasksApi, PaginationMeta } from "./apis/getTeamsWithTasksApi";
 import { canManageTeams } from "@/lib/rolePermissions";
 import { gsap } from "gsap";
 
@@ -24,6 +23,10 @@ export default function Page() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [role, setRole] = useState("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(5);
+  const [paginationMeta, setPaginationMeta] = useState<PaginationMeta | null>(null);
+
   const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
   const canManageTeamActions = canManageTeams(role);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,47 +52,58 @@ export default function Page() {
     }
   }, [isLoading]);
 
-  // Get All Teams
+  // Get Teams with tasks using backend pagination
   useEffect(() => {
     const cookieRole = CookieManager("get", "role");
     setRole((cookieRole as string) ?? "");
 
     const fetchTeamsData = async () => {
       setIsLoading(true);
-      const data = await getTeamsApi();
-      setTeams(data.teams);
-      setCount(data.count);
+      try {
+        const response = await getTeamsWithTasksApi(currentPage, limit);
+        setTeams(response.data);
+        setPaginationMeta(response.meta);
+        setCount(response.meta?.totalItems ?? response.data.length);
+      } catch (error) {
+        console.error("Failed to fetch teams with tasks:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     const fetchEmployeesData = async () => {
-      const accessToken = CookieManager("get", "access-token");
-      const response = await fetch(
-        `${requestBaseUrl}/business/get-employees`,
-        {
-          method: "POST",
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
+      try {
+        const accessToken = CookieManager("get", "access-token");
+        const response = await fetch(
+          `${requestBaseUrl}/business/get-employees`,
+          {
+            method: "POST",
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({}),
           },
-          body: JSON.stringify({}),
-        },
-      );
+        );
 
-      const data = await response.json();
-      const normalizedEmployees: Employee[] = Array.isArray(
-        (data as any)?.employees?.employees
-      )
-        ? (data as any).employees.employees
-        : Array.isArray((data as any)?.employees)
-        ? (data as any).employees
-        : [];
+        const data = await response.json();
+        const normalizedEmployees: Employee[] = Array.isArray(
+          (data as any)?.employees?.employees
+        )
+          ? (data as any).employees.employees
+          : Array.isArray((data as any)?.employees)
+          ? (data as any).employees
+          : [];
 
-      setEmployees(normalizedEmployees);
-      setIsLoading(false);
+        setEmployees(normalizedEmployees);
+      } catch (err) {
+        console.error("Failed to fetch employees:", err);
+      }
     };
+
     fetchTeamsData();
     fetchEmployeesData();
-  }, [reload]);
+  }, [reload, currentPage, limit]);
 
   const handleSubmitOnCreate = () => {
     setReload((prev) => !prev);
@@ -100,7 +114,7 @@ export default function Page() {
   const states = [
     { title: "Total Teams", value: count, change: "" },
     { title: "Active Projects", value: 8, change: "" },
-    { title: "Pending Tasks", value: pendingTasksSum, change: "Across all active teams" },
+    { title: "Pending Tasks", value: pendingTasksSum, change: "Across loaded teams" },
     { title: "Reports", value: 15, change: "" },
   ];
 
@@ -165,6 +179,8 @@ export default function Page() {
                 employees={employees}
                 canManageTeams={canManageTeamActions}
                 onRefresh={() => setReload((prev) => !prev)}
+                paginationMeta={paginationMeta}
+                onPageChange={(newPage) => setCurrentPage(newPage)}
               />
             </div>
           </div>

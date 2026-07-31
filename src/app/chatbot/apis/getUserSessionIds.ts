@@ -21,9 +21,11 @@ export async function getUserSessionIds() {
       throw new Error("User id not found in cookie");
     }
 
+    const headers = await getChatApiHeaders();
+
     const response = await fetch(`${requestBaseUrl}/api/users/${userId}/session-ids`, {
       method: "GET",
-      headers: getChatApiHeaders(),
+      headers,
     });
 
     if (!response.ok) {

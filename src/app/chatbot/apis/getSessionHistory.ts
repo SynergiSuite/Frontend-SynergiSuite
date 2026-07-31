@@ -27,11 +27,13 @@ export async function getSessionHistory() {
       throw new Error("Session id not found in cookie");
     }
 
+    const headers = await getChatApiHeaders();
+
     const response = await fetch(
       `${requestBaseUrl}/api/users/${userId}/sessions/${sessionId}/history`,
       {
         method: "GET",
-        headers: getChatApiHeaders(),
+        headers,
       },
     );
 

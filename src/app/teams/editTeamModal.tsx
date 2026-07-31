@@ -28,20 +28,19 @@ export default function EditTeamModal({
   team,
   employees,
 }: EditTeamModalProps) {
-
   // ===== State =====
   const [formData, setFormData] = useState<Teams>({
     id: team.id,
     name: team.name,
     description: team.description,
-    members: team.members || [],
-    leader_id: team.leader_id || (team.leader?.user_id ?? 0),
+    members: [],
+    leader_id: team.leader_id || team.leader?.user_id || 0,
   });
   const [members, setMembers] = useState<any[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [leaderName, setLeaderName] = useState<string>("");
   const [mounted, setMounted] = useState(false);
-  
+
   const shellRef = useRef<HTMLDivElement>(null);
 
   // ===== Animations =====
@@ -59,43 +58,103 @@ export default function EditTeamModal({
     }
   }, []);
 
-  // ===== Effects =====
-  // Sync members with team + employees
-  useEffect(() => {
-    if (employees.length > 0) {
-      const normalizedMembers =
-        typeof team.members[0] === "object" && "user" in team.members[0]
-          ? team.members
-          : employees.filter((emp) =>
-              (team.members as unknown as number[]).includes(emp.user_id)
-            );
+  // Helper function to extract or match employee user object
+  const extractMemberUser = (item: any): Employee | null => {
+    if (!item) return null;
 
-      setMembers(normalizedMembers);
-
-      setFormData((prev) => ({
-        ...prev,
-        members: normalizedMembers,
-        leader_id: team.leader_id || team.leader?.user_id || prev.leader_id,
-      }));
+    // Number ID
+    if (typeof item === "number") {
+      return employees.find((emp) => emp.user_id === item) || null;
     }
+
+    // String number ID
+    if (typeof item === "string" && !isNaN(Number(item))) {
+      const numId = Number(item);
+      return employees.find((emp) => emp.user_id === numId) || null;
+    }
+
+    // Object with nested user property { id, user: { user_id, name, email } }
+    if (typeof item === "object" && item.user) {
+      return {
+        user_id: item.user.user_id || item.user.id,
+        name: item.user.name,
+        email: item.user.email,
+      };
+    }
+
+    // Direct user object { user_id: 5, name: "zain usmani", email: "..." }
+    if (typeof item === "object" && (item.user_id || item.id)) {
+      return {
+        user_id: item.user_id || Number(item.id),
+        name: item.name || "Unnamed",
+        email: item.email || "",
+      };
+    }
+
+    return null;
+  };
+
+  // ===== Effects =====
+  // Robustly normalize team members regardless of API response shape
+  useEffect(() => {
+    const rawMembers = team.teamMembers || team.members || [];
+    const normalizedMembers: Employee[] = [];
+
+    if (Array.isArray(rawMembers)) {
+      rawMembers.forEach((item) => {
+        const userObj = extractMemberUser(item);
+        if (userObj && userObj.user_id) {
+          if (!normalizedMembers.some((m) => m.user_id === userObj.user_id)) {
+            normalizedMembers.push(userObj);
+          }
+        }
+      });
+    }
+
+    setMembers(normalizedMembers);
+
+    const initialLeaderId =
+      team.leader_id ||
+      team.leader?.user_id ||
+      (typeof team.leader === "number" ? team.leader : 0);
+
+    setFormData({
+      id: team.id,
+      name: team.name,
+      description: team.description,
+      members: normalizedMembers,
+      leader_id: initialLeaderId,
+    });
   }, [team, employees]);
 
-  // Update leader name display whenever leader_id changes
+  // Update leader name display whenever leader_id or members list changes
   useEffect(() => {
-    if (!formData.leader_id || members.length === 0) return;
+    const currentLeaderId = formData.leader_id || team.leader_id || team.leader?.user_id;
+    if (!currentLeaderId) {
+      setLeaderName("");
+      return;
+    }
 
-    const found = members.find((m) => {
+    const foundInMembers = members.find((m) => {
       const id = m.user ? m.user.user_id : m.user_id;
-      return id === formData.leader_id;
+      return id === currentLeaderId;
     });
 
-    if (found) {
-      const name = found.user ? found.user.name : found.name;
-      setLeaderName(name);
-    } else {
-      setLeaderName("");
+    if (foundInMembers) {
+      setLeaderName(foundInMembers.user ? foundInMembers.user.name : foundInMembers.name);
+      return;
     }
-  }, [formData.leader_id, members]);
+
+    const foundInEmployees = employees.find((e) => e.user_id === currentLeaderId);
+    if (foundInEmployees) {
+      setLeaderName(foundInEmployees.name);
+      return;
+    }
+
+    if (team.leader?.name) {
+      setLeaderName(team.leader.name);
+    }
+  }, [formData.leader_id, members, employees, team]);
 
   // ===== Helpers =====
   const stringToInt = (str: string) => parseInt(str, 10);
@@ -117,21 +176,14 @@ export default function EditTeamModal({
     );
     if (!selectedEmployee) return;
 
-    const alreadyIn =
-      members.some((m) =>
-        m.user
-          ? m.user.user_id === selectedEmployee.user_id
-          : m.user_id === selectedEmployee.user_id
-      );
+    const alreadyIn = members.some((m) => {
+      const mId = m.user ? m.user.user_id : m.user_id;
+      return mId === selectedEmployee.user_id;
+    });
 
     if (alreadyIn) return;
 
-    const newMember =
-      members.length && members[0].user
-        ? { id: crypto.randomUUID(), user: selectedEmployee }
-        : selectedEmployee;
-
-    const updatedMembers = [...members, newMember];
+    const updatedMembers = [...members, selectedEmployee];
 
     setMembers(updatedMembers);
     setFormData((prev) => ({
@@ -143,31 +195,34 @@ export default function EditTeamModal({
   };
 
   const handleRemoveMember = (idToRemove: string) => {
+    const targetId = stringToInt(idToRemove);
     const updatedMembers = members.filter((member) => {
       const memberId = member.user ? member.user.user_id : member.user_id;
-      return memberId !== stringToInt(idToRemove);
+      return memberId !== targetId;
     });
 
     setMembers(updatedMembers);
     setFormData((prev) => ({
       ...prev,
       members: updatedMembers,
+      leader_id: prev.leader_id === targetId ? 0 : prev.leader_id,
     }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if(formData.members.length === 0){
-      toast.warning("Teams can not exist without members.");
-    } else {
-      const updatedTeam: Teams = {
-        ...formData,
-        members: members.map((m) => (m.user ? m.user.user_id : m.user_id)),
-      };
-      onUpdate(updatedTeam);
-      onClose();
+    if (members.length === 0) {
+      toast.warning("Teams cannot exist without members.");
+      return;
     }
+
+    const updatedTeam: Teams = {
+      ...formData,
+      members: members.map((m) => (m.user ? m.user.user_id : m.user_id)),
+    };
+    onUpdate(updatedTeam);
+    onClose();
   };
 
   const availableEmployees = employees.filter((emp) => {
@@ -304,6 +359,7 @@ export default function EditTeamModal({
                   members.map((member) => {
                     const name = member.user ? member.user.name : member.name;
                     const id = member.user ? member.user.user_id : member.user_id;
+                    if (!name || !id) return null;
 
                     return (
                       <span
@@ -346,15 +402,20 @@ export default function EditTeamModal({
                   <SelectValue placeholder={leaderName || "Select a Lead"} />
                 </SelectTrigger>
                 <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                  {members.map((o) => (
-                    <SelectItem
-                      key={o.user?.user_id ?? o.user_id}
-                      value={String(o.user?.user_id ?? o.user_id)}
-                      className="cursor-pointer text-white focus:bg-white/5 focus:text-white"
-                    >
-                      {o.user?.name ?? o.name}
-                    </SelectItem>
-                  ))}
+                  {members.map((o) => {
+                    const id = o.user?.user_id ?? o.user_id;
+                    const name = o.user?.name ?? o.name;
+                    if (!id || !name) return null;
+                    return (
+                      <SelectItem
+                        key={id}
+                        value={String(id)}
+                        className="cursor-pointer text-white focus:bg-white/5 focus:text-white"
+                      >
+                        {name}
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             </div>

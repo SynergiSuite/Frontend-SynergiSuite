@@ -1,4 +1,7 @@
+"use client";
+
 import { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, X } from "lucide-react";
 import { toast } from "sonner";
@@ -8,8 +11,16 @@ import { Role } from "./schemas/roles";
 import { fetchRoles } from "./apis/getRoleApi";
 import { inviteEmployee } from "./apis/addEmployeeApi";
 import { gsap } from "gsap";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps) {
+  const [mounted, setMounted] = useState(false);
   const [roles, setRoles] = useState<Role[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -19,6 +30,10 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
     salary: "",
   });
   const modalShellRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const loadRoles = async () => {
@@ -43,18 +58,18 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
   }, [isOpen]);
 
   const handleCloseModal = () => {
-    setError("");
+    setError(null);
     onClose();
     setFormData({ email: "", role_id: 0, salary: "" });
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
+    e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "role" || name === "role_id" ? Number(value) : value,
+      [name]: value,
     }));
   };
 
@@ -70,146 +85,165 @@ export default function AddEmployee({ isOpen, onClose }: AddEmployeeDialogProps)
     try {
       await inviteEmployee(formData);
       toast.success("Employee invited successfully!");
-      onClose();
-      setFormData({ email: "", role_id: 0, salary: "" });
-    } catch (err) {
-      toast.error("Failed to invite employee");
+      handleCloseModal();
+    } catch (err: any) {
+      const errMsg = err?.message || "Failed to invite employee";
+      setError(errMsg);
+      toast.error(errMsg);
       console.error("Error inviting employee:", err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return (
-    isOpen ? (
-      <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8">
-        <button
-          type="button"
-          aria-label="Close add employee modal"
-          className="absolute inset-0 bg-black/60 backdrop-blur-[2px]"
-          onClick={handleCloseModal}
-        />
+  // Filter out 'client' role from the available roles list for inviting employees
+  const filteredRoles = roles.filter(
+    (role) => role.name.trim().toLowerCase() !== "client"
+  );
 
-        <div
-          ref={modalShellRef}
-          className="relative flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.7)]"
-        >
-          {/* Top thin accent bar */}
-          <div className="absolute left-0 top-0 h-[2px] w-24 bg-gradient-to-r from-[#5271ff] to-transparent" />
+  if (!mounted || !isOpen) {
+    return null;
+  }
 
-          {/* Header */}
-          <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] px-6 py-5 sm:px-8">
-            <div>
-              <h2 className="text-xl font-bold text-white">Add New Employee</h2>
-              <p className="mt-1 text-xs text-white/40 leading-relaxed">
-                Send invitation to new team members with their roles.
-              </p>
-            </div>
-            <button
-              onClick={handleCloseModal}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/50 transition hover:bg-white/[0.08] hover:text-white"
-              aria-label="Close"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
+  const modal = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <button
+        type="button"
+        aria-label="Close add employee modal"
+        className="absolute inset-0 bg-[#030114]/65 backdrop-blur-md"
+        onClick={handleCloseModal}
+      />
 
-          <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8 space-y-6">
-            {error ? (
-              <Alert className="border border-red-500/20 bg-red-500/10 text-red-400 rounded-xl px-4 py-3">
-                <Terminal className="h-4 w-4 text-red-400" />
-                <AlertTitle className="text-red-400 font-semibold text-sm ml-2">OOPs!</AlertTitle>
-                <AlertDescription className="mt-1 text-xs text-red-300 ml-2">
-                  {error}
-                </AlertDescription>
-              </Alert>
-            ) : null}
+      <div
+        ref={modalShellRef}
+        className="relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.7)]"
+      >
+        {/* Top thin accent bar */}
+        <div className="absolute left-0 top-0 h-[2px] w-24 bg-gradient-to-r from-[#5271ff] to-transparent" />
 
-            <p className="text-sm text-white/40 leading-relaxed">
-              Once they&apos;ve signed
-              up, they&apos;ll be able to access SynergiSuite and start collaborating
-              with you.
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 border-b border-white/[0.06] px-6 py-5 sm:px-8">
+          <div>
+            <h2 className="text-xl font-bold text-white">Add New Employee</h2>
+            <p className="mt-1 text-xs text-white/40 leading-relaxed">
+              Send invitation to new team members with their roles.
             </p>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Personal Info */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/50">
-                  Email
-                </label>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  placeholder="Enter email address"
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
-                />
-              </div>
-
-              {/* Employment Details */}
-              <div className="space-y-2">
-                <label htmlFor="role" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/50">
-                  Role
-                </label>
-                <select
-                  name="role_id"
-                  id="role"
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826] px-3.5 py-2 text-sm text-white outline-none focus:border-[#5271ff]/50 transition-all cursor-pointer"
-                  value={formData.role_id}
-                  onChange={handleChange}
-                >
-                  <option value="" className="bg-[#0a0826] text-white">Select role</option>
-                  {roles.map((role) => (
-                    <option key={role.id} value={role.id} className="bg-[#0a0826] text-white">
-                      {role.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Salary Info */}
-              <div className="space-y-2">
-                <label htmlFor="salary" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/50">
-                  Salary
-                </label>
-                <input
-                  id="salary"
-                  name="salary"
-                  type="text"
-                  value={formData.salary}
-                  onChange={handleChange}
-                  placeholder="Enter annual or monthly salary"
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
-                />
-              </div>
-
-              {/* Footer / Buttons */}
-              <div className="flex justify-end space-x-3 pt-4 border-t border-white/[0.06] -mx-6 sm:-mx-8 px-6 sm:px-8 mt-6">
-                <Button
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"
-                  type="button"
-                  onClick={handleCloseModal}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all ${isSubmitting
-                      ? "bg-gray-700/50 cursor-not-allowed opacity-50"
-                      : "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_16px_rgba(82,113,255,0.25)] hover:shadow-[0_0_24px_rgba(82,113,255,0.35)]"
-                    }`}
-                  type="submit"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? "Processing...." : "Add Employee"}
-                </Button>
-              </div>
-            </form>
           </div>
+          <button
+            onClick={handleCloseModal}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/50 transition hover:bg-white/[0.08] hover:text-white shrink-0"
+            aria-label="Close"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8 space-y-6">
+          {error ? (
+            <Alert className="border border-red-500/20 bg-red-500/10 text-red-400 rounded-xl px-4 py-3">
+              <Terminal className="h-4 w-4 text-red-400" />
+              <AlertTitle className="text-red-400 font-semibold text-sm ml-2">OOPs!</AlertTitle>
+              <AlertDescription className="mt-1 text-xs text-red-300 ml-2">
+                {error}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
+          <p className="text-sm text-white/40 leading-relaxed">
+            Once they&apos;ve signed up, they&apos;ll be able to access SynergiSuite and start collaborating with you.
+          </p>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Personal Info */}
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/50">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="Enter email address"
+                className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
+              />
+            </div>
+
+            {/* Employment Details / Role Selection */}
+            <div className="space-y-2">
+              <label htmlFor="role" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/50">
+                Role
+              </label>
+              <Select
+                value={formData.role_id ? String(formData.role_id) : ""}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    role_id: Number(value),
+                  }))
+                }
+              >
+                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
+                  {filteredRoles.map((roleItem) => (
+                    <SelectItem
+                      key={roleItem.id}
+                      value={String(roleItem.id)}
+                      className="cursor-pointer text-white focus:bg-white/5 focus:text-white"
+                    >
+                      {roleItem.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Salary Info */}
+            <div className="space-y-2">
+              <label htmlFor="salary" className="block text-xs font-semibold uppercase tracking-[0.08em] text-white/50">
+                Salary
+              </label>
+              <input
+                id="salary"
+                name="salary"
+                type="text"
+                value={formData.salary}
+                onChange={handleChange}
+                placeholder="Enter annual or monthly salary"
+                className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
+              />
+            </div>
+
+            {/* Footer / Buttons */}
+            <div className="flex justify-end space-x-3 pt-4 border-t border-white/[0.06] -mx-6 sm:-mx-8 px-6 sm:px-8 mt-6">
+              <Button
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"
+                type="button"
+                onClick={handleCloseModal}
+              >
+                Cancel
+              </Button>
+              <Button
+                className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all ${
+                  isSubmitting
+                    ? "bg-gray-700/50 cursor-not-allowed opacity-50"
+                    : "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_16px_rgba(82,113,255,0.25)] hover:shadow-[0_0_24px_rgba(82,113,255,0.35)]"
+                }`}
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Processing...." : "Add Employee"}
+              </Button>
+            </div>
+          </form>
         </div>
       </div>
-    ) : null
+    </div>
   );
+
+  return createPortal(modal, document.body);
 }

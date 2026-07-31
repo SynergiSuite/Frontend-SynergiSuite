@@ -2,11 +2,13 @@
 import React from "react";
 import { Actions } from "./actions";
 import { UIEmployee } from "./schemas/employee";
+import { toast } from "sonner";
 
 type EmployeeListProps = {
   employees: UIEmployee[];
   currentUserIsFounder: string;
   onSelectEmployee: (employee: UIEmployee) => void;
+  onRefresh?: () => void;
 };
 
 // Initials avatar helper
@@ -32,9 +34,39 @@ export default function EmployeeList({
   employees,
   currentUserIsFounder,
   onSelectEmployee,
+  onRefresh,
 }: EmployeeListProps) {
-  const canManageEmployee =
-    currentUserIsFounder === "Founder" || currentUserIsFounder === "Manager";
+  const currentUserRole = (currentUserIsFounder ?? "").trim();
+  const isFounderUser = currentUserRole === "Founder";
+  const isManagerUser = currentUserRole === "Manager";
+  const canPerformAnyAction = isFounderUser || isManagerUser;
+
+  // Determine if the logged in user can manage a specific target employee
+  const canManageTarget = (targetRole: string) => {
+    if (isFounderUser) return true; // Founders can manage everyone including themselves
+    if (isManagerUser) {
+      const target = (targetRole ?? "").trim().toLowerCase();
+      return target !== "founder"; // Managers CANNOT manage Founder accounts
+    }
+    return false; // Other roles cannot perform actions on anyone
+  };
+
+  // Rule: Managers and founders can see everyone's detail; other than fellow founders no one can see founder details
+  const canViewDetail = (targetRole: string) => {
+    const target = (targetRole ?? "").trim().toLowerCase();
+    if (target === "founder") {
+      return isFounderUser;
+    }
+    return isFounderUser || isManagerUser;
+  };
+
+  const handleRowClick = (emp: UIEmployee) => {
+    if (canViewDetail(emp.role)) {
+      onSelectEmployee(emp);
+    } else {
+      toast.error("Only fellow founders can view founder account details.");
+    }
+  };
 
   if (employees.length === 0) {
     return (
@@ -59,7 +91,7 @@ export default function EmployeeList({
               <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-white/40">Role</th>
               <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-white/40">Status</th>
               <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-white/40"></th>
-              {canManageEmployee && (
+              {canPerformAnyAction && (
                 <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-white/40">Actions</th>
               )}
             </tr>
@@ -71,7 +103,7 @@ export default function EmployeeList({
                 <tr
                   key={emp.id}
                   className="group cursor-pointer border-b border-white/[0.04] transition-colors duration-150 hover:bg-white/[0.03]"
-                  onClick={() => onSelectEmployee(emp)}
+                  onClick={() => handleRowClick(emp)}
                 >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -94,14 +126,17 @@ export default function EmployeeList({
                     </span>
                   </td>
                   <td className="px-4 py-3"></td>
-                  {canManageEmployee && (
+                  {canPerformAnyAction && (
                     <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      <Actions
-                        id={emp.id}
-                        role={emp.role}
-                        name={emp.name}
-                        isFounderUser={currentUserIsFounder === "Founder"}
-                      />
+                      {canManageTarget(emp.role) ? (
+                        <Actions
+                          id={emp.id}
+                          role={emp.role}
+                          name={emp.name}
+                          isFounderUser={isFounderUser}
+                          onRefresh={onRefresh}
+                        />
+                      ) : null}
                     </td>
                   )}
                 </tr>
@@ -120,7 +155,7 @@ export default function EmployeeList({
               key={emp.id}
               type="button"
               className="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-left transition-all duration-200 hover:border-[#5271ff]/25 hover:bg-white/[0.04]"
-              onClick={() => onSelectEmployee(emp)}
+              onClick={() => handleRowClick(emp)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -131,14 +166,17 @@ export default function EmployeeList({
                   </div>
                 </div>
 
-                {canManageEmployee && (
+                {canPerformAnyAction && (
                   <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                    <Actions
-                      id={emp.id}
-                      role={emp.role}
-                      name={emp.name}
-                      isFounderUser={currentUserIsFounder === "Founder"}
-                    />
+                    {canManageTarget(emp.role) ? (
+                      <Actions
+                        id={emp.id}
+                        role={emp.role}
+                        name={emp.name}
+                        isFounderUser={isFounderUser}
+                        onRefresh={onRefresh}
+                      />
+                    ) : null}
                   </div>
                 )}
               </div>
