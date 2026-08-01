@@ -11,7 +11,7 @@ import {
 } from "@/app/enums/documentLabel.enum";
 import { getPresignedUrlApi } from "./apis/getPresignedUrlApi";
 import { createDocumentApi } from "./apis/createDocumentApi";
-import { getProjectsApi } from "@/app/projects/apis/getProjectsApi";
+import { getAllProjectsApi } from "@/app/projects/apis/getAllProjectsApi";
 import { Projects } from "@/app/projects/schemas/project";
 import { toast } from "sonner";
 
@@ -46,8 +46,17 @@ export default function UploadFileModal({
   useEffect(() => {
     const loadProjects = async () => {
       try {
-        const data = await getProjectsApi();
-        setApiProjects(data);
+        const projects = await getAllProjectsApi();
+        const mappedProjects: Projects[] = projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          status: p.status,
+          duration: p.duration,
+          teams: [],
+          client: {} as any,
+          tasks: [],
+        }));
+        setApiProjects(mappedProjects);
       } catch (error) {
         console.error("Failed to load projects for dropdown:", error);
       }

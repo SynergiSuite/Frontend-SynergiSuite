@@ -13,7 +13,7 @@ import {
   Loader2,
   ChevronRight,
 } from "lucide-react";
-import { getProjectsApi } from "@/app/projects/apis/getProjectsApi";
+import { getAllProjectsApi } from "@/app/projects/apis/getAllProjectsApi";
 import { getTeamsApi } from "@/app/teams/apis/getTeamsApi";
 import getEmployeeAnalyticsApi from "@/app/analytics/apis/getEmployeeAnalyticsApi";
 import { getAnalyticsIndexesApi } from "@/app/analytics/apis/getAnalyticsIndexesApi";
@@ -82,15 +82,13 @@ const CATEGORY_OPTIONS: CategoryOption[] = [
 const fetchEntitiesForCategory = async (category: SlashCategory): Promise<EntityItem[]> => {
   try {
     if (category === "project") {
-      const projects = await getProjectsApi();
-      if (Array.isArray(projects)) {
-        return projects.map((p) => ({
-          id: String(p.id),
-          name: p.name,
-          subtitle: p.description ? `${p.description.slice(0, 35)}...` : "Active Project",
-          category: "project",
-        }));
-      }
+      const projects = await getAllProjectsApi();
+      return projects.map((p) => ({
+        id: String(p.id),
+        name: p.name,
+        subtitle: p.description ? `${p.description.slice(0, 35)}...` : "Active Project",
+        category: "project",
+      }));
     } else if (category === "team") {
       const res = await getTeamsApi();
       const teamsList = Array.isArray(res) ? res : res?.teams || [];

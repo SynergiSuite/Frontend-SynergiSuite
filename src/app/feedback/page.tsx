@@ -15,17 +15,25 @@ import {
   HelpCircle,
   Paperclip,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { toast } from "sonner";
 import { CookieManager } from "@/lib/cookieManager";
-import { getProjectsApi } from "@/app/projects/apis/getProjectsApi";
+import { getAllProjectsApi } from "@/app/projects/apis/getAllProjectsApi";
 import { Projects } from "@/app/projects/schemas/project";
 import {
   submitClientFeedbackApi,
   FeedbackCategory,
 } from "./apis/submitClientFeedbackApi";
-import { getMyFeedbackApi, ClientFeedbackResponse } from "./apis/getMyFeedbackApi";
+import {
+  getMyFeedbackApi,
+  getClientFeedbackApi,
+  ClientFeedbackResponse,
+  FeedbackPaginationMeta,
+  GetFeedbackApiResponse,
+} from "./apis/getMyFeedbackApi";
 import FeedbackDetailModal from "./feedbackDetailModal";
 import LoaderCustom from "@/components/ui/loader-custom";
 
@@ -152,39 +160,74 @@ export default function ClientFeedbackPage() {
   const [rating, setRating] = useState<number>(4);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [meta, setMeta] = useState<FeedbackPaginationMeta | undefined>(undefined);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const userName = (typeof window !== "undefined" ? CookieManager("get", "user") as string : "") || "Client";
 
-  const fetchFeedbackData = useCallback(async (map: Record<string, string>) => {
-    try {
-      setIsLoadingPage(true);
-      const apiRes = await getMyFeedbackApi();
-      const mapped = apiRes.map((item) => mapFeedbackResponse(item, map));
-      setFeedbackList(mapped);
-    } catch (error) {
-      console.error("Failed to load client feedback:", error);
-    } finally {
-      setIsLoadingPage(false);
-    }
-  }, []);
+  const fetchFeedbackData = useCallback(
+    async (map: Record<string, string>, pageToFetch: number = 1) => {
+      try {
+        setIsLoadingPage(true);
+        const isClient = role === "client";
+        let response: GetFeedbackApiResponse;
+        if (isClient) {
+          response = await getMyFeedbackApi(pageToFetch);
+        } else {
+          try {
+            response = await getClientFeedbackApi(pageToFetch);
+          } catch {
+            response = await getMyFeedbackApi(pageToFetch);
+          }
+        }
+        const mapped = (response.data || []).map((item) =>
+          mapFeedbackResponse(item, map)
+        );
+        setFeedbackList(mapped);
+        setMeta(response.meta);
+      } catch (error) {
+        console.error("Failed to load client feedback:", error);
+      } finally {
+        setIsLoadingPage(false);
+      }
+    },
+    [role]
+  );
 
   useEffect(() => {
     const loadInitial = async () => {
       const map: Record<string, string> = {};
       try {
-        const projData = await getProjectsApi();
-        setProjects(projData);
-        projData.forEach((p) => {
+        const projects = await getAllProjectsApi();
+        const mappedProjects: Projects[] = projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          status: p.status,
+          duration: p.duration,
+          teams: [],
+          client: {} as any,
+          tasks: [],
+        }));
+        setProjects(mappedProjects);
+        projects.forEach((p) => {
           map[String(p.id)] = p.name;
         });
         setProjectMap(map);
       } catch (err) {
         console.error("Failed to load projects:", err);
       }
-      await fetchFeedbackData(map);
+      await fetchFeedbackData(map, currentPage);
     };
     loadInitial();
   }, [fetchFeedbackData]);
+
+  useEffect(() => {
+    if (projectMap && Object.keys(projectMap).length > 0) {
+      fetchFeedbackData(projectMap, currentPage);
+    }
+  }, [currentPage]);
 
   useEffect(() => {
     if (!isLoadingPage && containerRef.current) {
@@ -434,6 +477,52 @@ export default function ClientFeedbackPage() {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {/* Pagination Controls */}
+      {meta && (meta.totalPages > 1 || meta.totalItems > 0) && (
+        <div className="mt-8 flex flex-col gap-4 border-t border-white/[0.08] pt-6 sm:flex-row sm:items-center sm:justify-between animate-item">
+          <p className="text-xs text-white/40">
+            Showing{" "}
+            <span className="font-semibold text-white/80">
+              {meta.itemCount > 0 ? (currentPage - 1) * meta.itemsPerPage + 1 : 0}
+            </span>{" "}
+            to{" "}
+            <span className="font-semibold text-white/80">
+              {Math.min(currentPage * meta.itemsPerPage, meta.totalItems)}
+            </span>{" "}
+            of <span className="font-semibold text-white/80">{meta.totalItems}</span> feedback submissions
+          </p>
+
+          {meta.totalPages > 1 && (
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <button
+                type="button"
+                disabled={currentPage <= 1 || isLoadingPage}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </button>
+
+              <span className="px-3 text-xs font-medium text-white/60">
+                Page <span className="text-white font-semibold">{currentPage}</span> of{" "}
+                <span className="text-white font-semibold">{meta.totalPages}</span>
+              </span>
+
+              <button
+                type="button"
+                disabled={currentPage >= meta.totalPages || isLoadingPage}
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, meta.totalPages))}
+                className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

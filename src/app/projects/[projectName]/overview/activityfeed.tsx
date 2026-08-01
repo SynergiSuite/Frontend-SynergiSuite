@@ -37,7 +37,8 @@ const ActivityFeed = ({ projectId, projectName }: ActivityFeedProps) => {
     const fetchFeedbacks = async () => {
       try {
         setIsLoading(true);
-        const data = await getMyFeedbackApi();
+        const res = await getMyFeedbackApi();
+        const data = res.data || [];
         const filtered = data.filter((item) => {
           if (!projectId && !projectName) return true;
           const pId = item.typeId || item.projectId || item.project_id || item.project?.id;

@@ -4,23 +4,32 @@ import { GetAllClientsResponseDto } from "@/app/clients/dtos/getAllClientsRespon
 const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
 export async function getClientsApi(): Promise<GetAllClientsResponseDto[]> {
-    try {
-        const token = await CookieManager("get", "access-token");
-        const response = await fetch(`${requestBaseUrl}/clients/get-all-clients`, {
-            method: "GET",
-            headers: {
-                "content-type": "application/json",
-                "Authorization": `Bearer ${token}`
-            }
-        })
+  try {
+    const token = await CookieManager("get", "access-token");
+    const response = await fetch(`${requestBaseUrl}/clients/get-all-clients`, {
+      method: "GET",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-        if (!response.ok) {
-            throw new Error("Failed to fetch clients");
-        }
-
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        throw error;
+    if (!response.ok) {
+      throw new Error("Failed to fetch clients");
     }
+
+    const data = await response.json();
+    const clientsList = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.clients)
+      ? data.clients
+      : [];
+
+    return clientsList;
+  } catch (error) {
+    console.error("Error in getClientsApi:", error);
+    return [];
+  }
 }

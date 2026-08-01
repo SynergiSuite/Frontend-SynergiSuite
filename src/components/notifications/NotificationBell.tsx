@@ -42,6 +42,85 @@ const NotificationIcon = ({ type }: { type: AppNotification["type"] }) => {
   return <ListTodo className={className} />;
 };
 
+function getNotificationRedirectUrl(notification: AppNotification): string | null {
+  const data = notification.data || {};
+
+  // 1. Direct explicit link parameters
+  if (typeof data.href === "string" && data.href.startsWith("/")) {
+    return data.href;
+  }
+  if (typeof data.url === "string" && data.url.startsWith("/")) {
+    return data.url;
+  }
+  if (typeof data.path === "string" && data.path.startsWith("/")) {
+    return data.path;
+  }
+
+  // 2. Chat / Collab Station notifications
+  const channelId =
+    data.channelId ||
+    data.chatId ||
+    data.groupId ||
+    data.directChatId ||
+    data.channel_id;
+
+  if (
+    notification.type === "message_received" ||
+    notification.type === "group_member_added" ||
+    notification.type === "missed_call" ||
+    channelId
+  ) {
+    if (channelId) {
+      return `/collab-station?chatId=${encodeURIComponent(String(channelId))}`;
+    }
+    return "/collab-station";
+  }
+
+  // 3. Task / Project notifications
+  const projectName = (data.projectName || data.project_name || data.project) as
+    | string
+    | undefined;
+  const taskId = data.taskId || data.task_id;
+
+  if (
+    notification.type === "task_assigned" ||
+    notification.type === "task_updated" ||
+    taskId ||
+    projectName
+  ) {
+    if (projectName) {
+      return `/projects/${encodeURIComponent(String(projectName))}/task`;
+    }
+    return "/projects";
+  }
+
+  // 4. Feedback notifications
+  if (String(notification.type).toLowerCase().includes("feedback")) {
+    return "/feedback";
+  }
+
+  // 5. Fallback heuristics based on title / body keywords
+  const fullText = `${notification.title} ${notification.body || ""}`.toLowerCase();
+  if (
+    fullText.includes("chat") ||
+    fullText.includes("message") ||
+    fullText.includes("call")
+  ) {
+    return "/collab-station";
+  }
+  if (fullText.includes("task") || fullText.includes("project")) {
+    return "/projects";
+  }
+  if (fullText.includes("employee")) {
+    return "/employees";
+  }
+  if (fullText.includes("team")) {
+    return "/teams";
+  }
+
+  return null;
+}
+
 export default function NotificationBell() {
   const router = useRouter();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -111,6 +190,10 @@ export default function NotificationBell() {
         playNotificationSound();
         toast(notification.title, {
           description: notification.body || undefined,
+          action: {
+            label: "View",
+            onClick: () => openNotification(notification),
+          },
         });
       };
 
@@ -148,9 +231,9 @@ export default function NotificationBell() {
       void loadNotifications();
     });
 
-    const href = notification.data?.href;
-    if (typeof href === "string" && href.startsWith("/")) {
-      router.push(href);
+    const targetUrl = getNotificationRedirectUrl(notification);
+    if (targetUrl) {
+      router.push(targetUrl);
     }
   };
 

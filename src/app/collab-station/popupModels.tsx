@@ -9,7 +9,7 @@ import { editCustomGroupApi } from "./apis/DirectChats/CustomGroups/editCustomGr
 import { deleteCustomGroupApi } from "./apis/DirectChats/CustomGroups/deleteCustomGroupApi";
 import { removeGroupMemberApi } from "./apis/DirectChats/CustomGroups/removeGroupMemberApi";
 import { addGroupMembersApi } from "./apis/DirectChats/CustomGroups/addGroupMembersApi";
-import { fetchEmployeesData } from "@/app/employees/apis/getEmployeeApi";
+import { getAllEmployeesApi } from "@/app/employees/apis/getAllEmployeeApi";
 import { readTokenUser } from "./helpers/mainHelper";
 import { CookieManager } from "@/lib/cookieManager";
 
@@ -564,26 +564,29 @@ export function AddMemberModal({
     const loadEmployees = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchEmployeesData();
+        const allEmployees = await getAllEmployeesApi();
         if (!active) return;
 
         const existingSet = new Set(existingMemberIds.map(String));
 
-        const available = data.employees
-          .filter((emp) => !existingSet.has(String(emp.id)))
-          .map((emp) => ({
-            id: String(emp.id),
-            name: emp.name,
-            role: emp.role,
-            avatar: emp.name
-              ? emp.name
-                  .split(" ")
-                  .map((n: string) => n[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()
-              : "??",
-          }));
+        const available = allEmployees
+          .filter((emp) => !existingSet.has(String(emp.user_id)))
+          .map((emp) => {
+            const displayName = emp.name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Member";
+            return {
+              id: String(emp.user_id),
+              name: displayName,
+              role: emp.role?.name || emp.role?.role || "Member",
+              avatar: displayName
+                ? displayName
+                    .split(" ")
+                    .map((n: string) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()
+                : "??",
+            };
+          });
 
         setTeammates(available);
       } catch (err) {

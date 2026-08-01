@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, ComponentProps } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -18,7 +18,6 @@ import {
   MessageSquareQuote,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { ComponentProps, useState } from "react";
 import { gsap } from "gsap";
 import { CookieManager } from "@/lib/cookieManager";
 
@@ -51,6 +50,9 @@ export default function Sidebar({
   }, []);
 
   const isClientRole = role === "client";
+  const isFounder = role.includes("founder");
+  const isManager = role.includes("manager") || role.includes("admin");
+  const canAccessAnalytics = isFounder || isManager;
 
   const allSidebarItems: SidebarItem[] = [
     { label: "Dashboard", route: "/dashboard", icon: LayoutDashboard },
@@ -75,7 +77,14 @@ export default function Sidebar({
     { label: "Cloud", route: "/cloud", icon: Cloud },
   ];
 
-  const sidebarItems = isClientRole ? clientSidebarItems : allSidebarItems;
+  const sidebarItems = isClientRole
+    ? clientSidebarItems
+    : allSidebarItems.filter((item) => {
+        if (item.route === "/analytics" || item.route === "/reports") {
+          return canAccessAnalytics;
+        }
+        return true;
+      });
 
   const isActiveRoute = (route: string) =>
     pathname === route || pathname.startsWith(`${route}/`);
@@ -92,7 +101,7 @@ export default function Sidebar({
           duration: 0.4,
           stagger: 0.04,
           ease: "power2.out",
-          clearProps: "transform,opacity"
+          clearProps: "transform,opacity",
         }
       );
     }
@@ -128,10 +137,7 @@ export default function Sidebar({
       className={`w-full bg-[#030114]/95 p-4 flex flex-col justify-between ${className}`}
       {...props}
     >
-      <nav 
-        className={`space-y-2.5 ${navClassName}`} 
-        ref={navRef}
-      >
+      <nav className={`space-y-2.5 ${navClassName}`} ref={navRef}>
         {sidebarItems.map((item) => {
           const Icon = item.icon;
           const isActive = isActiveRoute(item.route);
@@ -151,14 +157,14 @@ export default function Sidebar({
                   : "text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/5 border border-transparent"
               }`}
             >
-              <Icon 
-                size={18} 
+              <Icon
+                size={18}
                 className={`sidebar-icon shrink-0 ${
-                  isActive 
-                    ? "text-[#5271ff] drop-shadow-[0_0_8px_#5271ff]" 
+                  isActive
+                    ? "text-[#5271ff] drop-shadow-[0_0_8px_#5271ff]"
                     : "text-gray-400 group-hover:text-white transition-colors"
-                }`} 
-              /> 
+                }`}
+              />
               <span className="tracking-wide">{item.label}</span>
             </button>
           );

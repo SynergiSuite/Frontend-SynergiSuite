@@ -28,7 +28,8 @@ export default function Navbar() {
   const [email, setEmail] = useState("");
   const [business, setBusiness] = useState("");
   const [role, setRole] = useState("");
-  const { projectName } = useParams() as { projectName: string };
+  const { projectName: rawProjectName } = useParams() as { projectName: string };
+  const projectName = decodeURIComponent(rawProjectName || "");
 
   const avatarRef = useRef<HTMLDivElement | null>(null);
   const infoRef = useRef<HTMLDivElement | null>(null);
@@ -137,12 +138,16 @@ export default function Navbar() {
 
   const getRouteNavs = (path: string) => {
     if (path.startsWith("/projects/")) {
+      const routeParam = rawProjectName || projectName;
       if (isClientRole) {
         return [
-          { name: "Tasks", param: "task", route: `/projects/${projectName}/task` },
+          { name: "Tasks", param: "task", route: `/projects/${routeParam}/task` },
         ];
       }
-      return routeNavs["/details"] || [];
+      return [
+        { name: `${projectName}'s Overview`, param: "overview", route: `/projects/${routeParam}/overview` },
+        { name: "Tasks", param: "task", route: `/projects/${routeParam}/task` },
+      ];
     }
     if (isClientRole) {
       return [];

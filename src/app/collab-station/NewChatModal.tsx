@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Search, Users, User, Sparkles } from "lucide-react";
 import { ChatChannel } from "./types";
-import { fetchEmployeesData } from "@/app/employees/apis/getEmployeeApi";
+import { getAllEmployeesApi } from "@/app/employees/apis/getAllEmployeeApi";
 import { CookieManager } from "@/lib/cookieManager";
 import { readTokenUser } from "./helpers/mainHelper";
 
@@ -42,32 +42,35 @@ export default function NewChatModal({ isOpen, onClose, onCreateChannel }: NewCh
     const loadEmployees = async () => {
       setIsLoading(true);
       try {
-        const data = await fetchEmployeesData();
+        const allEmployees = await getAllEmployeesApi();
         if (!active) return;
 
         const token = await CookieManager("get", "access-token");
         const currentUser = token ? readTokenUser(token) : {};
         const myUserId = currentUser.user_id ?? currentUser.sub;
 
-        const mapped: Teammate[] = data.employees
-          .filter((emp) => myUserId === undefined || String(emp.id) !== String(myUserId))
+        const mapped: Teammate[] = allEmployees
+          .filter((emp) => myUserId === undefined || String(emp.user_id) !== String(myUserId))
           .map((emp) => {
-            const initials = emp.name
-              ? emp.name
+            const displayName = emp.name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Teammate";
+            const initials = displayName
+              ? displayName
                   .split(" ")
                   .map((n) => n[0])
                   .join("")
                   .substring(0, 2)
                   .toUpperCase()
               : "??";
+
             return {
-              id: String(emp.id),
-              name: emp.name,
-              role: emp.role,
+              id: String(emp.user_id),
+              name: displayName,
+              role: emp.role?.name || emp.role?.role || "Teammate",
               avatar: initials,
-              online: emp.status === "Active",
+              online: true,
             };
           });
+
         setTeammates(mapped);
       } catch (err) {
         console.error("Failed to load employees for new chat modal:", err);

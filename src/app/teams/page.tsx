@@ -12,6 +12,7 @@ import { CookieManager } from "@/lib/cookieManager";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { Employee, Teams } from "./schemas/types";
 import { getTeamsWithTasksApi, PaginationMeta } from "./apis/getTeamsWithTasksApi";
+import { getAllEmployeesApi } from "@/app/employees/apis/getAllEmployeeApi";
 import { canManageTeams } from "@/lib/rolePermissions";
 import { gsap } from "gsap";
 
@@ -73,31 +74,16 @@ export default function Page() {
 
     const fetchEmployeesData = async () => {
       try {
-        const accessToken = CookieManager("get", "access-token");
-        const response = await fetch(
-          `${requestBaseUrl}/business/get-employees`,
-          {
-            method: "POST",
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({}),
-          },
-        );
-
-        const data = await response.json();
-        const normalizedEmployees: Employee[] = Array.isArray(
-          (data as any)?.employees?.employees
-        )
-          ? (data as any).employees.employees
-          : Array.isArray((data as any)?.employees)
-          ? (data as any).employees
-          : [];
+        const allEmployees = await getAllEmployeesApi();
+        const normalizedEmployees: Employee[] = allEmployees.map((emp) => ({
+          user_id: emp.user_id,
+          name: emp.name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Unnamed",
+          email: emp.email,
+        }));
 
         setEmployees(normalizedEmployees);
       } catch (err) {
-        console.error("Failed to fetch employees:", err);
+        console.error("Failed to fetch employees for teams:", err);
       }
     };
 

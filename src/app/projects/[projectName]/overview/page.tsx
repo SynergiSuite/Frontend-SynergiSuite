@@ -12,7 +12,7 @@ import CreateMilestoneModal, {
 } from "./createMilestone";
 import { AnimatePresence } from "framer-motion";
 import { CreateNewMilestone } from "../apis/createNewMilestone";
-import { getTeamsApi } from "@/app/teams/apis/getTeamsApi";
+import { getTeamsApi } from "@/app/projects/apis/getAllTeamsApi";
 import { Team } from "../../schemas/team";
 import editTeams from "../apis/editTeams";
 import LoaderCustom from "@/components/ui/loader-custom";
@@ -22,7 +22,8 @@ import { canManageMilestones } from "@/lib/rolePermissions";
 import { gsap } from "gsap";
 
 const Page = () => {
-  const projectName = useParams().projectName as string;
+  const rawProjectName = useParams().projectName as string;
+  const projectName = decodeURIComponent(rawProjectName || "");
   const [projectDetail, setProjectDetail] = useState<Project>();
   const [teams, setTeams] = useState<Team[]>();
   const [role, setRole] = useState("");
@@ -50,10 +51,10 @@ const Page = () => {
 
     const fetchTeams = async () => {
       try {
-        const details = await getTeamsApi();
-        setTeams(details.teams);
+        const teamsList = await getTeamsApi();
+        setTeams(teamsList);
       } catch (error) {
-        console.error("Error fetching project details:", error);
+        console.error("Error fetching teams:", error);
       } finally {
         setIsLoading(false);
       }
@@ -107,22 +108,28 @@ const Page = () => {
     }
   };
 
-  const handleSaveTeams = async(teamIds: string[]) => {
+  const handleSaveTeams = async (teamIds: string[]) => {
     try {
+      if (!projectDetail) return;
       const obj = {
-        project_id: projectDetail?.id,
-        team_id: teamIds
+        project_id: projectDetail.id,
+        team_id: teamIds,
       };
-      if (!teams || !projectDetail) {
-        return;
-      }
       const res = await editTeams(obj);
-      if (res.ok){
+      if (res.ok) {
         toast.success("Teams updated successfully.");
-        const selectedTeams = teams.filter((team) => teamIds.includes(team.id));
+        const allAvailableTeams = teams || [];
+        const selectedTeams = allAvailableTeams.filter((team) =>
+          teamIds.includes(team.id)
+        );
         setProjectDetail({ ...projectDetail, teams: selectedTeams });
       } else {
-        toast.error("Unable to update teams for this project.");
+        const errJson = await res.json().catch(() => ({}));
+        toast.error(
+          Array.isArray(errJson.message)
+            ? errJson.message.join(", ")
+            : errJson.message || "Unable to update teams for this project."
+        );
       }
     } catch (error) {
       toast.error("Unable to update teams for this project.");

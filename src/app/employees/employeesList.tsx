@@ -151,11 +151,17 @@ export default function EmployeeList({
         {employees.map((emp, i) => {
           const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
           return (
-            <button
+            <div
               key={emp.id}
-              type="button"
-              className="w-full rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-left transition-all duration-200 hover:border-[#5271ff]/25 hover:bg-white/[0.04]"
+              role="button"
+              tabIndex={0}
+              className="w-full cursor-pointer rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-left transition-all duration-200 hover:border-[#5271ff]/25 hover:bg-white/[0.04] focus:outline-none focus:ring-1 focus:ring-[#5271ff]/40"
               onClick={() => handleRowClick(emp)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  handleRowClick(emp);
+                }
+              }}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
@@ -201,7 +207,7 @@ export default function EmployeeList({
                   </div>
                 </div>
               </div>
-            </button>
+            </div>
           );
         })}
       </div>

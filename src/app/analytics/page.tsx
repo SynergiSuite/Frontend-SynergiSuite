@@ -1,8 +1,11 @@
 "use client";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { gsap } from "gsap";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { CookieManager } from "@/lib/cookieManager";
 import AnalyticsHeader, { AnalyticsTab, TimeRange } from "./analyticsHeader";
 import AnalyticsKpiCards from "./analyticsKpiCards";
 import EmployeeAnalytics from "./employeeAnalytics";
@@ -50,6 +53,8 @@ function getDateRange(range: TimeRange): { startDate: string; endDate: string } 
 }
 
 export default function AnalyticsPage() {
+  const router = useRouter();
+  const [role, setRole] = useState<string>("");
   const [activeTab, setActiveTab] = useState<AnalyticsTab>("all");
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
 
@@ -66,6 +71,33 @@ export default function AnalyticsPage() {
 
   const containerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Role Access Guard
+  useEffect(() => {
+    const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+    setRole(userRole);
+    const isFounder = userRole.includes("founder");
+    const isManager = userRole.includes("manager") || userRole.includes("admin");
+
+    if (!isFounder && !isManager) {
+      toast.error("Analytics is restricted to Managers and Founders.");
+      router.replace(userRole === "client" ? "/projects" : "/dashboard");
+    }
+  }, [router]);
+
+  const isManager = role.includes("manager") && !role.includes("founder");
+
+  const visibleEmployees = useMemo(() => {
+    const all = employeeTelemetry?.employees || [];
+    if (isManager) {
+      return all.filter((emp) => {
+        const roleName = String(emp.role?.name || "").toLowerCase();
+        const roleId = emp.role?.id;
+        return roleId !== 1 && !roleName.includes("founder");
+      });
+    }
+    return all;
+  }, [employeeTelemetry?.employees, isManager]);
 
   const fetchAnalyticsData = useCallback(async (range: TimeRange) => {
     try {
@@ -171,7 +203,7 @@ export default function AnalyticsPage() {
                     Employee Performance Telemetry
                   </div>
                   <EmployeeAnalytics
-                    employees={employeeTelemetry?.employees}
+                    employees={visibleEmployees}
                     summary={employeeTelemetry?.summary}
                     startDate={getDateRange(timeRange).startDate}
                     endDate={getDateRange(timeRange).endDate}

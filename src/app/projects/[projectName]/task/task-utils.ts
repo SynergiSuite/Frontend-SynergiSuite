@@ -17,6 +17,38 @@ export const formatTaskLabel = (value: string) =>
 export const normalizeTaskStatus = (status: string) =>
   status.trim().toLowerCase().replace(/[\s-]+/g, "_");
 
+export const getStatusBadgeStyle = (status?: string) => {
+  const norm = normalizeTaskStatus(status || "");
+  switch (norm) {
+    case "completed":
+      return "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+    case "in_progress":
+      return "border border-sky-500/30 bg-sky-500/10 text-sky-300";
+    case "review":
+      return "border border-purple-500/30 bg-purple-500/10 text-purple-300";
+    case "blocked":
+      return "border border-rose-500/30 bg-rose-500/10 text-rose-300";
+    case "on_hold":
+      return "border border-amber-500/30 bg-amber-500/10 text-amber-300";
+    default:
+      return "border border-[#5271ff]/30 bg-[#5271ff]/10 text-[#5271ff]";
+  }
+};
+
+export const getPriorityBadgeStyle = (priority?: string) => {
+  const p = (priority || "").toLowerCase();
+  if (p === "urgent" || p === "critical") {
+    return "border border-rose-500/30 bg-rose-500/10 text-rose-300";
+  }
+  if (p === "high") {
+    return "border border-amber-500/30 bg-amber-500/10 text-amber-300";
+  }
+  if (p === "medium") {
+    return "border border-sky-500/30 bg-sky-500/10 text-sky-300";
+  }
+  return "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300";
+};
+
 const isSameDay = (date: Date, other: Date) =>
   date.getFullYear() === other.getFullYear() &&
   date.getMonth() === other.getMonth() &&

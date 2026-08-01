@@ -1,6 +1,7 @@
 "use client";
 import { socket } from "@/lib/socket";
 import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { getMessagesApi } from "./apis/DirectChats/getMessageApi";
 import { CreateDirectChatApi } from "./apis/DirectChats/createDirectChatsApi";
 import { createCustomGroupApi } from "./apis/DirectChats/CustomGroups/createCustomGroupApi";
@@ -28,6 +29,8 @@ import { getChatUploadUrlApi } from "./apis/getChatUploadUrlApi";
 
 
 export default function CollabStationPage() {
+  const searchParams = useSearchParams();
+  const chatIdParam = searchParams?.get("chatId");
   const [activeChannelId, setActiveChannelId] = useState("");
   const [groups, setGroups] = useState<ChatChannel[]>([]);
   const [recentChats, setRecentChats] = useState<ChatChannel[]>([]);
@@ -381,9 +384,12 @@ export default function CollabStationPage() {
           const loadedChats = [...loadedGroups, ...loadedDirects];
           chatIdsRef.current = loadedChats.map((chat) => chat.id);
           
-          const targetActiveId = activeChannelId && loadedChats.some((chat) => chat.id === activeChannelId)
-            ? activeChannelId
-            : loadedChats[0]?.id || "";
+          const targetActiveId =
+            chatIdParam && loadedChats.some((chat) => chat.id === chatIdParam)
+              ? chatIdParam
+              : activeChannelId && loadedChats.some((chat) => chat.id === activeChannelId)
+              ? activeChannelId
+              : loadedChats[0]?.id || "";
             
           setActiveChannelId(targetActiveId);
 
