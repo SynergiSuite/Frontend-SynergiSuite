@@ -65,16 +65,20 @@ export function Actions({ id, role, name, isFounderUser, onRefresh }: ActionsPro
     !isFounder &&
     (normalizedEmployeeRole === "founder" || normalizedEmployeeRole === "manager");
 
-  const baseRoles = isFounder
-    ? roles
-    : roles.filter((item) => {
-        const roleName = item.name.toLowerCase();
-        return roleName !== "founder" && roleName !== "manager";
-      });
+  const baseRoles = (
+    isFounder
+      ? roles
+      : roles.filter((item) => {
+          const roleName = item.name.trim().toLowerCase();
+          return roleName !== "founder" && roleName !== "manager";
+        })
+  ).filter((item) => !item.name.toLowerCase().includes("client"));
 
-  const visibleRoles = isRestrictedEmployee
-    ? [{ id: -1, name: role }, ...baseRoles.filter((item) => item.name.toLowerCase() !== role.toLowerCase())]
-    : baseRoles;
+  const visibleRoles = (
+    isRestrictedEmployee
+      ? [{ id: -1, name: role }, ...baseRoles.filter((item) => item.name.toLowerCase() !== role.toLowerCase())]
+      : baseRoles
+  ).filter((item) => !item.name.toLowerCase().includes("client"));
 
   const handleDelete = async () => {
     try {

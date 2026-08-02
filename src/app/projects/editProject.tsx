@@ -8,6 +8,7 @@ import { Client } from "./schemas/client";
 import { Projects } from "./schemas/project";
 import { PriorityLevel } from "./schemas/priority.enum";
 import { editProjectApi, EditProjectPayload } from "./apis/editProject";
+import editTeams from "./[projectName]/apis/editTeams";
 import { toast } from "sonner";
 import {
   Select,
@@ -92,6 +93,20 @@ export default function EditProjectModal({
       };
 
       await editProjectApi(project.id, payload);
+
+      const teamRes = await editTeams({
+        project_id: project.id,
+        team_id: selectedTeamIds,
+      });
+
+      if (!teamRes.ok) {
+        const errJson = await teamRes.json().catch(() => ({}));
+        const msg = Array.isArray(errJson?.message)
+          ? errJson.message.join(", ")
+          : errJson?.message || "Failed to update project teams";
+        throw new Error(msg);
+      }
+
       toast.success("Project updated successfully.");
       onSuccess();
       onCancel();
