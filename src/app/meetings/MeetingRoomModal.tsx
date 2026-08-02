@@ -180,13 +180,8 @@ export default function MeetingRoomModal({
       .on(RoomEvent.LocalTrackPublished, () => updateParticipants())
       .on(RoomEvent.LocalTrackUnpublished, () => updateParticipants());
 
-    const rawUrl = tokenResponse.url || process.env.NEXT_PUBLIC_LIVEKIT_URL || "";
-    let connectUrl = rawUrl.trim();
-    if (connectUrl.startsWith("http://")) {
-      connectUrl = connectUrl.replace(/^http:\/\//i, "ws://");
-    } else if (connectUrl.startsWith("https://")) {
-      connectUrl = connectUrl.replace(/^https:\/\//i, "wss://");
-    }
+    const connectUrl = tokenResponse.url;
+    console.log(`[LiveKit Connect Attempt] URL: "${connectUrl}" Token: "${tokenResponse.token ? "Present" : "Missing"}"`);
 
     livekitRoom
       .connect(connectUrl, tokenResponse.token)
@@ -195,8 +190,8 @@ export default function MeetingRoomModal({
         if (msg.includes("Client initiated disconnect") || msg.includes("client_initiated") || msg.includes("USER_INITIATED")) {
           return;
         }
-        console.error("LiveKit connection error:", error);
-        toast.error("Video room connection issue: " + msg, { id: "livekit-conn-error" });
+        console.error("[LiveKit Room Connection Failed] URL:", connectUrl, error);
+        toast.error(`[LiveKit Connection Failed]: ${msg || "Could not establish LiveKit room connection"}`, { id: "livekit-conn-error" });
         if (isSubscribed) setConnectionState("disconnected");
       });
 

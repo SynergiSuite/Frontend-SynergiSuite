@@ -107,18 +107,24 @@ export async function startMeetingApi(meetingId: string): Promise<MeetingRespons
 // 5. POST /collab-station/meetings/:meetingId/join
 export async function joinMeetingApi(meetingId: string): Promise<MeetingResponseDto> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${getBaseUrl()}/collab-station/meetings/${meetingId}/join`, {
-    method: "POST",
-    headers,
-  });
+  const endpoint = `${getBaseUrl()}/collab-station/meetings/${meetingId}/join`;
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+    });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to join meeting");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Backend Join API HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    return normalizeMeetingDto(data.meeting || data);
+  } catch (err: any) {
+    console.error(`[Backend Join API Failed] Endpoint: ${endpoint}`, err);
+    throw new Error(`[Backend Join API Failed]: ${err?.message || "Failed to fetch"}`);
   }
-
-  const data = await res.json();
-  return normalizeMeetingDto(data.meeting || data);
 }
 
 // 6. POST /collab-station/meetings/:meetingId/leave
@@ -179,17 +185,25 @@ export async function cancelMeetingApi(meetingId: string): Promise<MeetingRespon
 // 9. POST /collab-station/meetings/:meetingId/token
 export async function getMeetingTokenApi(meetingId: string): Promise<MeetingTokenResponse> {
   const headers = await getAuthHeaders();
-  const res = await fetch(`${getBaseUrl()}/collab-station/meetings/${meetingId}/token`, {
-    method: "POST",
-    headers,
-  });
+  const endpoint = `${getBaseUrl()}/collab-station/meetings/${meetingId}/token`;
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers,
+    });
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || "Failed to get LiveKit token for meeting");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `Backend Token API HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    console.log(`[Backend Token API Success] Endpoint: ${endpoint}`, data);
+    return data;
+  } catch (err: any) {
+    console.error(`[Backend Token API Failed] Endpoint: ${endpoint}`, err);
+    throw new Error(`[Backend Token API Failed]: ${err?.message || "Failed to fetch"}`);
   }
-
-  return await res.json();
 }
 
 // 10. GET /collab-station/groups (Helper for fetching user collab groups)
