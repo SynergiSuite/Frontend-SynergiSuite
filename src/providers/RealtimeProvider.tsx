@@ -50,7 +50,26 @@ function getAccessToken(): string | undefined {
 }
 
 function resolveUserId(user: TokenUser): UserId | undefined {
-  return user.user_id ?? user.sub ?? user.id ?? user.userId;
+  const cookieUserId =
+    CookieManager("get", "user-id") ||
+    CookieManager("get", "user_id");
+  if (cookieUserId && !isNaN(Number(cookieUserId))) {
+    return Number(cookieUserId);
+  }
+  if (cookieUserId) return cookieUserId as string;
+
+  const rawUserCookie = CookieManager("get", "user");
+  if (rawUserCookie && typeof rawUserCookie === "string" && rawUserCookie.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawUserCookie);
+      const parsedId = parsed.id || parsed.user_id || parsed.userId;
+      if (parsedId) return !isNaN(Number(parsedId)) ? Number(parsedId) : parsedId;
+    } catch {}
+  }
+
+  const jwtId = user.user_id ?? user.id ?? user.userId ?? user.sub;
+  if (jwtId && !isNaN(Number(jwtId))) return Number(jwtId);
+  return jwtId;
 }
 
 // ─── Provider ────────────────────────────────────────────────────────────────
@@ -110,6 +129,10 @@ export default function RealtimeProvider({
       if (myEmail && targetEmail && myEmail.toLowerCase() === String(targetEmail).toLowerCase())
         return true;
       return false;
+    }
+
+    if (myEmail && typeof target === "string" && target.includes("@") && target.toLowerCase() === myEmail.toLowerCase()) {
+      return true;
     }
 
     return myId != null && String(target) === String(myId);
@@ -354,10 +377,15 @@ export default function RealtimeProvider({
       log.socket("Connected, socket id:", socket.id);
       setConnected(true);
       // Join user-specific room for call delivery
-      const myId = resolveUserId(user);
-      if (myId) {
-        socket.emit("user:join", { userId: myId });
-        log.socket("Joined user room:", myId);
+      const { user: currentUser } = identifyCurrentUser();
+      const myId = resolveUserId(currentUser);
+      if (myId != null) {
+        const numId = Number(myId);
+        const joinPayload = { userId: !isNaN(numId) ? numId : myId };
+        socket.emit("user:join", joinPayload);
+        log.socket("Joined user room:", joinPayload);
+      } else {
+        log.error("Could not resolve userId for user:join!");
       }
     };
 
