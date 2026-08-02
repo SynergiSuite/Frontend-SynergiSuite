@@ -10,6 +10,7 @@ async function authorizedFetch(path: string, init?: RequestInit) {
     headers: {
       ...init?.headers,
       Authorization: `Bearer ${token}`,
+      "ngrok-skip-browser-warning": "1",
     },
   });
 

@@ -190,14 +190,80 @@ export default function RealtimeProvider({
     async (event: string, payload: Record<string, string>): Promise<CallAcknowledgement> => {
       if (!socket.connected) throw new Error("Call signaling is disconnected");
       log.call(`Emitting ${event}`, payload);
-      const ack = (await socket
-        .timeout(10_000)
-        .emitWithAck(event, payload)) as CallAcknowledgement;
-      log.call(`Ack for ${event}:`, ack);
-      if (!ack.success) {
-        throw new Error(ack.error?.message || "Call operation failed");
-      }
-      return ack;
+
+      const expectedBroadcastMap: Record<string, string[]> = {
+        "call:invite": ["call:ringing", "call:incoming"],
+        "call:accept": ["call:accepted"],
+        "call:reject": ["call:rejected"],
+        "call:cancel": ["call:cancelled"],
+        "call:end": ["call:ended"],
+      };
+
+      const expectedEvents = expectedBroadcastMap[event] || [];
+
+      return new Promise<CallAcknowledgement>((resolve, reject) => {
+        let settled = false;
+        const cleanupFns: Array<() => void> = [];
+
+        const finish = (err: Error | null, res?: CallAcknowledgement) => {
+          if (settled) return;
+          settled = true;
+          cleanupFns.forEach((fn) => fn());
+          if (err) reject(err);
+          else resolve(res || { success: true });
+        };
+
+        // Listen for expected broadcast events
+        expectedEvents.forEach((evtName) => {
+          const handler = (rawPayload: any) => {
+            const call = rawPayload?.call || rawPayload;
+            log.call(`Received broadcast ${evtName} during emit ${event}:`, call);
+            finish(null, { success: true, call });
+          };
+          socket.on(evtName, handler);
+          cleanupFns.push(() => socket.off(evtName, handler));
+        });
+
+        // Listen for call:error broadcast
+        const errorHandler = (errPayload: any) => {
+          const msg = errPayload?.error?.message || errPayload?.message || "Call operation failed";
+          log.error(`Received call:error during emit ${event}:`, msg);
+          finish(new Error(msg));
+        };
+        socket.on("call:error", errorHandler);
+        cleanupFns.push(() => socket.off("call:error", errorHandler));
+
+        // Emit with ack (if server supports ack callback)
+        socket
+          .timeout(5_000)
+          .emitWithAck(event, payload)
+          .then((ack: any) => {
+            log.call(`Ack for ${event}:`, ack);
+            if (ack && typeof ack === "object") {
+              if (ack.success === false) {
+                finish(new Error(ack.error?.message || "Call operation failed"));
+              } else {
+                finish(null, ack);
+              }
+            } else {
+              finish(null, { success: true });
+            }
+          })
+          .catch((err) => {
+            log.call(`emitWithAck for ${event} did not return ack callback:`, err?.message);
+            // If timeout occurred, check if broadcast or state change occurred
+            window.setTimeout(() => {
+              if (!settled) {
+                const activeCall = currentCallRef.current;
+                if (activeCall && (activeCall.status === "active" || event.includes("accept"))) {
+                  finish(null, { success: true, call: activeCall });
+                } else {
+                  finish(new Error(err?.message || "Call operation timed out"));
+                }
+              }
+            }, 1000);
+          });
+      });
     },
     []
   );
@@ -234,15 +300,24 @@ export default function RealtimeProvider({
     const call = currentCallRef.current;
     if (!call) return;
     try {
+      if (!socket.connected) {
+        const { token } = identifyCurrentUser();
+        if (token) {
+          socket.auth = { token };
+          socket.connect();
+          await new Promise((r) => setTimeout(r, 400));
+        }
+      }
       const ack = await emitCallEvent("call:accept", { callId: call.callId });
       if (ack.call) {
         setCallSide("recipient");
         setCurrentCall(ack.call);
       }
     } catch (err: any) {
+      log.error("acceptCall error:", err);
       setCallError(err?.message || "Unable to accept call");
     }
-  }, [emitCallEvent]);
+  }, [emitCallEvent, identifyCurrentUser]);
 
   const rejectCall = useCallback(async () => {
     const call = currentCallRef.current;

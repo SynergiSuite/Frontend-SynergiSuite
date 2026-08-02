@@ -228,12 +228,7 @@ export default function CallOverlay({
       }
     });
 
-    let connectUrl = credentialsUrl.trim();
-    if (connectUrl.startsWith("http://")) {
-      connectUrl = connectUrl.replace(/^http:\/\//i, "ws://");
-    } else if (connectUrl.startsWith("https://")) {
-      connectUrl = connectUrl.replace(/^https:\/\//i, "wss://");
-    }
+    const connectUrl = credentialsUrl.trim();
 
     room
       .connect(connectUrl, credentialsToken)
