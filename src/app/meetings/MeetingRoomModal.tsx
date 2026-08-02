@@ -227,6 +227,17 @@ export default function MeetingRoomModal({
     if (!room) return;
     try {
       const next = !isScreenSharing;
+
+      // If starting screen share, close camera video feed so screen is shown exclusively
+      if (next && isCamOn) {
+        try {
+          await room.localParticipant.setCameraEnabled(false);
+          setIsCamOn(false);
+        } catch (camErr) {
+          console.warn("Could not disable camera on screen share:", camErr);
+        }
+      }
+
       await room.localParticipant.setScreenShareEnabled(next);
       setIsScreenSharing(next);
     } catch (err: any) {
@@ -377,17 +388,20 @@ function ParticipantTile({ participant }: { participant: ParticipantTrackState }
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  const activeVideoTrack = participant.screenTrack || participant.videoTrack;
+  const isSharingScreen = Boolean(participant.screenTrack);
+
   useEffect(() => {
     const el = videoRef.current;
-    if (el && participant.videoTrack) {
-      participant.videoTrack.attach(el);
+    if (el && activeVideoTrack) {
+      activeVideoTrack.attach(el);
     }
     return () => {
-      if (el && participant.videoTrack) {
-        participant.videoTrack.detach(el);
+      if (el && activeVideoTrack) {
+        activeVideoTrack.detach(el);
       }
     };
-  }, [participant.videoTrack]);
+  }, [activeVideoTrack]);
 
   useEffect(() => {
     const el = audioRef.current;
@@ -402,11 +416,17 @@ function ParticipantTile({ participant }: { participant: ParticipantTrackState }
   }, [participant.audioTrack, participant.isLocal]);
 
   return (
-    <div className="relative flex h-full min-h-[220px] w-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0c0a2f]/80 backdrop-blur-md shadow-lg group">
-      {participant.videoTrack && !participant.isVideoMuted ? (
+    <div
+      className={`relative flex h-full min-h-[220px] w-full flex-col overflow-hidden rounded-2xl border transition-all duration-300 bg-[#0c0a2f]/80 backdrop-blur-md shadow-lg group ${
+        isSharingScreen
+          ? "border-[#5271ff]/60 shadow-[0_0_30px_rgba(82,113,255,0.25)]"
+          : "border-white/10"
+      }`}
+    >
+      {activeVideoTrack && (!participant.isVideoMuted || isSharingScreen) ? (
         <video
           ref={videoRef}
-          className="h-full w-full object-cover"
+          className={`h-full w-full ${isSharingScreen ? "object-contain bg-black" : "object-cover"}`}
           autoPlay
           playsInline
           muted={participant.isLocal}
@@ -428,9 +448,10 @@ function ParticipantTile({ participant }: { participant: ParticipantTrackState }
       {!participant.isLocal && <audio ref={audioRef} autoPlay />}
 
       {/* Name and Mute Overlay Badge */}
-      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/50 px-3 py-1.5 backdrop-blur-md">
-        <span className="truncate text-xs font-semibold text-white">
-          {participant.name} {participant.isLocal ? "(You)" : ""}
+      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between rounded-xl border border-white/10 bg-black/65 px-3 py-1.5 backdrop-blur-md">
+        <span className="truncate text-xs font-semibold text-white flex items-center gap-1.5">
+          {isSharingScreen && <Monitor className="h-3.5 w-3.5 text-[#5271ff] animate-pulse" />}
+          {participant.name} {participant.isLocal ? "(You)" : ""} {isSharingScreen ? "• Sharing Screen" : ""}
         </span>
 
         <span className="flex items-center gap-1">
