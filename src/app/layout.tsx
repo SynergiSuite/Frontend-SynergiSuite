@@ -39,6 +39,8 @@ const protectedRoutes = [
   "/cloud/*",
   "/collab-station",
   "/collab-station/*",
+  "/meetings",
+  "/meetings/*",
   "/feedback",
   "/feedback/*",
   "/client",
@@ -230,7 +232,7 @@ export default function RootLayout({
         }
 
         const userRole = String(CookieManager("get", "role") || "").toLowerCase();
-        const allowedClientRoutes = ["/projects", "/feedback", "/client", "/cloud", "/task"];
+        const allowedClientRoutes = ["/projects", "/feedback", "/client", "/cloud", "/task", "/meetings"];
         const isAllowedClientRoute = allowedClientRoutes.some(
           (route) => pathName === route || pathName.startsWith(route + "/")
         );

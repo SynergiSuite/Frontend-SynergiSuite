@@ -24,6 +24,29 @@ import { formatChatTime, formatMessage, getUploadedFileUrl } from "./helpers/cha
 import { ChatDetailsModal, EditChatModal, DeleteChatModal, AddMemberModal } from "./popupModels";
 import { playNotificationSound as triggerGlobalSound } from "@/lib/soundUtils";
 import { getChatUploadUrlApi } from "./apis/getChatUploadUrlApi";
+import CreateMeetingModal from "../meetings/CreateMeetingModal";
+import MeetingRoomModal from "../meetings/MeetingRoomModal";
+import {
+  MeetingResponseDto,
+  MeetingTokenResponse,
+  CreateMeetingPayload,
+} from "../meetings/types/meetingTypes";
+import {
+  getMeetingTokenApi,
+  joinMeetingApi,
+  leaveMeetingApi,
+  endMeetingApi,
+  createMeetingApi,
+  startMeetingApi,
+} from "../meetings/apis/meetingsApi";
+import {
+  emitCreateMeeting,
+  emitStartMeeting,
+  emitJoinMeeting,
+  emitLeaveMeeting,
+  emitEndMeeting,
+  subscribeMeetingSocketEvents,
+} from "../meetings/meetingSocket";
 
 
 
@@ -49,6 +72,12 @@ export default function CollabStationPage() {
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [rawGroupsDataMap, setRawGroupsDataMap] = useState<Record<string, any>>({});
   const [currentUserId, setCurrentUserId] = useState<UserId | undefined>();
+
+  // Group Meetings State
+  const [activeMeeting, setActiveMeeting] = useState<MeetingResponseDto | null>(null);
+  const [meetingToken, setMeetingToken] = useState<MeetingTokenResponse | null>(null);
+  const [groupMeetingsMap, setGroupMeetingsMap] = useState<Record<string, MeetingResponseDto>>({});
+  const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const currentUserRef = useRef<TokenUser>({});
@@ -712,6 +741,116 @@ export default function CollabStationPage() {
     }
   };
 
+function getMeetingId(m: any): string {
+  return String(m?.meetingId || m?.id || m?.meeting_id || "");
+}
+
+  const handleJoinMeetingFromChat = async (m: MeetingResponseDto) => {
+    const meetingId = getMeetingId(m);
+    try {
+      try {
+        await emitJoinMeeting(meetingId);
+      } catch {
+        await joinMeetingApi(meetingId);
+      }
+      const tokenRes = await getMeetingTokenApi(meetingId);
+      setActiveMeeting(m);
+      setMeetingToken(tokenRes);
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to join meeting");
+    }
+  };
+
+  const handleLeaveActiveMeeting = async () => {
+    if (!activeMeeting) return;
+    const hostId = Number(activeMeeting.host?.user_id || 0);
+    const myId = Number(currentUserId || currentUserIdRef.current || 0);
+    const isHost = hostId > 0 && (myId === 0 || hostId === myId);
+
+    if (isHost) {
+      await handleEndActiveMeeting();
+      return;
+    }
+
+    try {
+      const meetingId = getMeetingId(activeMeeting);
+      try {
+        await emitLeaveMeeting(meetingId);
+      } catch {
+        await leaveMeetingApi(meetingId);
+      }
+    } catch (err) {
+      console.warn("Leave meeting error:", err);
+    } finally {
+      setActiveMeeting(null);
+      setMeetingToken(null);
+    }
+  };
+
+  const handleEndActiveMeeting = async () => {
+    if (!activeMeeting) return;
+    const targetId = getMeetingId(activeMeeting);
+    const targetGroupId = String(activeMeeting.groupId || "");
+
+    // Optimistically update local groupMeetingsMap to ended status so banner closes
+    setGroupMeetingsMap((prev) => {
+      const next = { ...prev };
+      if (targetGroupId && next[targetGroupId]) {
+        next[targetGroupId] = { ...next[targetGroupId], status: "ended" };
+      }
+      return next;
+    });
+
+    setActiveMeeting(null);
+    setMeetingToken(null);
+
+    try {
+      try {
+        await emitEndMeeting(targetId);
+      } catch (e) {
+        console.warn("Socket end meeting error:", e);
+      }
+
+      await endMeetingApi(targetId);
+      toast.info("Meeting ended.");
+    } catch (err: any) {
+      console.warn("Failed to end meeting on backend:", err);
+    }
+  };
+
+  const handleCreateMeetingFromChat = async (payload: CreateMeetingPayload, isInstant: boolean) => {
+    try {
+      let created: MeetingResponseDto;
+      try {
+        created = await emitCreateMeeting(payload);
+      } catch {
+        created = await createMeetingApi(payload);
+      }
+      const createdId = getMeetingId(created);
+      const createdGroupId = String(created.groupId || payload.groupId);
+      setGroupMeetingsMap((prev) => ({ ...prev, [createdGroupId]: created }));
+
+      if (isInstant) {
+        let liveMeeting: MeetingResponseDto;
+        try {
+          liveMeeting = await emitStartMeeting(createdId);
+        } catch {
+          liveMeeting = await startMeetingApi(createdId);
+        }
+
+        const liveGroupId = String(liveMeeting.groupId || createdGroupId);
+        const liveObject = { ...created, ...liveMeeting, status: "live" as const };
+        setGroupMeetingsMap((prev) => ({ ...prev, [liveGroupId]: liveObject }));
+        await handleJoinMeetingFromChat(liveObject);
+        toast.success("Instant meeting started!");
+      } else {
+        toast.success("Meeting scheduled successfully!");
+      }
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to create meeting");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full w-full items-center justify-center bg-[#030114]">
@@ -736,10 +875,13 @@ export default function CollabStationPage() {
               onSendMessage={handleSendMessage}
               onInitiateCall={(type) => {
                 if (type === "audio") void handleStartCall();
-                else toast.info("Video calls are not enabled yet");
+                else setIsMeetingModalOpen(true);
               }}
               onDeleteMessage={handleDeleteMessage}
               onOpenDetails={() => setIsDetailsModalOpen(true)}
+              activeGroupMeeting={activeChannelId ? groupMeetingsMap[activeChannelId] : null}
+              onStartGroupMeeting={() => setIsMeetingModalOpen(true)}
+              onJoinGroupMeeting={handleJoinMeetingFromChat}
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center text-center opacity-40 select-none">
@@ -885,6 +1027,31 @@ export default function CollabStationPage() {
             .catch((err) => console.error("Re-fetch failed after adding members:", err));
         }}
       />
+
+      {/* Create Meeting Modal */}
+      {isMeetingModalOpen && (
+        <CreateMeetingModal
+          groups={groups.map((g) => ({ id: g.id, name: g.name }))}
+          defaultGroupId={activeChannelId}
+          onClose={() => setIsMeetingModalOpen(false)}
+          onSubmit={handleCreateMeetingFromChat}
+        />
+      )}
+
+      {/* Active LiveKit Video Room Overlay */}
+      {activeMeeting && meetingToken && (
+        <MeetingRoomModal
+          meeting={activeMeeting}
+          tokenResponse={meetingToken}
+          currentUserId={Number(currentUserId || 0)}
+          onLeave={handleLeaveActiveMeeting}
+          onEndMeeting={
+            activeMeeting.host?.user_id === Number(currentUserId)
+              ? handleEndActiveMeeting
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

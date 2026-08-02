@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown, Trash2, PhoneMissed } from "lucide-react";
 import { Message, Attachment } from "./types";
+import { MeetingResponseDto } from "../meetings/types/meetingTypes";
+import { Users, Radio } from "lucide-react";
 
 interface ChatWindowProps {
   activeChannelName: string;
@@ -14,6 +16,9 @@ interface ChatWindowProps {
   onInitiateCall: (type: "audio" | "video") => void;
   onDeleteMessage?: (messageId: string) => void;
   onOpenDetails?: () => void;
+  activeGroupMeeting?: MeetingResponseDto | null;
+  onStartGroupMeeting?: () => void;
+  onJoinGroupMeeting?: (meeting: MeetingResponseDto) => void;
 }
 
 function ImageAttachmentPreview({
@@ -66,6 +71,9 @@ export default function ChatWindow({
   onInitiateCall,
   onDeleteMessage,
   onOpenDetails,
+  activeGroupMeeting,
+  onStartGroupMeeting,
+  onJoinGroupMeeting,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState("");
   const [selectedFile, setSelectedFile] = useState<Attachment | null>(null);
@@ -168,6 +176,19 @@ export default function ChatWindow({
 
         {/* Call Controls Area */}
         <div className="flex items-center gap-3">
+          {activeChannelType === "group" && (
+            <motion.button
+              type="button"
+              onClick={onStartGroupMeeting}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 rounded-xl border border-[#5271ff]/40 bg-[#5271ff]/15 px-3.5 py-2 text-xs font-bold text-white shadow-[0_0_12px_rgba(82,113,255,0.25)] transition hover:bg-[#5271ff]/25 hover:border-[#5271ff] cursor-pointer"
+            >
+              <Users size={15} className="text-[#5271ff]" />
+              <span>Meeting</span>
+            </motion.button>
+          )}
+
           {/* Audio Call Button */}
           <motion.button
             type="button"
@@ -193,6 +214,35 @@ export default function ChatWindow({
           </motion.button>
         </div>
       </div>
+
+      {/* Live Group Meeting Banner */}
+      {activeGroupMeeting && activeGroupMeeting.status === "live" && (
+        <div className="mx-6 mt-4 flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-white backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+            </span>
+            <div>
+              <p className="text-xs font-bold text-emerald-300 flex items-center gap-2">
+                Live Group Meeting: {activeGroupMeeting.title}
+              </p>
+              <p className="text-[10px] text-white/50">
+                Hosted by {activeGroupMeeting.host?.name || "Host"} • {activeGroupMeeting.participants?.length || 1} participant(s)
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onJoinGroupMeeting?.(activeGroupMeeting)}
+            className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition cursor-pointer"
+          >
+            <Video size={14} />
+            Join Meeting
+          </button>
+        </div>
+      )}
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin select-text">

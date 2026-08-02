@@ -16,6 +16,7 @@ import {
   Boxes,
   Cloud,
   MessageSquareQuote,
+  Video,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { gsap } from "gsap";
@@ -65,6 +66,7 @@ export default function Sidebar({
     { label: "Cloud", route: "/cloud", icon: Cloud },
     { label: "AI Assistant", route: "/chatbot", icon: BrainCircuit },
     { label: "Collab Station", route: "/collab-station", icon: Orbit },
+    { label: "Meetings", route: "/meetings", icon: Video },
     { label: "Analytics", route: "/analytics", icon: BarChart3 },
     { label: "Reports", route: "/reports", icon: FileText },
     { label: "Settings", route: "/settings", icon: Settings },
