@@ -765,7 +765,7 @@ function getMeetingId(m: any): string {
     if (!activeMeeting) return;
     const hostId = Number(activeMeeting.host?.user_id || 0);
     const myId = Number(currentUserId || currentUserIdRef.current || 0);
-    const isHost = hostId > 0 && (myId === 0 || hostId === myId);
+    const isHost = hostId > 0 && myId > 0 && hostId === myId;
 
     if (isHost) {
       await handleEndActiveMeeting();

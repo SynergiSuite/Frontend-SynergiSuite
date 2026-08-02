@@ -65,7 +65,7 @@ export default function MeetingRoomModal({
 
   const hostUserId = Number(meeting.host?.user_id || 0);
   const myUserId = Number(currentUserId || 0);
-  const isHost = hostUserId > 0 && (myUserId === 0 || hostUserId === myUserId);
+  const isHost = hostUserId > 0 && myUserId > 0 && hostUserId === myUserId;
 
   useEffect(() => {
     let isSubscribed = true;
@@ -180,8 +180,16 @@ export default function MeetingRoomModal({
       .on(RoomEvent.LocalTrackPublished, () => updateParticipants())
       .on(RoomEvent.LocalTrackUnpublished, () => updateParticipants());
 
+    const rawUrl = tokenResponse.url || process.env.NEXT_PUBLIC_LIVEKIT_URL || "";
+    let connectUrl = rawUrl.trim();
+    if (connectUrl.startsWith("http://")) {
+      connectUrl = connectUrl.replace(/^http:\/\//i, "ws://");
+    } else if (connectUrl.startsWith("https://")) {
+      connectUrl = connectUrl.replace(/^https:\/\//i, "wss://");
+    }
+
     livekitRoom
-      .connect(tokenResponse.url, tokenResponse.token)
+      .connect(connectUrl, tokenResponse.token)
       .catch((error) => {
         const msg = String(error?.message || "");
         if (msg.includes("Client initiated disconnect") || msg.includes("client_initiated") || msg.includes("USER_INITIATED")) {
