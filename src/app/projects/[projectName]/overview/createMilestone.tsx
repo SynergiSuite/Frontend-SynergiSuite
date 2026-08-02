@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import {
   Select,
@@ -59,19 +60,21 @@ export default function CreateMilestoneModal({
   const isFormValid =
     name.trim().length > 0 && endDate !== "" && Boolean(projectId);
 
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       {/* Backdrop */}
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="fixed inset-0 z-40 bg-[#030114]/80 backdrop-blur-sm cursor-default"
+        className="absolute inset-0 bg-[#030114]/75 backdrop-blur-md cursor-pointer"
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -81,7 +84,7 @@ export default function CreateMilestoneModal({
 
       {/* Modal Shell */}
       <motion.div
-        className="relative bg-[#0a0826]/95 border border-white/[0.08] backdrop-blur-md rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl shadow-blue-500/10 z-50 p-6 flex flex-col max-h-[90vh]"
+        className="relative z-10 my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] p-6"
         initial={{ opacity: 0, y: 16, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 12, scale: 0.98 }}
@@ -253,6 +256,7 @@ export default function CreateMilestoneModal({
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </div>,
+    document.body
   );
 }

@@ -8,5 +8,7 @@ export type Projects = {
     status: number;
     tasks: [];
     teams: Team[];
-    client: Client
+    client: Client;
+    duration?: string;
+    created_at?: string;
 }

@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { LogOut } from "lucide-react";
 import Logo from "@/assets/Logo.png";
 import { gsap } from "gsap";
+import NotificationBell from "@/components/notifications/NotificationBell";
+import { socket } from "@/lib/socket";
 
 type NavItem = {
   name: string;
@@ -26,7 +28,8 @@ export default function Navbar() {
   const [email, setEmail] = useState("");
   const [business, setBusiness] = useState("");
   const [role, setRole] = useState("");
-  const { projectName } = useParams() as { projectName: string };
+  const { projectName: rawProjectName } = useParams() as { projectName: string };
+  const projectName = decodeURIComponent(rawProjectName || "");
 
   const avatarRef = useRef<HTMLDivElement | null>(null);
   const infoRef = useRef<HTMLDivElement | null>(null);
@@ -54,6 +57,7 @@ export default function Navbar() {
       CookieManager("delete", "user");
       CookieManager("delete", "business-name");
       CookieManager("delete", "business-id");
+      socket.disconnect();
       router.replace("/session");
       toast.success("Logged out successfully");
     } catch {
@@ -130,9 +134,23 @@ export default function Navbar() {
     ],
   };
 
+  const isClientRole = role.toLowerCase() === "client";
+
   const getRouteNavs = (path: string) => {
     if (path.startsWith("/projects/")) {
-      return routeNavs["/details"] || [];
+      const routeParam = rawProjectName || projectName;
+      if (isClientRole) {
+        return [
+          { name: "Tasks", param: "task", route: `/projects/${routeParam}/task` },
+        ];
+      }
+      return [
+        { name: `${projectName}'s Overview`, param: "overview", route: `/projects/${routeParam}/overview` },
+        { name: "Tasks", param: "task", route: `/projects/${routeParam}/task` },
+      ];
+    }
+    if (isClientRole) {
+      return [];
     }
     return routeNavs[path] || [];
   };
@@ -161,7 +179,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   className="flex min-w-0 cursor-pointer items-center gap-2 sm:gap-3"
-                  onClick={() => router.push("/dashboard")}
+                  onClick={() => router.push(isClientRole ? "/projects" : "/dashboard")}
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-[#5271ff] to-[#3a4ec4] shadow-[0_0_10px_rgba(82,113,255,0.4)] transition-transform duration-300 group-hover:scale-105">
                     <Image
@@ -180,17 +198,20 @@ export default function Navbar() {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="h-9 w-9 shrink-0 cursor-pointer rounded-full border-2 border-[#5271ff]/30 hover:border-[#5271ff] hover:shadow-[0_0_12px_rgba(82,113,255,0.5)] transition-all duration-300 overflow-hidden"
-              onClick={() => setIsProfileOpen(true)}
-              aria-label="Open profile drawer"
-            >
-              <Avatar className="h-full w-full">
-                <AvatarImage src="https://github.com/shadcn.png" />
-                <AvatarFallback>CN</AvatarFallback>
-              </Avatar>
-            </button>
+            <div className="flex items-center gap-2">
+              <NotificationBell />
+              <button
+                type="button"
+                className="h-9 w-9 shrink-0 cursor-pointer rounded-full border-2 border-[#5271ff]/30 hover:border-[#5271ff] hover:shadow-[0_0_12px_rgba(82,113,255,0.5)] transition-all duration-300 overflow-hidden"
+                onClick={() => setIsProfileOpen(true)}
+                aria-label="Open profile drawer"
+              >
+                <Avatar className="h-full w-full">
+                  <AvatarImage src="https://github.com/shadcn.png" />
+                  <AvatarFallback>CN</AvatarFallback>
+                </Avatar>
+              </button>
+            </div>
           </div>
         </div>
 

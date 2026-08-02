@@ -104,7 +104,7 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
     }
   }, [sessionId, messages.length === 0]);
 
-  const sendMessage = async () => {
+  const sendMessage = async (selectedId?: string) => {
     const trimmedInput = input.trim();
 
     if (!trimmedInput) return;
@@ -132,7 +132,7 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
     setInput("");
 
     try {
-      const response = await chatWithUser(trimmedInput, sessionId, model);
+      const response = await chatWithUser(trimmedInput, sessionId, model, selectedId);
       console.log("Chat API response:", response);
 
       if (response.history?.length) {

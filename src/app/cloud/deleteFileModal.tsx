@@ -1,14 +1,14 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 
 type DeleteFileModalProps = {
   open: boolean;
   fileId: string | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm?: (fileId: string) => void;
+  onConfirm?: (fileId: string) => Promise<void> | void;
 };
 
 export default function DeleteFileModal({
@@ -17,6 +17,20 @@ export default function DeleteFileModal({
   onOpenChange,
   onConfirm,
 }: DeleteFileModalProps) {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!fileId || isDeleting) return;
+    try {
+      setIsDeleting(true);
+      await onConfirm?.(fileId);
+    } catch {
+      // Error handles toast in caller
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <AnimatePresence>
       {open ? (
@@ -31,8 +45,9 @@ export default function DeleteFileModal({
           <motion.button
             type="button"
             aria-label="Cancel delete"
-            className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-            onClick={() => onOpenChange(false)}
+            disabled={isDeleting}
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-md cursor-pointer disabled:cursor-not-allowed"
+            onClick={() => !isDeleting && onOpenChange(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -57,28 +72,33 @@ export default function DeleteFileModal({
               Delete Asset Permanently?
             </h3>
             <p className="text-xs text-white/50 text-center mt-2 leading-relaxed max-w-xs">
-              This action cannot be undone. The file and all related sharing permissions will be permanently expunged from the cloud storage.
+              This action cannot be undone. The file and all related sharing permissions will be permanently expunged from MinIO storage and the database.
             </p>
 
             {/* Actions Grid */}
             <div className="mt-6 flex w-full gap-3">
               <button
                 type="button"
+                disabled={isDeleting}
                 onClick={() => onOpenChange(false)}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm font-semibold text-white/70 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.08] hover:text-white hover:border-white/20 active:scale-95 flex-1 justify-center flex items-center"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm font-semibold text-white/70 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.08] hover:text-white hover:border-white/20 active:scale-95 flex-1 justify-center flex items-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  if (fileId) {
-                    onConfirm?.(fileId);
-                  }
-                }}
-                className="rounded-xl bg-gradient-to-r from-red-500 to-rose-600 px-4 py-2.5 text-sm font-semibold text-white border border-red-500/30 transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_15px_rgba(239,68,68,0.35)] active:scale-95 flex-1 justify-center flex items-center"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="rounded-xl bg-gradient-to-r from-red-500 to-rose-600 px-4 py-2.5 text-sm font-semibold text-white border border-red-500/30 transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_15px_rgba(239,68,68,0.35)] active:scale-95 flex-1 justify-center flex items-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Delete File
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  "Delete File"
+                )}
               </button>
             </div>
           </motion.div>

@@ -1,6 +1,13 @@
 "use client";
 import React from "react";
-import { Plus, Search } from "lucide-react";
+import {
+  Calendar as CalendarIcon,
+  Kanban,
+  LayoutGrid,
+  List,
+  Plus,
+  Search,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -11,7 +18,7 @@ import {
 import { Team } from "@/app/projects/schemas/team";
 import { formatTaskLabel } from "./task-utils";
 
-type TaskViewMode = "grid" | "kanban";
+export type TaskViewMode = "grid" | "kanban" | "list" | "calendar";
 
 type FiltersBarProps = {
   searchQuery: string;
@@ -41,11 +48,18 @@ export default function FiltersBar({
   canManageTasks,
   statusOptions,
 }: FiltersBarProps) {
+  const viewModes: { id: TaskViewMode; label: string; icon: React.ElementType }[] = [
+    { id: "grid", label: "Grid", icon: LayoutGrid },
+    { id: "kanban", label: "Kanban", icon: Kanban },
+    { id: "list", label: "List", icon: List },
+    { id: "calendar", label: "Calendar", icon: CalendarIcon },
+  ];
+
   return (
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4 bg-[#0a0826]/40 border border-white/[0.08] backdrop-blur-md p-4 rounded-2xl shadow-[0_4px_20px_rgba(0,0,0,0.15)] task-animate-item opacity-0">
         {/* Search bar input with search icon overlay */}
-        <div className="relative min-w-[240px] flex-1">
+        <div className="relative min-w-[220px] flex-1">
           <Search className="absolute left-3.5 top-3.5 text-white/30 w-4 h-4" />
           <input
             type="text"
@@ -58,7 +72,7 @@ export default function FiltersBar({
 
         {/* Status Filter Dropdown */}
         <Select value={statusFilter} onValueChange={onStatusChange}>
-          <SelectTrigger className="py-2.5 px-4 border border-white/[0.08] rounded-xl bg-[#030114]/40 text-white focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer hover:border-white/[0.15] transition-all duration-300 h-[44px] flex items-center justify-between min-w-[150px]">
+          <SelectTrigger className="py-2.5 px-4 border border-white/[0.08] rounded-xl bg-[#030114]/40 text-white focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer hover:border-white/[0.15] transition-all duration-300 h-[44px] flex items-center justify-between min-w-[140px]">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
@@ -73,7 +87,7 @@ export default function FiltersBar({
 
         {/* Due Filter Dropdown */}
         <Select value={dueFilter} onValueChange={onDueChange}>
-          <SelectTrigger className="py-2.5 px-4 border border-white/[0.08] rounded-xl bg-[#030114]/40 text-white focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer hover:border-white/[0.15] transition-all duration-300 h-[44px] flex items-center justify-between min-w-[150px]">
+          <SelectTrigger className="py-2.5 px-4 border border-white/[0.08] rounded-xl bg-[#030114]/40 text-white focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer hover:border-white/[0.15] transition-all duration-300 h-[44px] flex items-center justify-between min-w-[140px]">
             <SelectValue placeholder="All Due Dates" />
           </SelectTrigger>
           <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
@@ -84,37 +98,34 @@ export default function FiltersBar({
           </SelectContent>
         </Select>
 
-        {/* Custom Toggle View Mode group */}
+        {/* Toggle View Mode group */}
         <div className="inline-flex items-center rounded-xl border border-white/[0.08] bg-[#030114]/40 p-1">
-          <button
-            type="button"
-            onClick={() => onViewModeChange("grid")}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
-              viewMode === "grid"
-                ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white shadow-[0_0_10px_rgba(82,113,255,0.2)]"
-                : "text-white/60 hover:text-white hover:bg-white/[0.04]"
-            }`}
-          >
-            Grid View
-          </button>
-          <button
-            type="button"
-            onClick={() => onViewModeChange("kanban")}
-            className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 ${
-              viewMode === "kanban"
-                ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white shadow-[0_0_10px_rgba(82,113,255,0.2)]"
-                : "text-white/60 hover:text-white hover:bg-white/[0.04]"
-            }`}
-          >
-            Kanban View
-          </button>
+          {viewModes.map((mode) => {
+            const Icon = mode.icon;
+            const isActive = viewMode === mode.id;
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => onViewModeChange(mode.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-300 cursor-pointer ${
+                  isActive
+                    ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white shadow-[0_0_10px_rgba(82,113,255,0.2)]"
+                    : "text-white/60 hover:text-white hover:bg-white/[0.04]"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{mode.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Add New Task Button */}
         {canManageTasks ? (
           <button
             onClick={onAddTask}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 cursor-pointer"
           >
             <Plus size={16} strokeWidth={2.25} aria-hidden="true" />
             <span>Add New Task</span>
@@ -124,4 +135,3 @@ export default function FiltersBar({
     </>
   );
 }
-

@@ -1,3 +1,5 @@
+import { CallDto } from "./callTypes";
+
 export interface ChatChannel {
   id: string;
   name: string;
@@ -9,6 +11,8 @@ export interface ChatChannel {
   status?: "online" | "offline";
   avatar?: string;
   membersCount?: number;
+  missedCalls?: CallDto[];
+  missedCallCount?: number;
 }
 
 export interface Attachment {
@@ -16,6 +20,7 @@ export interface Attachment {
   size: string;
   type: string;
   url?: string;
+  file?: File;
 }
 
 export interface Message {

@@ -1,9 +1,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown } from "lucide-react";
+import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown, Trash2, PhoneMissed } from "lucide-react";
 import { Message, Attachment } from "./types";
+import { MeetingResponseDto } from "../meetings/types/meetingTypes";
+import { Users, Radio } from "lucide-react";
 
 interface ChatWindowProps {
   activeChannelName: string;
@@ -11,6 +14,53 @@ interface ChatWindowProps {
   messages: Message[];
   onSendMessage: (text: string, attachment?: Attachment) => void;
   onInitiateCall: (type: "audio" | "video") => void;
+  onDeleteMessage?: (messageId: string) => void;
+  onOpenDetails?: () => void;
+  activeGroupMeeting?: MeetingResponseDto | null;
+  onStartGroupMeeting?: () => void;
+  onJoinGroupMeeting?: (meeting: MeetingResponseDto) => void;
+}
+
+function ImageAttachmentPreview({
+  attachment,
+  onOpen,
+}: {
+  attachment: Attachment;
+  onOpen: () => void;
+}) {
+  const [hasError, setHasError] = useState(false);
+
+  if (!attachment.url || hasError) {
+    return (
+      <div className="flex max-w-[300px] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
+          <File size={16} />
+        </div>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-white">{attachment.name}</p>
+          <p className="text-[10px] text-white/40">Preview unavailable</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 group">
+      <img
+        src={attachment.url}
+        alt={attachment.name}
+        className="block h-auto max-w-[300px] rounded-xl object-cover"
+        onError={() => setHasError(true)}
+      />
+      <button
+        type="button"
+        onClick={onOpen}
+        className="absolute inset-0 flex h-full w-full cursor-pointer items-center justify-center border-none bg-[#0a0826]/40 text-white opacity-0 outline-none backdrop-blur-sm transition group-hover:opacity-100"
+      >
+        <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold backdrop-blur-md">View Image</span>
+      </button>
+    </div>
+  );
 }
 
 export default function ChatWindow({
@@ -19,9 +69,15 @@ export default function ChatWindow({
   messages,
   onSendMessage,
   onInitiateCall,
+  onDeleteMessage,
+  onOpenDetails,
+  activeGroupMeeting,
+  onStartGroupMeeting,
+  onJoinGroupMeeting,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState("");
   const [selectedFile, setSelectedFile] = useState<Attachment | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,6 +94,17 @@ export default function ChatWindow({
     textarea.style.height = "0px";
     textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
   }, [inputText]);
+
+  // Close lightbox on Escape key
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxImage(null);
+    };
+    if (lightboxImage) {
+      window.addEventListener("keydown", handleEsc);
+    }
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [lightboxImage]);
 
   const handleSend = () => {
     const trimmed = inputText.trim();
@@ -56,20 +123,15 @@ export default function ChatWindow({
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const file = files[0];
-    const sizeKB = Math.round(file.size / 1024);
-    const sizeStr = sizeKB > 1024 ? `${(sizeKB / 1024).toFixed(1)} MB` : `${sizeKB} KB`;
-
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const isImage = file.type.startsWith("image/");
     setSelectedFile({
       name: file.name,
-      size: sizeStr,
-      type: file.type || "application/octet-stream",
+      size: `${(file.size / 1024).toFixed(1)} KB`,
+      type: isImage ? "image" : "file",
+      file,
     });
-
-    // Reset input
     e.target.value = "";
   };
 
@@ -78,15 +140,24 @@ export default function ChatWindow({
       
       {/* Header Panel */}
       <div className="shrink-0 border-b border-white/[0.08] bg-[#0c0a2d]/25 px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff] shadow-[inset_0_0_10px_rgba(82,113,255,0.2)] font-bold text-sm relative">
-            {activeChannelName.startsWith("#") ? activeChannelName.slice(1, 3).toUpperCase() : activeChannelName.slice(0, 2).toUpperCase()}
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          className="flex items-center gap-3 text-left group cursor-pointer border-none bg-transparent p-1 -ml-1 rounded-xl hover:bg-white/[0.04] transition duration-200 outline-none"
+          title="Click for chat details & settings"
+        >
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff] shadow-[inset_0_0_10px_rgba(82,113,255,0.2)] font-bold text-sm relative group-hover:border-[#5271ff]/50 transition">
+            {(activeChannelName || "Unknown").startsWith("#") 
+              ? (activeChannelName || "Unknown").slice(1, 3).toUpperCase() 
+              : (activeChannelName || "Unknown").slice(0, 2).toUpperCase()}
             {activeChannelType === "direct" && (
               <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#030114] shadow-[0_0_8px_#10b981]" />
             )}
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white tracking-wide">{activeChannelName}</h2>
+            <h2 className="text-sm font-bold text-white tracking-wide group-hover:text-[#5271ff] transition flex items-center gap-1.5">
+              {activeChannelName || "Unknown"}
+            </h2>
             <p className="text-[10px] text-white/40 flex items-center gap-1">
               {activeChannelType === "group" ? (
                 <>
@@ -101,10 +172,23 @@ export default function ChatWindow({
               )}
             </p>
           </div>
-        </div>
+        </button>
 
         {/* Call Controls Area */}
         <div className="flex items-center gap-3">
+          {activeChannelType === "group" && (
+            <motion.button
+              type="button"
+              onClick={onStartGroupMeeting}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex items-center gap-2 rounded-xl border border-[#5271ff]/40 bg-[#5271ff]/15 px-3.5 py-2 text-xs font-bold text-white shadow-[0_0_12px_rgba(82,113,255,0.25)] transition hover:bg-[#5271ff]/25 hover:border-[#5271ff] cursor-pointer"
+            >
+              <Users size={15} className="text-[#5271ff]" />
+              <span>Meeting</span>
+            </motion.button>
+          )}
+
           {/* Audio Call Button */}
           <motion.button
             type="button"
@@ -131,6 +215,35 @@ export default function ChatWindow({
         </div>
       </div>
 
+      {/* Live Group Meeting Banner */}
+      {activeGroupMeeting && activeGroupMeeting.status === "live" && (
+        <div className="mx-6 mt-4 flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-white backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+          <div className="flex items-center gap-3">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+            </span>
+            <div>
+              <p className="text-xs font-bold text-emerald-300 flex items-center gap-2">
+                Live Group Meeting: {activeGroupMeeting.title}
+              </p>
+              <p className="text-[10px] text-white/50">
+                Hosted by {activeGroupMeeting.host?.name || "Host"} • {activeGroupMeeting.participants?.length || 1} participant(s)
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onJoinGroupMeeting?.(activeGroupMeeting)}
+            className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition cursor-pointer"
+          >
+            <Video size={14} />
+            Join Meeting
+          </button>
+        </div>
+      )}
+
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin select-text">
         {messages.length === 0 ? (
@@ -145,14 +258,37 @@ export default function ChatWindow({
           <div className="flex flex-col gap-6">
             {messages.map((message) => {
               const isMe = message.sender === "me";
+              const isMissedCall = message.id.startsWith("missed-call-") || message.senderName === "Missed Call";
+
+              if (isMissedCall) {
+                return (
+                  <motion.div
+                    key={message.id}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    className="flex w-full justify-center my-2"
+                  >
+                    <div className="flex items-center gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.15)] backdrop-blur-md">
+                      <PhoneMissed size={15} className="text-rose-400 shrink-0" />
+                      <span>{message.text}</span>
+                      {message.time && (
+                        <span className="text-[10px] text-rose-300/70 border-l border-rose-500/30 pl-2 font-mono">
+                          {message.time}
+                        </span>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              }
+
               return (
                 <motion.div
                   key={message.id}
-                  layout
-                  initial={{ opacity: 0, y: 15, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ type: "spring", stiffness: 320, damping: 26 }}
-                  className={`flex w-full ${isMe ? "justify-end" : "justify-start"}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className={`flex w-full group ${isMe ? "justify-end" : "justify-start"}`}
                 >
                   <div className={`flex max-w-[80%] gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                     
@@ -181,24 +317,35 @@ export default function ChatWindow({
                       >
                         {/* Render Attached Files inside Message if any */}
                         {message.attachment && (
-                          <div className="mb-3 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
-                              <File size={16} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="truncate text-xs font-semibold text-white">
-                                {message.attachment.name}
-                              </p>
-                              <p className="text-[10px] text-white/40">
-                                {message.attachment.size}
-                              </p>
-                            </div>
-                            <button
-                              type="button"
-                              className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer"
-                            >
-                              <Download size={14} />
-                            </button>
+                          <div className="mb-3">
+                            {message.attachment.type.startsWith("image") || message.attachment.name.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                              <ImageAttachmentPreview
+                                attachment={message.attachment}
+                                onOpen={() => setLightboxImage(message.attachment?.url || null)}
+                              />
+                            ) : (
+                              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
+                                  <File size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="truncate text-xs font-semibold text-white">
+                                    {message.attachment.name}
+                                  </p>
+                                  <p className="text-[10px] text-white/40">
+                                    {message.attachment.size}
+                                  </p>
+                                </div>
+                                <a
+                                  href={message.attachment.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                                >
+                                  <Download size={14} />
+                                </a>
+                              </div>
+                            )}
                           </div>
                         )}
 
@@ -208,14 +355,29 @@ export default function ChatWindow({
                           </p>
                         )}
                       </div>
-
-                      {/* Message Time stamp */}
-                      <p className={`text-[9px] uppercase tracking-wider font-semibold text-white/20 mt-1 ${
-                        isMe ? "text-right mr-1" : "text-left ml-1"
-                      }`}>
-                        {message.time}
-                      </p>
+                      
+                      <div className={`flex items-center mt-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                        <p className={`text-[10px] text-white/40 ${
+                          isMe ? "mr-1" : "ml-1"
+                        }`}>
+                          {message.time}
+                        </p>
+                      </div>
                     </div>
+
+                    {/* Delete Action Button (Visible on Hover for User's Own Messages) */}
+                    {isMe && onDeleteMessage && (
+                      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity px-1">
+                        <button
+                          type="button"
+                          onClick={() => onDeleteMessage(message.id)}
+                          className="flex h-8 w-8 items-center justify-center rounded-full text-white/30 hover:bg-red-500/10 hover:text-red-400 transition cursor-pointer"
+                          title="Delete message"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               );
@@ -310,6 +472,34 @@ export default function ChatWindow({
         </div>
       </div>
 
+      {/* Lightbox Modal */}
+      {typeof window !== "undefined" &&
+        lightboxImage &&
+        createPortal(
+          <AnimatePresence>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+              onClick={() => setLightboxImage(null)}
+            >
+              <button
+                className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
+                onClick={() => setLightboxImage(null)}
+              >
+                <X size={24} />
+              </button>
+              <img
+                src={lightboxImage}
+                alt="Preview"
+                className="max-h-[90vh] max-w-full rounded-md object-contain shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
+          </AnimatePresence>,
+          document.body
+        )}
     </div>
   );
 }

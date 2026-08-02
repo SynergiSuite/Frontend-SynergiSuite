@@ -1,6 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
+import { Check, Users, X } from "lucide-react";
 import ModalFooter from "./createprojectformfooter";
 import { Team } from "./schemas/team";
 import { Client } from "./schemas/client";
@@ -33,12 +35,21 @@ export default function NewProjectModal({
   teams,
   clients,
 }: NewProjectModalProps) {
+  const [mounted, setMounted] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string>("");
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [statusValue, setStatusValue] = useState<string>(""); 
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
   const [duration, setDuration] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
+
+  const safeTeams = Array.isArray(teams) ? teams : [];
+  const safeClients = Array.isArray(clients) ? clients : [];
 
   const priorityOptions = Object.entries(PriorityLevel)
     .filter((entry): entry is [string, number] => typeof entry[1] === "number")
@@ -62,9 +73,9 @@ export default function NewProjectModal({
     );
   };
 
-  return (
+  const modalContent = (
     <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -74,7 +85,7 @@ export default function NewProjectModal({
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md z-45"
+        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md cursor-pointer border-0"
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -84,7 +95,7 @@ export default function NewProjectModal({
 
       {/* Modal Container Shell */}
       <motion.div
-        className="relative z-50 flex flex-col w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#0a0826]/90 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[calc(100vh-4rem)]"
+        className="relative z-10 flex flex-col w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.8)] overflow-hidden max-h-[calc(100vh-2rem)] sm:max-h-[calc(100vh-4rem)]"
         initial={{ opacity: 0, y: 30, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.96 }}
@@ -97,11 +108,20 @@ export default function NewProjectModal({
         <div className="absolute -left-20 -top-20 h-[300px] w-[300px] bg-[radial-gradient(circle,rgba(82,113,255,0.12),transparent_65%)] pointer-events-none" />
 
         {/* Header */}
-        <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01]">
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            Create New Project
-          </h2>
-          <p className="text-xs text-white/40 mt-1 font-medium">Enter project parameters and assign team structure</p>
+        <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01] flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+              Create New Project
+            </h2>
+            <p className="text-xs text-white/40 mt-1 font-medium">Enter project parameters and assign team structure</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
 
         {/* Body (Scrollable Content) */}
@@ -132,8 +152,8 @@ export default function NewProjectModal({
               <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
                 <SelectValue placeholder="Select Client" />
               </SelectTrigger>
-              <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                {clients.map((client) => (
+              <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl z-[110]">
+                {safeClients.map((client) => (
                   <SelectItem
                     key={client.id}
                     value={client.id}
@@ -146,40 +166,53 @@ export default function NewProjectModal({
             </Select>
           </div>
 
-          {/* Team Checkboxes */}
+          {/* Team Selection */}
           <div>
-            <label className="block text-sm font-semibold text-white/70 mb-2">
-              Select Teams
-            </label>
-            <div className="rounded-xl border border-white/[0.08] bg-[#030114]/20 p-4 max-h-[180px] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-semibold text-white/70">
+                Select Teams
+              </label>
+              {selectedTeamIds.length > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#5271ff]/15 border border-[#5271ff]/30 px-2.5 py-0.5 text-xs font-semibold text-[#8fa2ff]">
+                  {selectedTeamIds.length} {selectedTeamIds.length === 1 ? "team" : "teams"} selected
+                </span>
+              )}
+            </div>
+            <div className="rounded-2xl border border-white/[0.08] bg-[#030114]/30 p-4 max-h-[190px] overflow-y-auto custom-scrollbar backdrop-blur-md">
               <div className="flex flex-wrap gap-2.5">
-                {teams.map((team) => {
+                {safeTeams.map((team) => {
                   const isSelected = selectedTeamIds.includes(team.id);
                   return (
-                    <label
+                    <div
                       key={team.id}
-                      className={`flex items-center gap-2 rounded-xl border px-3.5 py-2 text-sm cursor-pointer transition-all duration-300 ${
+                      onClick={() => toggleTeamId(team.id)}
+                      className={`group relative flex cursor-pointer items-center gap-2.5 rounded-xl border px-3.5 py-2.5 text-xs sm:text-sm font-medium transition-all duration-200 select-none ${
                         isSelected
-                          ? "border-[#5271ff]/50 bg-[#5271ff]/10 text-white shadow-[0_0_12px_rgba(82,113,255,0.15)] font-semibold"
-                          : "border-white/[0.08] bg-[#0a0826]/40 text-white/60 hover:text-white hover:border-white/[0.15]"
+                          ? "border-[#5271ff]/60 bg-gradient-to-r from-[#5271ff]/20 to-[#3a4ec4]/15 text-white shadow-[0_0_16px_rgba(82,113,255,0.22)]"
+                          : "border-white/[0.08] bg-white/[0.03] text-white/60 hover:border-white/[0.18] hover:bg-white/[0.06] hover:text-white"
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded-md accent-[#5271ff] border-white/[0.08] bg-[#030114]/50 cursor-pointer"
-                        checked={isSelected}
-                        onChange={() => toggleTeamId(team.id)}
+                      <div
+                        className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-md border transition-all duration-200 ${
+                          isSelected
+                            ? "border-[#5271ff] bg-[#5271ff] text-white shadow-[0_0_10px_rgba(82,113,255,0.5)]"
+                            : "border-white/20 bg-white/[0.04] group-hover:border-white/40"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                      </div>
+
+                      <Users
+                        className={`h-3.5 w-3.5 transition-colors ${
+                          isSelected ? "text-[#5271ff]" : "text-white/35 group-hover:text-white/60"
+                        }`}
                       />
-                      <span className="break-words select-none">{team.name}</span>
-                    </label>
+
+                      <span className="truncate">{team.name}</span>
+                    </div>
                   );
                 })}
               </div>
-              {selectedTeamIds.length > 0 && (
-                <div className="mt-3 text-xs text-white/40 font-semibold pl-1">
-                  {selectedTeamIds.length} {selectedTeamIds.length === 1 ? "team" : "teams"} selected
-                </div>
-              )}
             </div>
           </div>
 
@@ -197,7 +230,7 @@ export default function NewProjectModal({
                 <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
+                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl z-[110]">
                   {priorityOptions.map((option) => (
                     <SelectItem
                       key={option.value}
@@ -260,4 +293,8 @@ export default function NewProjectModal({
       </motion.div>
     </motion.div>
   );
+
+  if (!mounted) return null;
+
+  return createPortal(modalContent, document.body);
 }

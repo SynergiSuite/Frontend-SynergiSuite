@@ -1,7 +1,10 @@
 "use client";
-import React, { useMemo, useState } from "react";
+
+import React, { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Team } from "../../schemas/team";
+import { Check, Users } from "lucide-react";
 
 type EditTeamsModalProps = {
   onCancel: () => void;
@@ -21,6 +24,11 @@ export default function EditTeamsModal({
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>(
     initialSelectedTeamIds
   );
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const toggleTeamId = (teamId: string) => {
     setSelectedTeamIds((prev) =>
@@ -38,32 +46,28 @@ export default function EditTeamsModal({
     [selectedTeamIds.length]
   );
 
-  return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-    >
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
       {/* Background Overlay */}
       <motion.button
         type="button"
         aria-label="Close modal"
-        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md z-45"
+        className="absolute inset-0 bg-[#030114]/80 backdrop-blur-md cursor-pointer"
         onClick={onCancel}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.2 }}
       />
 
       {/* Modal Container Shell */}
       <motion.div
-        className="relative z-50 flex flex-col w-full max-w-lg rounded-2xl border border-white/[0.08] bg-[#0a0826]/90 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden"
-        initial={{ opacity: 0, y: 30, scale: 0.96 }}
+        className="relative z-10 my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.7)]"
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.96 }}
+        exit={{ opacity: 0, y: 15, scale: 0.96 }}
         transition={{ type: "spring", stiffness: 280, damping: 25 }}
       >
         {/* Top Accent Neon Stripe */}
@@ -83,9 +87,9 @@ export default function EditTeamsModal({
         </div>
 
         {/* Body */}
-        <div className="relative z-10 flex-1 px-6 py-6 sm:px-8 text-white">
+        <div className="relative z-10 flex-1 px-6 py-6 sm:px-8 text-white overflow-y-auto custom-scrollbar">
           <div className="mb-6">
-            <label className="block text-sm font-semibold text-white/70 mb-2">
+            <label className="block text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">
               Select Teams
             </label>
             <div className="rounded-xl border border-white/[0.08] bg-[#030114]/40 p-4">
@@ -95,18 +99,28 @@ export default function EditTeamsModal({
                   return (
                     <label
                       key={team.id}
-                      className={`flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm cursor-pointer transition-all duration-300 ${
+                      className={`group relative flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm cursor-pointer transition-all duration-300 ${
                         isSelected
-                          ? "border-[#5271ff]/50 bg-[#5271ff]/10 text-white shadow-[0_0_12px_rgba(82,113,255,0.15)]"
-                          : "border-white/[0.08] bg-[#0a0826]/40 text-white/60 hover:text-white hover:border-white/[0.15]"
+                          ? "border-[#5271ff]/60 bg-[#5271ff]/20 text-white shadow-[0_0_16px_rgba(82,113,255,0.25)]"
+                          : "border-white/[0.08] bg-[#0a0826]/40 text-white/60 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.04]"
                       }`}
                     >
                       <input
                         type="checkbox"
-                        className="h-4 w-4 rounded border-white/[0.15] bg-transparent text-[#5271ff] focus:ring-0 cursor-pointer accent-[#5271ff]"
+                        className="sr-only"
                         checked={isSelected}
                         onChange={() => toggleTeamId(team.id)}
                       />
+                      <div
+                        className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                          isSelected
+                            ? "border-[#5271ff] bg-[#5271ff] text-white"
+                            : "border-white/30 bg-transparent group-hover:border-white/60"
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3" strokeWidth={3} />}
+                      </div>
+                      <Users className={`h-4 w-4 ${isSelected ? "text-[#5271ff]" : "text-white/40"}`} />
                       <span className="font-medium">{team.name}</span>
                     </label>
                   );
@@ -130,7 +144,7 @@ export default function EditTeamsModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-white/60 hover:text-white hover:bg-[#0a0826]/75 hover:border-white/[0.15] transition-all duration-300"
+            className="rounded-xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-white/60 hover:text-white hover:bg-[#0a0826]/75 hover:border-white/[0.15] transition-all duration-300 cursor-pointer"
           >
             Cancel
           </button>
@@ -138,13 +152,13 @@ export default function EditTeamsModal({
           <button
             type="button"
             onClick={() => onSubmit(selectedTeamIds)}
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300"
+            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 cursor-pointer"
           >
             Save Changes
           </button>
         </div>
       </motion.div>
-    </motion.div>
+    </div>,
+    document.body
   );
 }
-

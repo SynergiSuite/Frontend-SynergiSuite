@@ -5,4 +5,6 @@ export type CreateClientDto = {
   address: string;
   company: string;
   priority: number;
+  paymentType?: string;
+  amount?: number;
 };

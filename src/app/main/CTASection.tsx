@@ -94,7 +94,7 @@ export default function CTASection() {
           </button>
           
           <button
-            onClick={() => router.push("/session?form=login")}
+            onClick={() => router.push("/session?form=signin")}
             className="landing-btn-outline group !py-4 !px-8 text-sm md:text-base w-full sm:w-auto justify-center cursor-pointer"
           >
             Talk to Sales

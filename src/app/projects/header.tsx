@@ -8,6 +8,7 @@ import { Client } from "./schemas/client";
 interface HeaderProps {
   filter: string;
   setFilter: (value: string) => void;
+  searchQuery: string;
   setSearchQuery: (value: string) => void;
   teams: Team[];
   clients: Client[];
@@ -17,6 +18,7 @@ interface HeaderProps {
 export default function Header({
   filter,
   setFilter,
+  searchQuery,
   setSearchQuery,
   teams,
   clients,
@@ -33,7 +35,7 @@ export default function Header({
         </h1>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-          <SearchBar setSearchQuery={setSearchQuery} />
+          <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
           <NewProjectButton
             teams={teams}
             clients={clients}

@@ -58,7 +58,11 @@ export default function RegisterBusiness() {
     };
   }, []);
 
-  const options = ["Register a new Business", "Join an existing Business"];
+  const options = [
+    "Register a new Business",
+    "Join an existing Business",
+    "Join as an Invited Client",
+  ];
 
   const handleOptionSelect = (option: string) => {
     setSelectedOption(option);
@@ -71,6 +75,8 @@ export default function RegisterBusiness() {
       registerBusiness();
     } else if (selectedOption === "Join an existing Business") {
       joinBusiness();
+    } else if (selectedOption === "Join as an Invited Client") {
+      joinAsClient();
     }
   };
 
@@ -108,6 +114,43 @@ export default function RegisterBusiness() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
+    }
+  };
+
+  const joinAsClient = async () => {
+    const accessToken = await CookieManager("get", "access-token");
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        `${requestBaseUrl}/business/join-business`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ token }),
+        },
+      );
+
+      const responseData = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setError(responseData.message || "Failed to join as client");
+      } else {
+        CookieManager("delete", "register-token");
+        if (responseData.business_name) {
+          CookieManager("set", "business-name", responseData.business_name);
+        }
+        if (responseData.business_id) {
+          CookieManager("set", "business-id", responseData.business_id);
+        }
+        CookieManager("set", "role", responseData.role_name || "client");
+        router.push("/dashboard");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -342,6 +385,42 @@ export default function RegisterBusiness() {
                   disabled={isLoading}
                 >
                   Join Now
+                </Button>
+              </motion.div>
+            )}
+            {selectedOption === "Join as an Invited Client" && (
+              <motion.div
+                key="client-join-form"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeInOut" }}
+                className="overflow-hidden space-y-4"
+              >
+                <div>
+                  <label
+                    htmlFor="clientInvitationToken"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
+                    Enter Client Invitation Token
+                  </label>
+                  <input
+                    type="text"
+                    id="clientInvitationToken"
+                    value={token}
+                    onChange={(e) => setToken(e.target.value)}
+                    className="session-light-input w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none text-sm"
+                    placeholder="Paste your client invitation token here"
+                    required
+                  />
+                </div>
+
+                <Button
+                  type="submit"
+                  className="button_primary_full"
+                  disabled={isLoading}
+                >
+                  Join as Client
                 </Button>
               </motion.div>
             )}

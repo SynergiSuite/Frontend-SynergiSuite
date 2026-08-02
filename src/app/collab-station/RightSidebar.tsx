@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { MessageSquarePlus, Hash, Sparkles, Users, FolderKanban, Layers } from "lucide-react";
+import { MessageSquarePlus, Hash, Sparkles, Users, FolderKanban, Layers, PhoneMissed } from "lucide-react";
 import { gsap } from "gsap";
 import { ChatChannel } from "./types";
 
@@ -315,7 +315,7 @@ export default function RightSidebar({
                 )}
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-[#5271ff]/20 to-[#3a4ec4]/10 border border-white/10 text-xs font-bold text-white shrink-0 relative">
-                    {chat.avatar || chat.name.slice(0, 2).toUpperCase()}
+                    {chat.avatar || (chat.name || "Unknown").slice(0, 2).toUpperCase()}
                     {chat.status && (
                       <span className={`absolute bottom-0 right-0 h-2 w-2 rounded-full border border-[#0c0a2f] ${
                         chat.status === "online" ? "bg-emerald-500 shadow-[0_0_6px_#10b981]" : "bg-zinc-500"
@@ -325,19 +325,32 @@ export default function RightSidebar({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <h4 className="truncate font-semibold text-xs text-white">
-                        {chat.name}
+                        {chat.name || "Unknown"}
                       </h4>
                       <span className="text-[9px] text-white/30 font-medium shrink-0 ml-2">
                         {chat.time}
                       </span>
                     </div>
                     <p className="truncate text-[11px] text-white/40 mt-0.5">
-                      {chat.lastMessage}
+                      {chat.id !== activeId && chat.missedCallCount ? (
+                        <span className="inline-flex items-center gap-1 text-rose-300/80">
+                          <PhoneMissed size={11} />
+                          {chat.lastMessage}
+                        </span>
+                      ) : (
+                        chat.lastMessage
+                      )}
                     </p>
                   </div>
                 </div>
 
-                {chat.unreadCount > 0 && (
+                {chat.id !== activeId && Boolean(chat.missedCallCount) && (
+                  <span className="absolute bottom-3 right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white shadow-[0_0_8px_rgba(244,63,94,0.8)]">
+                    {chat.missedCallCount}
+                  </span>
+                )}
+
+                {chat.id !== activeId && chat.unreadCount > 0 && !chat.missedCallCount && (
                   <span className="absolute bottom-3 right-3 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#5271ff] px-1 text-[9px] font-bold text-white shadow-[0_0_8px_#5271ff]">
                     {chat.unreadCount}
                   </span>

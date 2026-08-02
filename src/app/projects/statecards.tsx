@@ -1,22 +1,26 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
+import { Pencil, Trash } from "lucide-react";
 import { Projects } from "./schemas/project";
+import { Team } from "./schemas/team";
+import { Client } from "./schemas/client";
 import { PriorityLevel } from "./schemas/priority.enum";
 import { CookieManager } from "@/lib/cookieManager";
+import { canManageProjects } from "@/lib/rolePermissions";
+import EditProjectModal from "./editProject";
+import DeleteProjectModal from "./deleteProjectModal";
+
 interface ProjectCardsProps {
   filter: string;
   searchQuery: string;
   projects: Projects[];
+  teams?: Team[];
+  clients?: Client[];
+  role?: string;
+  onRefresh?: () => void;
 }
-
-// Helper function to get priority level text
-const getPriorityText = (priority: number): string => {
-  if (priority === 1) return "High";
-  if (priority === 2) return "Medium";
-  return "Low";
-};
 
 // Helper function to calculate completion percentage
 const calculateProgress = (tasks: any[]): number => {
@@ -27,7 +31,7 @@ const calculateProgress = (tasks: any[]): number => {
   return Math.round((completed / tasks.length) * 100);
 };
 
-// ✅ Use a hoisted function declaration so it can be called above/below safely
+// Hoisted function declaration
 function getStatus(priority: PriorityLevel): string {
   switch (priority) {
     case PriorityLevel.InQueue:
@@ -45,19 +49,26 @@ function getStatus(priority: PriorityLevel): string {
   }
 }
 
-const handleProjectDetail = (projectName: string) => {
-  
-};
-
-export default function ProjectCards({ filter, searchQuery, projects }: ProjectCardsProps) {
+export default function ProjectCards({
+  filter,
+  searchQuery,
+  projects,
+  teams = [],
+  clients = [],
+  role = "",
+  onRefresh,
+}: ProjectCardsProps) {
   const router = useRouter();
+  const [editingProject, setEditingProject] = useState<Projects | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Projects | null>(null);
+
+  const canManage = canManageProjects(role);
+
   const filteredProjects = projects.filter((project) => {
-    // compute once and compare with normalized values
     const statusText = getStatus(project.status);
     const selected = filter || "All";
 
-    const matchesFilter =
-      selected === "All" || statusText === selected;
+    const matchesFilter = selected === "All" || statusText === selected;
 
     const q = (searchQuery || "").toLowerCase();
     const projectName = (project.name || "").toLowerCase();
@@ -96,7 +107,12 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
     const safeName = encodeURIComponent(projectName || "");
     CookieManager("set", "client-name", clientName);
     CookieManager("set", "project-id", projectID);
-    router.push(`/projects/${safeName}/overview`);
+    const userRole = String(role || CookieManager("get", "role") || "").toLowerCase();
+    if (userRole === "client") {
+      router.push(`/projects/${safeName}/task`);
+    } else {
+      router.push(`/projects/${safeName}/overview`);
+    }
   };
 
   const gridKey = `${filter || "all"}-${searchQuery || ""}`;
@@ -141,7 +157,35 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
                   }}
                 >
                   <div className="mb-3 flex items-start justify-between gap-3">
-                    <h3 className="line-clamp-2 font-semibold text-white group-hover:text-[#5271ff] transition-colors">{project.name}</h3>
+                    <h3 className="line-clamp-2 font-semibold text-white group-hover:text-[#5271ff] transition-colors">
+                      {project.name}
+                    </h3>
+                    {canManage && (
+                      <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          aria-label="Edit project"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingProject(project);
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white hover:border-white/20 active:scale-95 cursor-pointer"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="Delete project"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingProject(project);
+                          }}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400 active:scale-95 cursor-pointer"
+                        >
+                          <Trash className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <p className="mb-4 text-sm text-white/50 break-words font-medium">
@@ -186,6 +230,27 @@ export default function ProjectCards({ filter, searchQuery, projects }: ProjectC
           </motion.div>
         </AnimatePresence>
       )}
+
+      <AnimatePresence>
+        {editingProject && (
+          <EditProjectModal
+            project={editingProject}
+            teams={teams}
+            clients={clients}
+            onCancel={() => setEditingProject(null)}
+            onSuccess={() => onRefresh?.()}
+          />
+        )}
+
+        {deletingProject && (
+          <DeleteProjectModal
+            open={deletingProject !== null}
+            project={deletingProject}
+            onCancel={() => setDeletingProject(null)}
+            onSuccess={() => onRefresh?.()}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

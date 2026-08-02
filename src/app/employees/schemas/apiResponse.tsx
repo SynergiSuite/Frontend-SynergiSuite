@@ -1,4 +1,3 @@
-
 import { UIEmployee } from "./employee";
 
 type RoleData = {
@@ -17,15 +16,27 @@ export type EmployeeApiRecord = {
   isExpired?: boolean;
 };
 
+export type PaginationMeta = {
+  totalItems: number;
+  itemCount: number;
+  itemsPerPage: number;
+  totalPages: number;
+  currentPage: number;
+};
+
 export type Response = {
-    employees?: EmployeeApiRecord[] | { employees?: EmployeeApiRecord[] };
-    data?: {
-      employees?: EmployeeApiRecord[] | { employees?: EmployeeApiRecord[] };
-    };
+  data?: EmployeeApiRecord[];
+  meta?: PaginationMeta;
+  statistics?: {
     registrationCount?: number;
     newProjectsThisMonth?: number;
     projectCount?: number;
-}
+  };
+  employees?: EmployeeApiRecord[] | { employees?: EmployeeApiRecord[] };
+  registrationCount?: number;
+  newProjectsThisMonth?: number;
+  projectCount?: number;
+};
 
 export type Stats = {
   totalEmployees: number;
@@ -38,4 +49,5 @@ export type Stats = {
 export type MainPageData = {
   employees: UIEmployee[];
   stats: Stats;
+  meta: PaginationMeta;
 };

@@ -1,12 +1,21 @@
+import { CookieManager } from "@/lib/cookieManager";
+
 const chatApiAuthKey = process.env.NEXT_PUBLIC_SECRET_KEY;
 
-export function getChatApiHeaders() {
-  if (!chatApiAuthKey) {
-    throw new Error("Chat API auth key is missing from the environment");
+export async function getChatApiHeaders(): Promise<Record<string, string>> {
+  const accessToken = await CookieManager("get", "access-token");
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+
+  if (chatApiAuthKey) {
+    headers["auth_key"] = chatApiAuthKey;
   }
 
-  return {
-    "Content-Type": "application/json",
-    auth_key: chatApiAuthKey,
-  };
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  return headers;
 }

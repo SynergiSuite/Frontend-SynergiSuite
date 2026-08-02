@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, X, Sparkles } from "lucide-react";
+import { ArrowRight, X } from "lucide-react";
 
 export default function Navbar() {
   const router = useRouter();
@@ -87,13 +87,13 @@ export default function Navbar() {
           {/* Right Actions */}
           <div className="hidden md:flex items-center gap-4">
             <button
-              onClick={() => handleAction("login")}
+              onClick={() => handleAction("signin")}
               className="text-sm font-semibold text-white/70 hover:text-white transition-colors duration-300"
             >
               Login
             </button>
             <button
-              onClick={() => handleAction("login")}
+              onClick={() => handleAction("signin")}
               className="relative overflow-hidden group rounded-xl bg-gradient-to-r from-[#5271ff] to-[#a855f7] px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 hover:shadow-[0_0_20px_rgba(82,113,255,0.4)] active:scale-95"
             >
               <span className="relative z-10 flex items-center gap-1.5">
@@ -181,7 +181,7 @@ export default function Navbar() {
               <button
                 onClick={() => {
                   setMenuOpen(false);
-                  handleAction("login");
+                  handleAction("signin");
                 }}
                 className="w-full rounded-xl border border-white/[0.08] bg-white/[0.02] py-3.5 text-sm font-semibold text-white/70"
               >

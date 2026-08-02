@@ -7,16 +7,18 @@ import { Loader } from "@/components/ui/loader";
 import { useSearchParams } from "next/navigation";
 import { gsap } from "gsap";
 
+type SessionForm = "signup" | "signin";
+
 function SessionContent() {
-    const [form, setForm] = useState('signup');
+    const [form, setForm] = useState<SessionForm>('signup');
     const searchParams = useSearchParams();
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     useEffect(() => {
         const formParam = searchParams.get("form");
         
-        if (formParam === "login") {
-          setForm("login");
+        if (formParam === "login" || formParam === "signin") {
+          setForm("signin");
         } else if (formParam === "signup") {
           setForm("signup");
         }
@@ -230,4 +232,3 @@ export default function Session(){
         </Suspense>
     );
 }
-

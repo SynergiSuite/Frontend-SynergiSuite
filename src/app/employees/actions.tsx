@@ -1,10 +1,11 @@
-"use client"
+"use client";
 
-import { useEffect, useRef, useState } from "react"
-import { MoreHorizontalIcon, Pencil, Shield, Trash2, UserRound, X } from "lucide-react"
-import { gsap } from "gsap"
+import { useEffect, useRef, useState } from "react";
+import { MoreHorizontalIcon, Pencil, Shield, Trash2, UserRound, X, DollarSign } from "lucide-react";
+import { gsap } from "gsap";
+import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogClose,
@@ -13,7 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,82 +22,148 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { Role } from "./schemas/roles"
-import { fetchRoles } from "./apis/getRoleApi"
-
+} from "@/components/ui/select";
+import { Role } from "./schemas/roles";
+import { fetchRoles } from "./apis/getRoleApi";
+import { editEmployeeApi, EditEmployeePayload } from "./apis/editEmployeeApi";
+import { deleteEmployeeApi } from "./apis/deleteEmployeeApi";
 
 type ActionsProps = {
   id: number;
   role: string;
   name: string;
   isFounderUser: boolean;
+  onRefresh?: () => void;
 };
 
-export function Actions({id, role, name, isFounderUser}: ActionsProps) {
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [showNewDialog, setShowNewDialog] = useState(false)
-  const [showShareDialog, setShowShareDialog] = useState(false)
-  const [roleValue, setRoleValue] = useState(role)
+export function Actions({ id, role, name, isFounderUser, onRefresh }: ActionsProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showNewDialog, setShowNewDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [roleValue, setRoleValue] = useState(role);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [salaryValue, setSalaryValue] = useState("");
   const [roles, setRoles] = useState<Role[]>([]);
-  const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const menuRef = useRef<HTMLDivElement | null>(null)
-  const deleteDialogRef = useRef<HTMLDivElement | null>(null)
-  const editDialogRef = useRef<HTMLDivElement | null>(null)
-  const isFounder = isFounderUser
-  const normalizedEmployeeRole = role.trim().toLowerCase()
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const deleteDialogRef = useRef<HTMLDivElement | null>(null);
+  const editDialogRef = useRef<HTMLDivElement | null>(null);
+
+  const isFounder = isFounderUser;
+  const normalizedEmployeeRole = role.trim().toLowerCase();
   const isRestrictedEmployee =
     !isFounder &&
-    (normalizedEmployeeRole === "founder" || normalizedEmployeeRole === "manager")
+    (normalizedEmployeeRole === "founder" || normalizedEmployeeRole === "manager");
+
   const baseRoles = isFounder
     ? roles
     : roles.filter((item) => {
-        const roleName = item.name.toLowerCase()
-        return roleName !== "founder" && roleName !== "manager"
-      })
-  const visibleRoles = isRestrictedEmployee
-    ? [{ id: -1, name: role }, ...baseRoles.filter((item) => item.name !== role)]
-    : baseRoles
+        const roleName = item.name.toLowerCase();
+        return roleName !== "founder" && roleName !== "manager";
+      });
 
-  const handleDelete = () => {
-    console.log("Delete user", id);
-    // Add actual delete logic here
-    setShowNewDialog(false);
+  const visibleRoles = isRestrictedEmployee
+    ? [{ id: -1, name: role }, ...baseRoles.filter((item) => item.name.toLowerCase() !== role.toLowerCase())]
+    : baseRoles;
+
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      const res = await deleteEmployeeApi(id);
+      toast.success(res?.message || "Employee removed from business successfully.");
+      setShowNewDialog(false);
+      onRefresh?.();
+    } catch (error: any) {
+      console.error("Error deleting employee:", error);
+      toast.error(error?.message || "Failed to remove employee.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   useEffect(() => {
-    if (showShareDialog) {
-      setRoleValue(role)
-    }
-  }, [role, showShareDialog])
+    const loadRoles = async () => {
+      try {
+        const rolesData = await fetchRoles();
+        setRoles(rolesData);
+      } catch (error) {
+        console.error("Failed to load roles", error);
+      }
+    };
+    loadRoles();
+  }, []);
 
   useEffect(() => {
-    const loadRoles = async() => {
-          try {
-            const rolesData = await fetchRoles();
-            setRoles(rolesData);
-          } catch (error) {
-            console.error("Failed to load roles", error);
-          }
-        };
-    loadRoles();
-  }, [])
+    if (showShareDialog) {
+      setRoleValue(role);
+      setSalaryValue("");
+      if (roles.length > 0) {
+        const found = roles.find(
+          (r) => r.name.toLowerCase() === role.trim().toLowerCase()
+        );
+        if (found) {
+          setSelectedRoleId(found.id);
+        } else {
+          setSelectedRoleId(null);
+        }
+      }
+    }
+  }, [role, showShareDialog, roles]);
 
   const handleEditOpenChange = (open: boolean) => {
-    setShowShareDialog(open)
-  }
+    setShowShareDialog(open);
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      setIsSaving(true);
+      const payload: EditEmployeePayload = {};
+
+      const activeRoleId =
+        selectedRoleId && selectedRoleId > 0
+          ? selectedRoleId
+          : roles.find((r) => r.name.toLowerCase() === roleValue.toLowerCase())?.id;
+
+      if (activeRoleId) {
+        payload.roleId = activeRoleId;
+      }
+
+      if (salaryValue.trim() !== "") {
+        payload.salary = salaryValue.trim();
+      }
+
+      if (!payload.roleId && !payload.salary) {
+        toast.warning("Please select a valid role or enter a salary to update.");
+        setIsSaving(false);
+        return;
+      }
+
+      const res = await editEmployeeApi(id, payload);
+      toast.success(res?.message || "Employee updated successfully.");
+      setShowShareDialog(false);
+      onRefresh?.();
+    } catch (error: any) {
+      console.error("Error updating employee:", error);
+      toast.error(error?.message || "Failed to update employee.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   useEffect(() => {
-    if (!menuOpen || !menuRef.current) return
+    if (!menuOpen || !menuRef.current) return;
 
-    const items = menuRef.current.querySelectorAll("[data-employee-action-item]")
+    const items = menuRef.current.querySelectorAll("[data-employee-action-item]");
     gsap.fromTo(
       items,
       { opacity: 0, y: -6, scale: 0.98 },
@@ -107,15 +174,19 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
         duration: 0.22,
         ease: "power2.out",
         stagger: 0.04,
-      },
-    )
-  }, [menuOpen])
+      }
+    );
+  }, [menuOpen]);
 
   useEffect(() => {
-    const activeDialog = showNewDialog ? deleteDialogRef.current : showShareDialog ? editDialogRef.current : null
-    if (!activeDialog) return
+    const activeDialog = showNewDialog
+      ? deleteDialogRef.current
+      : showShareDialog
+      ? editDialogRef.current
+      : null;
+    if (!activeDialog) return;
 
-    const sections = activeDialog.querySelectorAll("[data-action-dialog-section]")
+    const sections = activeDialog.querySelectorAll("[data-action-dialog-section]");
     gsap.fromTo(
       sections,
       { opacity: 0, y: 12 },
@@ -125,19 +196,19 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
         duration: 0.32,
         ease: "power3.out",
         stagger: 0.06,
-      },
-    )
-  }, [showNewDialog, showShareDialog])
+      }
+    );
+  }, [showNewDialog, showShareDialog]);
 
   const animateTrigger = (scale: number, y: number) => {
-    if (!triggerRef.current) return
+    if (!triggerRef.current) return;
     gsap.to(triggerRef.current, {
       scale,
       y,
       duration: 0.2,
       ease: "power2.out",
-    })
-  }
+    });
+  };
 
   return (
     <>
@@ -167,19 +238,17 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
             Actions
           </DropdownMenuLabel>
           <DropdownMenuGroup className="space-y-1">
-            {isFounderUser && (
-              <DropdownMenuItem
-                data-employee-action-item
-                variant="destructive"
-                onSelect={() => setShowNewDialog(true)}
-                className="cursor-pointer rounded-xl px-3 py-2.5 text-sm text-red-300 outline-none transition-colors focus:bg-red-500/10 focus:text-red-200 data-[highlighted]:bg-red-500/10"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-300">
-                  <Trash2 className="h-4 w-4" />
-                </span>
-                <span className="font-medium">Delete user</span>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem
+              data-employee-action-item
+              variant="destructive"
+              onSelect={() => setShowNewDialog(true)}
+              className="cursor-pointer rounded-xl px-3 py-2.5 text-sm text-red-300 outline-none transition-colors focus:bg-red-500/10 focus:text-red-200 data-[highlighted]:bg-red-500/10"
+            >
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-300">
+                <Trash2 className="h-4 w-4" />
+              </span>
+              <span className="font-medium">Delete user</span>
+            </DropdownMenuItem>
             <DropdownMenuItem
               data-employee-action-item
               onSelect={() => setShowShareDialog(true)}
@@ -188,12 +257,11 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
               <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#5271ff]/25 bg-[#5271ff]/10 text-[#8fa2ff]">
                 <Pencil className="h-4 w-4" />
               </span>
-              <span className="font-medium">Edit role</span>
+              <span className="font-medium">Edit employee</span>
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
-
 
       <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
         <DialogContent
@@ -206,8 +274,8 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
               <div>
                 <DialogTitle className="text-xl font-semibold text-white">Delete user</DialogTitle>
                 <DialogDescription className="mt-2 text-sm text-white/45">
-              Are you sure you want to delete this user?
-            </DialogDescription>
+                  Are you sure you want to delete this user?
+                </DialogDescription>
               </div>
               <DialogClose asChild>
                 <button
@@ -235,16 +303,16 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
               </Button>
             </DialogClose>
             <Button
-              type="submit"
+              type="button"
               onClick={handleDelete}
-              className="rounded-xl bg-red-500/85 text-white shadow-[0_0_18px_rgba(239,68,68,0.24)] hover:bg-red-500"
+              disabled={isDeleting}
+              className="rounded-xl bg-red-500/85 text-white shadow-[0_0_18px_rgba(239,68,68,0.24)] hover:bg-red-500 disabled:opacity-50 cursor-pointer"
             >
-              Delete
+              {isDeleting ? "Deleting..." : "Delete"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
 
       <Dialog open={showShareDialog} onOpenChange={handleEditOpenChange}>
         <DialogContent
@@ -255,8 +323,8 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
           <DialogHeader className="border-b border-white/[0.08] px-6 py-6 sm:px-8" data-action-dialog-section>
             <div className="flex items-start justify-between gap-4">
               <div>
-                <DialogTitle className="text-xl font-semibold text-white">Edit user role</DialogTitle>
-                <DialogDescription className="mt-2 text-sm text-white/45">Update the employee designation.</DialogDescription>
+                <DialogTitle className="text-xl font-semibold text-white">Edit Employee</DialogTitle>
+                <DialogDescription className="mt-2 text-sm text-white/45">Update designation or salary details.</DialogDescription>
               </div>
               <DialogClose asChild>
                 <button
@@ -287,15 +355,21 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
                 <label htmlFor={`employee-role-${id}`} className="block text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
                   Designation
                 </label>
                 <Select
                   disabled={isRestrictedEmployee}
-                  value={roleValue || undefined}
+                  value={selectedRoleId ? String(selectedRoleId) : ""}
                   onValueChange={(value) => {
-                    setRoleValue(value)
+                    const numId = Number(value);
+                    setSelectedRoleId(numId);
+                    const found = roles.find((r) => r.id === numId);
+                    if (found) {
+                      setRoleValue(found.name);
+                    }
                   }}
                 >
                   <SelectTrigger
@@ -308,9 +382,9 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
                     </span>
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border border-white/[0.08] bg-[#0a0826] text-white shadow-[0_18px_50px_rgba(3,1,20,0.45)]">
-                    {visibleRoles.map((role) => (
-                      <SelectItem key={role.id} value={role.name} className="cursor-pointer rounded-lg focus:bg-[#5271ff]/12 focus:text-white">
-                        {role.name}
+                    {visibleRoles.map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)} className="cursor-pointer rounded-lg focus:bg-[#5271ff]/12 focus:text-white">
+                        {r.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -318,6 +392,24 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
                 {isRestrictedEmployee && (
                   <p className="text-xs text-white/35">Only founders can update founder or manager roles.</p>
                 )}
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor={`employee-salary-${id}`} className="block text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
+                  Salary
+                </label>
+                <div className="flex h-12 items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 transition focus-within:border-[#5271ff]/50">
+                  <DollarSign className="h-4 w-4 text-[#8fa2ff]" />
+                  <input
+                    id={`employee-salary-${id}`}
+                    name="salary"
+                    type="text"
+                    placeholder="Enter salary (optional)"
+                    value={salaryValue}
+                    onChange={(e) => setSalaryValue(e.target.value)}
+                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-white placeholder-white/20 outline-none"
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -331,14 +423,16 @@ export function Actions({id, role, name, isFounderUser}: ActionsProps) {
               </Button>
             </DialogClose>
             <Button
-              type="submit"
-              className="rounded-xl bg-[#5271ff] text-white shadow-[0_0_18px_rgba(82,113,255,0.24)] hover:bg-[#6380ff]"
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={isSaving}
+              className="rounded-xl bg-[#5271ff] text-white shadow-[0_0_18px_rgba(82,113,255,0.24)] hover:bg-[#6380ff] disabled:opacity-50 cursor-pointer"
             >
-              Save changes
+              {isSaving ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
-  )
+  );
 }

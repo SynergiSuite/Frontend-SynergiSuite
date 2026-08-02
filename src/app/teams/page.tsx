@@ -10,9 +10,9 @@ import CreateTeamModal from "./createTeamModal";
 import { Button } from "@/global/buttons";
 import { CookieManager } from "@/lib/cookieManager";
 import LoaderCustom from "@/components/ui/loader-custom";
-import { Employee, Team, Teams } from "./schemas/types";
-import { toast } from "sonner";
-import { getTeamsApi } from "./apis/getTeamsApi";
+import { Employee, Teams } from "./schemas/types";
+import { getTeamsWithTasksApi, PaginationMeta } from "./apis/getTeamsWithTasksApi";
+import { getAllEmployeesApi } from "@/app/employees/apis/getAllEmployeeApi";
 import { canManageTeams } from "@/lib/rolePermissions";
 import { gsap } from "gsap";
 
@@ -24,6 +24,10 @@ export default function Page() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [role, setRole] = useState("");
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [limit, setLimit] = useState<number>(5);
+  const [paginationMeta, setPaginationMeta] = useState<PaginationMeta | null>(null);
+
   const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
   const canManageTeamActions = canManageTeams(role);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,79 +53,54 @@ export default function Page() {
     }
   }, [isLoading]);
 
-  // Get All Teams
+  // Get Teams with tasks using backend pagination
   useEffect(() => {
     const cookieRole = CookieManager("get", "role");
     setRole((cookieRole as string) ?? "");
 
     const fetchTeamsData = async () => {
       setIsLoading(true);
-      const data = await getTeamsApi();
-      setTeams(data.teams);
-      setCount(data.count);
+      try {
+        const response = await getTeamsWithTasksApi(currentPage, limit);
+        setTeams(response.data);
+        setPaginationMeta(response.meta);
+        setCount(response.meta?.totalItems ?? response.data.length);
+      } catch (error) {
+        console.error("Failed to fetch teams with tasks:", error);
+      } finally {
+        setIsLoading(false);
+      }
     };
 
     const fetchEmployeesData = async () => {
-      const accessToken = CookieManager("get", "access-token");
-      const response = await fetch(
-        `${requestBaseUrl}/business/get-employees`,
-        {
-          method: "POST",
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({}),
-        },
-      );
+      try {
+        const allEmployees = await getAllEmployeesApi();
+        const normalizedEmployees: Employee[] = allEmployees.map((emp) => ({
+          user_id: emp.user_id,
+          name: emp.name || `${emp.first_name || ""} ${emp.last_name || ""}`.trim() || "Unnamed",
+          email: emp.email,
+        }));
 
-      const data = await response.json();
-      const normalizedEmployees: Employee[] = Array.isArray(
-        (data as any)?.employees?.employees
-      )
-        ? (data as any).employees.employees
-        : Array.isArray((data as any)?.employees)
-        ? (data as any).employees
-        : [];
-
-      setEmployees(normalizedEmployees);
-      setIsLoading(false);
+        setEmployees(normalizedEmployees);
+      } catch (err) {
+        console.error("Failed to fetch employees for teams:", err);
+      }
     };
+
     fetchTeamsData();
     fetchEmployeesData();
-  }, [reload]);
+  }, [reload, currentPage, limit]);
 
-  const handleSubmitOnCreate = async(formData: Team) => {
-    if (!canManageTeamActions) {
-      toast.error("You do not have permission to create teams.");
-      return;
-    }
-
-    const accessToken = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/teams/create`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formData)
-      },
-    );
-
-    if(!response.ok) {
-      toast.error(response.statusText);
-      return;
-    }
-    setIsModalOpen(false);
+  const handleSubmitOnCreate = () => {
     setReload((prev) => !prev);
-    toast.success("Team created successfully");
   };
+
+  const pendingTasksSum = teams.reduce((acc, t) => acc + (t.ongoingTasks ?? 0), 0);
 
   const states = [
     { title: "Total Teams", value: count, change: "" },
     { title: "Active Projects", value: 8, change: "" },
-    { title: "Pending Tasks", value: 24, change: "" },
+    { title: "Pending Tasks", value: pendingTasksSum, change: "Across loaded teams" },
     { title: "Reports", value: 15, change: "" },
   ];
 
@@ -150,10 +129,10 @@ export default function Page() {
 
           <div className="gsap-fade-in grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
-              <TeamActivitiesChart />
+              <TeamActivitiesChart teams={teams} />
             </div>
             <div className="lg:col-span-1">
-              <TeamPerformanceChart />
+              <TeamPerformanceChart teams={teams} />
             </div>
           </div>
 
@@ -186,6 +165,8 @@ export default function Page() {
                 employees={employees}
                 canManageTeams={canManageTeamActions}
                 onRefresh={() => setReload((prev) => !prev)}
+                paginationMeta={paginationMeta}
+                onPageChange={(newPage) => setCurrentPage(newPage)}
               />
             </div>
           </div>

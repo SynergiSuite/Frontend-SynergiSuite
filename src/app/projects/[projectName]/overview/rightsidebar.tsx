@@ -6,14 +6,11 @@ import { Task } from "../task/schemas/task";
 
 type RightSidebarProps = {
   tasks: Task[];
+  projectId?: string;
+  projectName?: string;
 };
 
-const RightSidebar = ({ tasks }: RightSidebarProps) => {
-  const activities = [
-    "Sarah Wilson completed Project Requirements",
-    "Michael Chen commented on Backend API Setup",
-    "Emily Davis updated Frontend status",
-  ];
+const RightSidebar = ({ tasks, projectId, projectName }: RightSidebarProps) => {
   const normalizeStatus = (status: string) =>
     status.trim().toLowerCase().replace(/[\s-]+/g, "_");
   const stats = tasks.reduce(
@@ -33,7 +30,7 @@ const RightSidebar = ({ tasks }: RightSidebarProps) => {
     <>
       <div className="w-full min-w-0 space-y-4">
         <QuickStats stats={stats} />
-        <ActivityFeed activities={activities} />
+        <ActivityFeed projectId={projectId} projectName={projectName} />
       </div>
     </>
   );

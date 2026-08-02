@@ -17,6 +17,8 @@ type EditClientModalProps = {
     address: string;
     company: string;
     priority: number;
+    paymentType?: string;
+    amount?: number;
   };
   onClose: () => void;
   onSave: (id: string, payload: EditClientDto) => Promise<void>;
@@ -33,6 +35,8 @@ export default function EditClientModal({
   const [address, setAddress] = useState(client.address);
   const [company, setCompany] = useState(client.company);
   const [priority, setPriority] = useState<number>(client.priority);
+  const [paymentType, setPaymentType] = useState<string>(client.paymentType || "per_hour");
+  const [amount, setAmount] = useState<number | string>(client.amount ?? 125);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -42,6 +46,8 @@ export default function EditClientModal({
     setAddress(client.address);
     setCompany(client.company);
     setPriority(client.priority);
+    setPaymentType(client.paymentType || "per_hour");
+    setAmount(client.amount ?? 125);
   }, [client]);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -60,6 +66,8 @@ export default function EditClientModal({
         address,
         company,
         priority,
+        paymentType,
+        amount: Number(amount) || 0,
       });
       onClose();
     } finally {
@@ -204,6 +212,43 @@ export default function EditClientModal({
                 <ChevronDown
                   size={16}
                   className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
+                  Payment Type
+                </label>
+                <div className="relative">
+                  <select
+                    value={paymentType}
+                    onChange={(event) => setPaymentType(event.target.value)}
+                    className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
+                  >
+                    <option value="per_hour" className="bg-[#0c0a2f] text-white">Per Hour</option>
+                    <option value="each_milestone" className="bg-[#0c0a2f] text-white">Each Milestone</option>
+                  </select>
+
+                  <ChevronDown
+                    size={16}
+                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
+                  Billing Amount ($)
+                </label>
+                <input
+                  type="number"
+                  placeholder="125"
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  min="0"
+                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                 />
               </div>
             </div>

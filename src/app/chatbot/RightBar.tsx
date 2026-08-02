@@ -2,7 +2,14 @@
 
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, MessageSquarePlus, Sparkles, Trash2 } from "lucide-react";
+import { MessageSquarePlus, Sparkles, Trash2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { gsap } from "gsap";
 
 type SessionItem = {
@@ -103,20 +110,36 @@ const Sidebar = ({
             </div>
           </div>
 
-          <div className="relative">
-            <select
-              value={model}
-              onChange={(event) =>
-                onModelChange(event.target.value as "llama" | "gpt" | "gemma")
-              }
-              className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#030114]/60 px-4 pr-11 text-xs font-semibold text-white/90 outline-none transition focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 cursor-pointer"
-            >
-              <option value="llama" className="bg-[#0c0a2d] text-white">Llama 7b</option>
-              <option value="gpt" className="bg-[#0c0a2d] text-white">GPT 20b</option>
-              <option value="gemma" className="bg-[#0c0a2d] text-white">Gemma</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
-          </div>
+          <Select
+            value={model}
+            onValueChange={(val) =>
+              onModelChange(val as "llama" | "gpt" | "gemma")
+            }
+          >
+            <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#030114]/60 px-4 text-xs font-semibold text-white/90 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer hover:border-white/[0.15] transition-all duration-300 flex items-center justify-between">
+              <SelectValue placeholder="Select assistant engine" />
+            </SelectTrigger>
+            <SelectContent className="border border-white/[0.08] bg-[#0a0826]/95 text-white rounded-xl shadow-2xl backdrop-blur-2xl p-1 z-50">
+              <SelectItem
+                value="llama"
+                className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white rounded-lg py-2 px-3 transition-colors text-white/90 text-xs font-medium"
+              >
+                Llama 7b
+              </SelectItem>
+              <SelectItem
+                value="gpt"
+                className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white rounded-lg py-2 px-3 transition-colors text-white/90 text-xs font-medium"
+              >
+                GPT 20b
+              </SelectItem>
+              <SelectItem
+                value="gemma"
+                className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white rounded-lg py-2 px-3 transition-colors text-white/90 text-xs font-medium"
+              >
+                Gemma
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 

@@ -32,6 +32,8 @@ export type ClientType = {
   company: string;
   address: string;
   priority: number;
+  paymentType: string;
+  amount: number;
   image: string;
 };
 
@@ -47,6 +49,8 @@ const mapClientResponse = (
   company: client.company ?? "",
   address: client.address ?? "",
   priority: client.priority ?? ClientPriority.MEDIUM,
+  paymentType: client.paymentType ?? "per_hour",
+  amount: typeof client.amount === "number" ? client.amount : Number(client.amount) || 0,
   image: `https://i.pravatar.cc/100?u=${client.email ?? client.name ?? index}`,
 });
 

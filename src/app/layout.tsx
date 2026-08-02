@@ -5,7 +5,6 @@ import { jwtVerify } from "jose";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { hasCookie } from "cookies-next";
 import "./globals.css";
 import Sidebar from "../components/ui/sidebar";
 import Navbar from "../components/ui/navbar";
@@ -22,6 +21,8 @@ const access_secret = new TextEncoder().encode("synergi_user");
 const protectedRoutes = [
   "/dashboard",
   "/employees",
+  "/analytics",
+  "/analytics/*",
   "/settings",
   "/projects",
   "/projects/*",
@@ -37,10 +38,16 @@ const protectedRoutes = [
   "/cloud",
   "/cloud/*",
   "/collab-station",
-  "/collab-station/*"
+  "/collab-station/*",
+  "/meetings",
+  "/meetings/*",
+  "/feedback",
+  "/feedback/*",
+  "/client",
+  "/client/*"
 ];
 
-const publicRoutes = ["/login", "/signup", "/forgot-password"];
+const publicRoutes = ["/session", "/login", "/signup", "/forgot-password"];
 
 const programmaticOnlyRoutes = [
   "/session/verify-code",
@@ -184,6 +191,27 @@ export default function RootLayout({
         if (typeof token === "string") {
           try {
             await jwtVerify(token, access_secret);
+            const verifyToken = CookieManager("get", "verify-token");
+            const registerToken = CookieManager("get", "register-token");
+            const businessId = CookieManager("get", "business-id");
+            const businessName = CookieManager("get", "business-name");
+
+            if (verifyToken) {
+              router.replace("/session/verify-code");
+              return;
+            }
+
+            if (registerToken && (!businessId || !businessName)) {
+              router.replace("/session/register-business");
+              return;
+            }
+
+            const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+            if (userRole === "client") {
+              router.replace("/projects");
+              return;
+            }
+
             router.replace("/dashboard");
             return;
           } catch {
@@ -196,16 +224,21 @@ export default function RootLayout({
 
       // Protected routes
       if (isProtectedPath) {
-        const userBusiness = hasCookie("business-id");
-        const userBusinessName = hasCookie("business-name");
+        const registerToken = CookieManager("get", "register-token");
 
-        if (!userBusiness || !userBusinessName) {
-          CookieManager("delete", "access-token");
-          CookieManager("delete", "user-email");
-          CookieManager("delete", "verify-token");
-          CookieManager("delete", "register-token");
-          CookieManager("delete", "user");
-          router.replace("/session");
+        if (registerToken) {
+          router.replace("/session/register-business");
+          return;
+        }
+
+        const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+        const allowedClientRoutes = ["/projects", "/feedback", "/client", "/cloud", "/task", "/meetings"];
+        const isAllowedClientRoute = allowedClientRoutes.some(
+          (route) => pathName === route || pathName.startsWith(route + "/")
+        );
+
+        if (userRole === "client" && !isAllowedClientRoute) {
+          router.replace("/projects");
           return;
         }
 
@@ -220,12 +253,7 @@ export default function RootLayout({
           return;
         }
         try {
-          const data = await jwtVerify(token, access_secret);
-          const user_email = CookieManager("get", "user-email");
-          if (data.payload.email != user_email) {
-            setShowSidebar(false);
-            throw new Error("Invalid token");
-          }
+          await jwtVerify(token, access_secret);
 
           if (pathName.startsWith("/task")) {
             setShowRightSidebar(true);

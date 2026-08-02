@@ -24,6 +24,8 @@ const AddClientSidebar = ({
   const [company, setCompany] = useState<string>("");
   const [priority, setPriority] =
     useState<ClientPriority>(ClientPriority.HIGH);
+  const [paymentType, setPaymentType] = useState<string>("per_hour");
+  const [amount, setAmount] = useState<number | string>(125);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Add Client Function
@@ -46,6 +48,8 @@ const AddClientSidebar = ({
       address,
       company,
       priority,
+      paymentType,
+      amount: Number(amount) || 0,
     };
 
     try {
@@ -57,6 +61,8 @@ const AddClientSidebar = ({
       setAddress("");
       setCompany("");
       setPriority(ClientPriority.HIGH);
+      setPaymentType("per_hour");
+      setAmount(125);
     } finally {
       setIsSubmitting(false);
     }
@@ -197,6 +203,45 @@ const AddClientSidebar = ({
                   className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
                 />
               </div>
+            </div>
+
+            {/* Payment Type */}
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
+                Payment Type
+              </label>
+
+              <div className="relative">
+                <select
+                  value={paymentType}
+                  onChange={(e) => setPaymentType(e.target.value)}
+                  className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
+                >
+                  <option value="per_hour" className="bg-[#0c0a2f] text-white">Per Hour</option>
+                  <option value="each_milestone" className="bg-[#0c0a2f] text-white">Each Milestone</option>
+                </select>
+
+                <ChevronDown
+                  size={16}
+                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
+                />
+              </div>
+            </div>
+
+            {/* Amount */}
+            <div>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
+                Billing Amount ($)
+              </label>
+
+              <input
+                type="number"
+                placeholder="125"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                min="0"
+                className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
+              />
             </div>
           </div>
 

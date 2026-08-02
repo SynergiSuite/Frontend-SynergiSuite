@@ -211,15 +211,14 @@ export default function CloudStoragePage() {
 
   const handleDeleteFile = async (id: string) => {
     try {
-      // Call delete backend API
       await deleteDocumentApi(id);
-
-      setFiles((prev) => prev.filter((f) => f.id !== id));
-      toast.success("File successfully deleted");
-    } catch {
-      // Fallback local deletion if API is not fully set up
-      setFiles((prev) => prev.filter((f) => f.id !== id));
-      toast.success("File successfully deleted locally");
+      setFiles((prev) => prev.filter((f) => String(f.id) !== String(id)));
+      toast.success("Document deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      const message = error instanceof Error ? error.message : "Failed to delete document";
+      toast.error(message);
+      throw error;
     }
   };
 
@@ -275,6 +274,7 @@ export default function CloudStoragePage() {
             onClose={() => setIsUploadOpen(false)}
             onSave={handleUploadFile}
             teams={teams}
+            role={role}
           />
         ) : null}
 
@@ -283,6 +283,10 @@ export default function CloudStoragePage() {
             file={detailFile}
             open={detailFile !== null}
             onClose={() => setDetailFile(null)}
+            onDelete={(id) => {
+              setDetailFile(null);
+              setDeleteFileId(id);
+            }}
           />
         ) : null}
 

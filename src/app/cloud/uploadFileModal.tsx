@@ -4,34 +4,65 @@ import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ChevronDown, CloudUpload, X } from "lucide-react";
 import { FileType } from "./statesCards";
-import { DocumentLabel, DOCUMENT_LABEL_OPTIONS } from "@/app/enums/documentLabel.enum";
+import {
+  DocumentLabel,
+  ALL_DOCUMENT_LABEL_OPTIONS,
+  CLIENT_DOCUMENT_LABEL_OPTIONS,
+} from "@/app/enums/documentLabel.enum";
 import { getPresignedUrlApi } from "./apis/getPresignedUrlApi";
 import { createDocumentApi } from "./apis/createDocumentApi";
+import { getAllProjectsApi } from "@/app/projects/apis/getAllProjectsApi";
+import { Projects } from "@/app/projects/schemas/project";
 import { toast } from "sonner";
 
 type UploadFileModalProps = {
   onClose: () => void;
   onSave: (payload: Omit<FileType, "id" | "uploadedAt" | "sizeBytes"> & { document_id?: number; file_path?: string }) => Promise<void>;
   teams: any[];
+  role?: string;
 };
-
-const MOCK_PROJECTS = ["SynergiSuite Frontend", "NextGen Mobile Client", "Enterprise CRM Integrator", "AI Analytics Node"];
 
 export default function UploadFileModal({
   onClose,
   onSave,
   teams,
+  role,
 }: UploadFileModalProps) {
+  const isClientRole = role?.toLowerCase() === "client";
+  const labelOptions = isClientRole ? CLIENT_DOCUMENT_LABEL_OPTIONS : ALL_DOCUMENT_LABEL_OPTIONS;
+
   const [name, setName] = useState("");
   const [category, setCategory] = useState<"Document" | "Image" | "Media" | "Archive" | "Other">("Document");
   const [size, setSize] = useState("");
   const [userLabel, setUserLabel] = useState("");
-  const [labelType, setLabelType] = useState<number>(DocumentLabel.PERSONAL);
+  const [labelType, setLabelType] = useState<number>(isClientRole ? DocumentLabel.PROJECT : DocumentLabel.PROJECT);
   const [teamId, setTeamId] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [apiProjects, setApiProjects] = useState<Projects[]>([]);
   const [isClient, setIsClient] = useState(true);
   const [forClient, setForClient] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        const projects = await getAllProjectsApi();
+        const mappedProjects: Projects[] = projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          status: p.status,
+          duration: p.duration,
+          teams: [],
+          client: {} as any,
+          tasks: [],
+        }));
+        setApiProjects(mappedProjects);
+      } catch (error) {
+        console.error("Failed to load projects for dropdown:", error);
+      }
+    };
+    loadProjects();
+  }, []);
 
   // Real Upload state
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -115,7 +146,8 @@ export default function UploadFileModal({
         setUploadStatus("Requesting upload ticket...");
         const presignedData = await getPresignedUrlApi(
           selectedFile.name,
-          selectedFile.type || "application/octet-stream"
+          selectedFile.type || "application/octet-stream",
+          process.env.NEXT_PUBLIC_DOC_BUCKET || "synergisuite-resources"
         );
         filePath = presignedData.filePath;
 
@@ -138,15 +170,18 @@ export default function UploadFileModal({
       setUploadStatus("Creating database entry...");
       
       // Determine reference type and reference ID mapping
-      let reference_type = "personal";
-      let reference_id = "personal";
+      let reference_type = "project";
+      let reference_id = projectId || "project";
 
-      if (labelType === DocumentLabel.TEAM) {
+      if (labelType === DocumentLabel.PERSONAL) {
+        reference_type = "personal";
+        reference_id = "personal";
+      } else if (labelType === DocumentLabel.TEAM) {
         reference_type = "team";
-        reference_id = teamId;
+        reference_id = teamId || "team";
       } else if (labelType === DocumentLabel.PROJECT) {
         reference_type = "project";
-        reference_id = projectId;
+        reference_id = projectId || "project";
       } else if (labelType === DocumentLabel.CLIENT) {
         reference_type = "client";
         reference_id = "client";
@@ -305,11 +340,11 @@ export default function UploadFileModal({
                     onChange={(event) => setCategory(event.target.value as any)}
                     className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                   >
-                    <option value="Document">Document</option>
-                    <option value="Image">Image</option>
-                    <option value="Media">Media</option>
-                    <option value="Archive">Archive</option>
-                    <option value="Other">Other</option>
+                    <option value="Document" className="bg-[#0c0a2f] text-white">Document</option>
+                    <option value="Image" className="bg-[#0c0a2f] text-white">Image</option>
+                    <option value="Media" className="bg-[#0c0a2f] text-white">Media</option>
+                    <option value="Archive" className="bg-[#0c0a2f] text-white">Archive</option>
+                    <option value="Other" className="bg-[#0c0a2f] text-white">Other</option>
                   </select>
                   <ChevronDown
                     size={16}
@@ -359,8 +394,8 @@ export default function UploadFileModal({
                     onChange={(event) => setLabelType(Number(event.target.value))}
                     className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                   >
-                    {DOCUMENT_LABEL_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
+                    {labelOptions.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-[#0c0a2f] text-white">
                         {option.label}
                       </option>
                     ))}
@@ -385,9 +420,9 @@ export default function UploadFileModal({
                       required
                       className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                     >
-                      <option value="">-- Choose Team --</option>
+                      <option value="" className="bg-[#0c0a2f] text-white">-- Choose Team --</option>
                       {teams.map((t) => (
-                        <option key={t.id || t.team_id || t.name} value={String(t.id || t.team_id || t.name)}>
+                        <option key={t.id || t.team_id || t.name} value={String(t.id || t.team_id || t.name)} className="bg-[#0c0a2f] text-white">
                           {t.name || t.team_name || "Unnamed Team"}
                         </option>
                       ))}
@@ -412,9 +447,11 @@ export default function UploadFileModal({
                       required
                       className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                     >
-                      <option value="">-- Choose Project --</option>
-                      {MOCK_PROJECTS.map((p) => (
-                        <option key={p} value={p}>{p}</option>
+                      <option value="" className="bg-[#0c0a2f] text-white">-- Choose Project --</option>
+                      {apiProjects.map((p) => (
+                        <option key={p.id} value={String(p.id)} className="bg-[#0c0a2f] text-white">
+                          {p.name}
+                        </option>
                       ))}
                     </select>
                     <ChevronDown

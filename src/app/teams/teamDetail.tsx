@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { gsap } from "gsap";
 import {
@@ -99,10 +100,15 @@ export default function TeamDetailModal({
   open,
   onClose,
 }: TeamDetailProps) {
+  const [mounted, setMounted] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const members = team ? resolveTeamMembers(team) : [];
   const progressLabel = progress === null ? "Not available" : `${progress}%`;
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const loadProgress = async () => {
@@ -146,15 +152,15 @@ export default function TeamDetailModal({
     }
   }, [open, team?.id, progress]);
 
-  if (!team) {
+  if (!mounted || !team) {
     return null;
   }
 
-  return (
+  const modal = (
     <AnimatePresence>
       {open ? (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center px-4 py-8"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -164,27 +170,27 @@ export default function TeamDetailModal({
             type="button"
             aria-label="Close team details"
             onClick={onClose}
-            className="absolute inset-0 bg-[#030114]/60 backdrop-blur-md"
+            className="absolute inset-0 bg-[#030114]/65 backdrop-blur-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           />
 
           <motion.div
-            className="relative max-h-[calc(100vh-2rem)] w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/90 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
-            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            className="relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.65)]"
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 240, damping: 24 }}
+            exit={{ opacity: 0, y: 12, scale: 0.98 }}
+            transition={{ type: "spring", stiffness: 260, damping: 24 }}
           >
             {/* Top blue glow element */}
-            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.15),transparent_58%)]" />
+            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.15),transparent_58%)] pointer-events-none" />
 
-            <div ref={containerRef} className="relative overflow-y-auto max-h-[calc(100vh-2.5rem)]">
+            <div ref={containerRef} className="relative overflow-y-auto max-h-[calc(100vh-2.5rem)] flex-1">
               <div className="border-b border-white/[0.08] px-6 py-6 sm:px-8">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm shadow-inner">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm shadow-inner shrink-0">
                       <span className="bg-gradient-to-br from-[#5271ff] to-cyan-400 bg-clip-text text-2xl font-black text-transparent">
                         {team.name?.charAt(0)?.toUpperCase() || "T"}
                       </span>
@@ -210,7 +216,7 @@ export default function TeamDetailModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white shrink-0"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -227,11 +233,6 @@ export default function TeamDetailModal({
                   icon={<Crown className="h-4 w-4" />}
                   label="Team Leader"
                   value={resolveLeaderName(team)}
-                />
-                <DetailRow
-                  icon={<ShieldCheck className="h-4 w-4" />}
-                  label="Team ID"
-                  value={team.id || "N/A"}
                 />
                 <DetailRow
                   icon={<ChartNoAxesColumn className="h-4 w-4" />}
@@ -279,4 +280,6 @@ export default function TeamDetailModal({
       ) : null}
     </AnimatePresence>
   );
+
+  return createPortal(modal, document.body);
 }

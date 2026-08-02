@@ -67,6 +67,68 @@ body {
   font-family: 'Geist', Arial, Helvetica, sans-serif;
 }
 
+/* ============================================
+   GLOBAL MINIMAL CUSTOM SCROLLBAR
+   Theme-matched for SynergiSuite dark design
+   ============================================ */
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(82, 113, 255, 0.35) transparent;
+}
+
+/* WebKit / Blink (Chrome, Safari, Edge, Opera) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(3, 1, 20, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(82, 113, 255, 0.35);
+  border-radius: 9999px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 113, 255, 0.75);
+  border-color: rgba(82, 113, 255, 0.4);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #5271ff;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Utility class for specific containers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(82, 113, 255, 0.35);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(82, 113, 255, 0.75);
+}
+
 /* Buttons */
 .button_primary_lg {
   background-color: #18181B;

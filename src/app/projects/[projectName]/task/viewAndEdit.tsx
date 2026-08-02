@@ -49,6 +49,7 @@ type ViewAndEditProps = {
   onSave: (payload: TaskViewEditPayload) => void;
   statusOptions?: string[];
   priorityOptions?: string[];
+  canEdit?: boolean;
 };
 
 const LeaderIcon = () => (
@@ -71,6 +72,7 @@ export default function ViewAndEditModal({
   onSave,
   statusOptions,
   priorityOptions,
+  canEdit = true,
 }: ViewAndEditProps) {
   const [taskId, setTaskId] = useState(data.id ?? "");
   const [title, setTitle] = useState(data.title ?? "");
@@ -148,10 +150,12 @@ export default function ViewAndEditModal({
         {/* Header */}
         <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01]">
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            View & Edit Task
+            {canEdit ? "View & Edit Task" : "View Task Details"}
           </h2>
           <p className="text-xs text-white/40 mt-1 font-medium">
-            Update task properties, parameters, and review assignments
+            {canEdit
+              ? "Update task properties, parameters, and review assignments"
+              : "Review task details, status, and assigned team members"}
           </p>
         </div>
 
@@ -164,8 +168,9 @@ export default function ViewAndEditModal({
             </label>
             <input
               type="text"
+              disabled={!canEdit}
               placeholder="Enter task title"
-              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300"
+              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 disabled:opacity-75 disabled:cursor-not-allowed"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
             />
@@ -178,8 +183,9 @@ export default function ViewAndEditModal({
             </label>
             <textarea
               rows={3}
+              disabled={!canEdit}
               placeholder="Add task details..."
-              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 resize-none"
+              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 resize-none disabled:opacity-75 disabled:cursor-not-allowed"
               value={description}
               onChange={(event) => setDescription(event.target.value)}
             />
@@ -192,8 +198,8 @@ export default function ViewAndEditModal({
               <label className="block text-sm font-semibold text-white/70 mb-2">
                 Status
               </label>
-              <Select value={statusValue} onValueChange={setStatusValue}>
-                <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
+              <Select value={statusValue} onValueChange={setStatusValue} disabled={!canEdit}>
+                <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300 disabled:opacity-75 disabled:cursor-not-allowed">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
@@ -215,8 +221,8 @@ export default function ViewAndEditModal({
               <label className="block text-sm font-semibold text-white/70 mb-2">
                 Priority
               </label>
-              <Select value={priorityValue} onValueChange={setPriorityValue}>
-                <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300">
+              <Select value={priorityValue} onValueChange={setPriorityValue} disabled={!canEdit}>
+                <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300 disabled:opacity-75 disabled:cursor-not-allowed">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
@@ -241,9 +247,10 @@ export default function ViewAndEditModal({
             </label>
             <input
               type="date"
+              disabled={!canEdit}
               value={dueDate}
               onChange={(event) => setDueDate(event.target.value)}
-              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-2.5 h-11 text-white focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 scheme-dark cursor-pointer font-medium"
+              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-2.5 h-11 text-white focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 scheme-dark cursor-pointer font-medium disabled:opacity-75 disabled:cursor-not-allowed"
             />
             <p className="mt-1.5 text-xs text-white/30 font-medium pl-1">
               Format: YYYY-MM-DD
@@ -252,51 +259,46 @@ export default function ViewAndEditModal({
 
           {/* Assigned Teams */}
           <div>
-            <h3 className="text-sm font-semibold text-white/70 mb-3">
-              Assigned Team & Members
-            </h3>
-            {teams.length === 0 ? (
-              <div className="text-sm text-white/40 italic pl-1">
-                No team assigned to this task.
+            <label className="block text-sm font-semibold text-white/70 mb-3">
+              Assigned Teams & Squad Members
+            </label>
+
+            {!data.teams || data.teams.length === 0 ? (
+              <div className="rounded-xl border border-white/[0.08] bg-[#030114]/30 p-4 text-sm text-white/40 italic">
+                No teams assigned to this task.
               </div>
             ) : (
-              <div className="space-y-4">
-                {teams.map((team) => {
-                  const leaderId =
-                    team.leader?.user_id ?? team.leader_id ?? null;
+              <div className="space-y-3">
+                {data.teams.map((team) => {
                   const members = team.members ?? [];
-                  const normalizedMembers =
-                    leaderId && !members.some((m) => m.user_id === leaderId)
-                      ? [
-                          ...members,
-                          team.leader ?? {
-                            user_id: leaderId,
-                            name: "Team Leader",
-                          },
-                        ]
-                      : members;
+                  const leaderId = team.leader_id ?? team.leader?.user_id;
 
                   return (
                     <div
                       key={team.id}
-                      className="bg-[#030114]/30 border border-white/[0.06] rounded-xl p-4 hover:border-white/[0.12] transition-all duration-300"
+                      className="rounded-xl border border-white/[0.08] bg-[#030114]/40 p-4 space-y-3"
                     >
-                      <div className="text-sm font-semibold text-[#5271ff] mb-3 flex items-center gap-2">
-                        <div className="w-1.5 h-1.5 rounded-full bg-[#5271ff] shadow-[0_0_8px_#5271ff]" />
-                        {team.name}
+                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
+                        <span className="font-semibold text-[#5271ff] text-sm tracking-wide">
+                          {team.name}
+                        </span>
+                        <span className="text-xs text-white/40">
+                          {members.length} {members.length === 1 ? "member" : "members"}
+                        </span>
                       </div>
-                      {normalizedMembers.length === 0 ? (
-                        <div className="text-xs text-white/30 italic pl-3.5">
-                          No members listed.
-                        </div>
+
+                      {members.length === 0 ? (
+                        <p className="text-xs text-white/30 italic">No members in this team.</p>
                       ) : (
-                        <ul className="space-y-2 pl-3.5 border-l border-white/[0.04]">
-                          {normalizedMembers.map((member) => {
-                            const isLeader = leaderId === member.user_id;
+                        <ul className="space-y-1.5">
+                          {members.map((member) => {
+                            const isLeader =
+                              leaderId !== undefined && member.user_id === leaderId;
+
                             return (
                               <li
                                 key={member.user_id}
-                                className="flex items-center gap-2.5 text-sm text-white/70"
+                                className="flex items-center gap-2 text-sm text-white/80"
                               >
                                 {isLeader ? (
                                   <span className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
@@ -334,33 +336,35 @@ export default function ViewAndEditModal({
             onClick={onCancel}
             className="rounded-xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-white/60 hover:text-white hover:bg-[#0a0826]/75 hover:border-white/[0.15] transition-all duration-300"
           >
-            Cancel
+            {canEdit ? "Cancel" : "Close"}
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              if (!isFormValid) {
-                return;
-              }
-              onSave({
-                id: taskId,
-                title: title.trim(),
-                description: description.trim() || undefined,
-                due_date: dueDate,
-                status: statusValue,
-                priority: priorityValue,
-              });
-            }}
-            disabled={!isFormValid}
-            className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 ${
-              isFormValid
-                ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98]"
-                : "bg-white/[0.04] text-white/20 border border-white/[0.04] cursor-not-allowed"
-            }`}
-          >
-            Save Changes
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => {
+                if (!isFormValid) {
+                  return;
+                }
+                onSave({
+                  id: taskId,
+                  title: title.trim(),
+                  description: description.trim() || undefined,
+                  due_date: dueDate,
+                  status: statusValue,
+                  priority: priorityValue,
+                });
+              }}
+              disabled={!isFormValid}
+              className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 ${
+                isFormValid
+                  ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98]"
+                  : "bg-white/[0.04] text-white/20 border border-white/[0.04] cursor-not-allowed"
+              }`}
+            >
+              Save Changes
+            </button>
+          )}
         </div>
       </motion.div>
     </motion.div>
