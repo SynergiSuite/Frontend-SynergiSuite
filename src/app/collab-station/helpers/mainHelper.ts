@@ -6,7 +6,7 @@ export const isAbsoluteUrl = (value?: string) => Boolean(value && /^https?:\/\//
 export const backendBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
 export type UserId = number | string;
-export type TokenUser = { user_id?: UserId; sub?: UserId; email?: string };
+export type TokenUser = { user_id?: UserId; sub?: UserId; id?: UserId; userId?: UserId; email?: string };
 
 export const readTokenUser = (token: string): TokenUser => {
   try {

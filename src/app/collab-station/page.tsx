@@ -101,18 +101,39 @@ export default function CollabStationPage() {
     const token = getAccessToken();
     const user = token ? readTokenUser(token) : {};
     currentUserRef.current = user;
-    setCurrentUserIdentity(user.user_id ?? user.sub);
+    const resolvedId = user.user_id ?? user.sub ?? user.id ?? user.userId;
+    setCurrentUserIdentity(resolvedId);
     return { token, user };
   };
 
-  const isCurrentUser = (userId?: UserId) =>
-    userId !== undefined &&
-    currentUserIdRef.current !== undefined &&
-    String(userId) === String(currentUserIdRef.current);
+  const isCurrentUser = (target?: any) => {
+    if (target === undefined || target === null) return false;
+
+    const myId = currentUserIdRef.current ?? currentUserId;
+    const myEmail = currentUserRef.current?.email;
+
+    if (typeof target === "object") {
+      const targetId = target.user_id ?? target.id ?? target.userId;
+      const targetEmail = target.email;
+      if (myId !== undefined && myId !== null && targetId !== undefined && targetId !== null) {
+        if (String(targetId) === String(myId)) return true;
+      }
+      if (myEmail && targetEmail && String(myEmail).toLowerCase() === String(targetEmail).toLowerCase()) {
+        return true;
+      }
+      return false;
+    }
+
+    if (myId !== undefined && myId !== null) {
+      if (String(target) === String(myId)) return true;
+    }
+    return false;
+  };
 
   const getCallSide = (call: CallDto): "caller" | "recipient" | undefined => {
-    if (isCurrentUser(call.caller.user_id)) return "caller";
-    if (isCurrentUser(call.recipient.user_id)) return "recipient";
+    if (!call) return undefined;
+    if (isCurrentUser(call.caller)) return "caller";
+    if (isCurrentUser(call.recipient)) return "recipient";
     return undefined;
   };
 
@@ -152,8 +173,13 @@ export default function CollabStationPage() {
   }, []);
 
   useEffect(() => {
-    const { token } = identifyCurrentUser();
-    const joinKnownGroups = () => {
+    const { token, user } = identifyCurrentUser();
+
+    const joinAllRooms = () => {
+      const myId = user?.user_id ?? user?.sub ?? user?.id ?? user?.userId;
+      if (myId) {
+        socket.emit("user:join", { userId: myId });
+      }
       chatIdsRef.current.forEach((groupId) => {
         socket.emit("group:join", { groupId });
       });
@@ -162,46 +188,66 @@ export default function CollabStationPage() {
     if (token) {
       socket.auth = { token };
       if (!socket.connected) socket.connect();
-      else joinKnownGroups();
+      else joinAllRooms();
     }
 
-    socket.on("connect", joinKnownGroups);
+    socket.on("connect", joinAllRooms);
 
     return () => {
-      socket.off("connect", joinKnownGroups);
+      socket.off("connect", joinAllRooms);
     };
   }, []);
 
+  const currentCallRef = useRef<CallDto | null>(null);
+
+  useEffect(() => {
+    currentCallRef.current = currentCall;
+  }, [currentCall]);
+
   useEffect(() => {
     const isCallParticipant = (call: CallDto) =>
-      isCurrentUser(call.caller.user_id) || isCurrentUser(call.recipient.user_id);
+      !call || isCurrentUser(call.caller) || isCurrentUser(call.recipient);
 
-    const setTerminalCall = (call: CallDto) => {
-      if (!isCallParticipant(call)) return;
+    const setTerminalCall = (rawPayload: any) => {
+      const call: CallDto = rawPayload?.call || rawPayload;
+      if (!call) return;
+
+      const activeCall = currentCallRef.current;
+      const isCurrentCall =
+        activeCall &&
+        (String(call.callId || (call as any).id) === String(activeCall.callId));
+
+      if (!isCurrentCall && !isCallParticipant(call)) return;
+
       setCallSide(getCallSide(call));
       setCurrentCall(call);
       setCallCredentials(null);
       tokenRequestCallIdRef.current = null;
+
+      // Automatically remove call banner when call transitions to terminal state (missed, cancelled, ended, rejected)
       window.setTimeout(() => {
         setCurrentCall(null);
         setCallSide(undefined);
-      }, 1200);
+      }, 400);
     };
 
-    const onIncoming = (call: CallDto) => {
-      if (!isCurrentUser(call.recipient.user_id)) return;
+    const onIncoming = (rawPayload: any) => {
+      const call: CallDto = rawPayload?.call || rawPayload;
+      if (!call || !isCurrentUser(call.recipient)) return;
       playNotificationSound();
       setCallSide("recipient");
       setCallError("");
       setCurrentCall(call);
     };
-    const onRinging = (call: CallDto) => {
-      if (!isCurrentUser(call.caller.user_id)) return;
+    const onRinging = (rawPayload: any) => {
+      const call: CallDto = rawPayload?.call || rawPayload;
+      if (!call || !isCurrentUser(call.caller)) return;
       setCallSide("caller");
       setCurrentCall(call);
     };
-    const onAccepted = (call: CallDto) => {
-      if (!isCallParticipant(call)) return;
+    const onAccepted = (rawPayload: any) => {
+      const call: CallDto = rawPayload?.call || rawPayload;
+      if (!call) return;
       setCallSide(getCallSide(call));
       setCallError("");
       setCurrentCall(call);
@@ -221,6 +267,9 @@ export default function CollabStationPage() {
     getCurrentCall()
       .then(async (call) => {
         if (!call) return;
+        if (call.status === "missed" || call.status === "ended" || call.status === "cancelled") {
+          return;
+        }
         const token = getAccessToken();
         const email = token ? readTokenUser(token).email : undefined;
         if (email) {
@@ -289,18 +338,49 @@ export default function CollabStationPage() {
   };
 
   const handleStartCall = async () => {
-    if (!activeChannel || activeChannel.type !== "direct") {
-      setCallError("Voice calls are currently available for direct chats only");
+    if (!activeChannel) {
+      toast.error("No active chat selected");
       return;
     }
+
+    const isDirectChat =
+      activeChannel.type === "direct" ||
+      String(activeChannel.groupType || "").toLowerCase() === "direct" ||
+      activeChannel.membersCount === 2;
+
+    if (!isDirectChat) {
+      toast.error("1-on-1 voice calls are available for direct chats only");
+      return;
+    }
+
     try {
       setCallError("");
       setCallSide("caller");
-      setCurrentCall(await emitCallEvent("call:invite", { groupId: activeChannel.id }));
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unable to start call";
+
+      // Ensure Socket.IO is connected before inviting
+      if (!socket.connected) {
+        const { token } = identifyCurrentUser();
+        if (token) {
+          socket.auth = { token };
+          socket.connect();
+          await new Promise((resolve) => setTimeout(resolve, 400));
+        }
+      }
+
+      if (!socket.connected) {
+        throw new Error("Call signaling is disconnected. Please check connection.");
+      }
+
+      console.log(`[Initiating Voice Call] GroupId: ${activeChannel.id}`);
+      const invitedCall = await emitCallEvent("call:invite", { groupId: activeChannel.id });
+      console.log(`[Voice Call Invited Success]:`, invitedCall);
+      setCurrentCall(invitedCall);
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Unable to start voice call";
+      console.error("[Voice Call Start Error]:", error);
       setCallError(message);
       toast.error(message);
+      setCallSide(undefined);
     }
   };
 
@@ -317,6 +397,20 @@ export default function CollabStationPage() {
 
   const handleCallAction = async (event: "call:reject" | "call:cancel" | "call:end") => {
     if (!currentCall) return;
+
+    if (
+      currentCall.status === "missed" ||
+      currentCall.status === "cancelled" ||
+      currentCall.status === "ended" ||
+      currentCall.status === "rejected"
+    ) {
+      setCurrentCall(null);
+      setCallSide(undefined);
+      setCallCredentials(null);
+      tokenRequestCallIdRef.current = null;
+      return;
+    }
+
     try {
       const call = await emitCallEvent(event, { callId: currentCall.callId });
       setCallSide(getCallSide(call));
@@ -326,9 +420,23 @@ export default function CollabStationPage() {
       window.setTimeout(() => {
         setCurrentCall(null);
         setCallSide(undefined);
-      }, 600);
-    } catch (error) {
-      setCallError(error instanceof Error ? error.message : "Unable to update call");
+      }, 400);
+    } catch (error: any) {
+      const msg = String(error?.message || error || "");
+      if (
+        msg.includes("missed") ||
+        msg.includes("ended") ||
+        msg.includes("cancelled") ||
+        msg.includes("rejected") ||
+        msg.includes("Cannot cancel")
+      ) {
+        setCurrentCall(null);
+        setCallSide(undefined);
+        setCallCredentials(null);
+        tokenRequestCallIdRef.current = null;
+        return;
+      }
+      setCallError(msg || "Unable to update call");
     }
   };
 
