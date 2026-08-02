@@ -38,30 +38,34 @@ export default function Navbar() {
   const logout = async () => {
     const token = CookieManager("get", "access-token");
     const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-    try {
-      const res = await fetch(`${requestBaseUrl}/auth/logout`, {
+
+    // Immediately clear all auth cookies
+    CookieManager("delete", "access-token");
+    CookieManager("delete", "user-email");
+    CookieManager("delete", "user");
+    CookieManager("delete", "business-name");
+    CookieManager("delete", "business-id");
+    CookieManager("delete", "user-id");
+    CookieManager("delete", "user_id");
+    CookieManager("delete", "role");
+    CookieManager("delete", "verify-token");
+    CookieManager("delete", "register-token");
+
+    // Immediately disconnect socket & redirect to session login form
+    socket.disconnect();
+    router.replace("/session");
+    toast.success("Logged out successfully");
+
+    // Fire backend logout API asynchronously in background
+    if (token && requestBaseUrl) {
+      fetch(`${requestBaseUrl}/auth/logout`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
+          "ngrok-skip-browser-warning": "1",
         },
-      });
-      const responseData = await res.json();
-      if (!res.ok) {
-        throw new Error(
-          responseData.message || "Failed to logout. Try Again later.",
-        );
-      }
-      CookieManager("delete", "access-token");
-      CookieManager("delete", "user-email");
-      CookieManager("delete", "user");
-      CookieManager("delete", "business-name");
-      CookieManager("delete", "business-id");
-      socket.disconnect();
-      router.replace("/session");
-      toast.success("Logged out successfully");
-    } catch {
-      toast.error("Failed to logout. Try Again later.");
+      }).catch((err) => console.warn("Background logout notify error:", err));
     }
   };
 

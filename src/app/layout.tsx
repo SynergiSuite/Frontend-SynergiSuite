@@ -184,6 +184,9 @@ export default function RootLayout({
 
       // Programmatic routes
       if (isProgrammaticPath) {
+        setShowSidebar(false);
+        setShowRightSidebar(false);
+        setIsMobileSidebarOpen(false);
         if (pathName.startsWith("/session/verify-code")) {
           const codeToken = CookieManager("get", "verify-token");
           if (!codeToken) {
@@ -204,6 +207,9 @@ export default function RootLayout({
 
       // Public routes
       if (isPublicPath) {
+        setShowSidebar(false);
+        setShowRightSidebar(false);
+        setIsMobileSidebarOpen(false);
         if (typeof token === "string") {
           try {
             await jwtVerify(token, access_secret);
