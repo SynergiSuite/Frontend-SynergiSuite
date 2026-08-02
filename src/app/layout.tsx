@@ -15,6 +15,7 @@ import RightSidebar from "./projects/[projectName]/timeline/rightsidebar";
 import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import Logo from "@/assets/Logo.png";
+import RealtimeProvider from "@/providers/RealtimeProvider";
 
 const access_secret = new TextEncoder().encode("synergi_user");
 
@@ -372,7 +373,13 @@ export default function RootLayout({
                 isChatbotRoute ? "overflow-hidden" : "overflow-y-auto"
               }`}
             >
-              {isLoading ? <LoaderCustom /> : children}
+              {isLoading ? (
+                <LoaderCustom />
+              ) : showSidebar ? (
+                <RealtimeProvider>{children}</RealtimeProvider>
+              ) : (
+                children
+              )}
             </main>
             
             

@@ -8,8 +8,11 @@ export type CallStatus =
   | "failed";
 
 export interface CallParticipant {
-  user_id: number;
+  user_id?: number | string;
+  id?: number | string;
+  userId?: number | string;
   name: string;
+  email?: string;
 }
 
 export interface CallDto {

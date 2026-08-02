@@ -19,7 +19,6 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "sonner";
-import { CookieManager } from "@/lib/cookieManager";
 import {
   MeetingResponseDto,
   MeetingStatus,
@@ -37,7 +36,6 @@ import {
   createMeetingApi,
 } from "./apis/meetingsApi";
 import {
-  connectMeetingSocket,
   emitStartMeeting,
   emitJoinMeeting,
   emitLeaveMeeting,
@@ -49,6 +47,7 @@ import {
 import CreateMeetingModal from "./CreateMeetingModal";
 import MeetingRoomModal from "./MeetingRoomModal";
 import { getCollabGroupsApi } from "./apis/meetingsApi";
+import { useRealtime } from "@/context/RealtimeContext";
 
 type TabFilter = "all" | "live" | "scheduled" | "ended";
 
@@ -57,43 +56,18 @@ function getMeetingId(m: any): string {
 }
 
 export default function MeetingsPage() {
+  const rt = useRealtime();
   const [meetings, setMeetings] = useState<MeetingResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [currentUserId, setCurrentUserId] = useState<number>(0);
+  const currentUserId = Number(rt.currentUserId || 0);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [activeMeeting, setActiveMeeting] = useState<MeetingResponseDto | null>(null);
   const [livekitToken, setLivekitToken] = useState<MeetingTokenResponse | null>(null);
-
-  // Parse current user ID from token/cookies
-  useEffect(() => {
-    async function loadUser() {
-      try {
-        const userIdStr = await CookieManager("get", "user_id");
-        if (userIdStr) {
-          setCurrentUserId(Number(userIdStr));
-        } else {
-          // fallback to user cookie if available
-          const rawUser = await CookieManager("get", "user");
-          if (rawUser) {
-            try {
-              const parsed = typeof rawUser === "string" ? JSON.parse(rawUser) : rawUser;
-              if (parsed?.id || parsed?.user_id) {
-                setCurrentUserId(Number(parsed.id || parsed.user_id));
-              }
-            } catch {}
-          }
-        }
-      } catch (err) {
-        console.warn("Could not load user id:", err);
-      }
-    }
-    loadUser();
-  }, []);
 
   // Fetch initial meetings list and groups
   const fetchMeetingsData = useCallback(async () => {
@@ -131,10 +105,9 @@ export default function MeetingsPage() {
     loadGroups();
   }, []);
 
-  // Connect socket and listen to real-time events
+  // Subscribe to real-time meeting events (page-specific list updates)
+  // Socket is already connected by RealtimeProvider
   useEffect(() => {
-    connectMeetingSocket();
-
     const unsubscribe = subscribeMeetingSocketEvents({
       onCreated: (newMeeting) => {
         const targetId = getMeetingId(newMeeting);

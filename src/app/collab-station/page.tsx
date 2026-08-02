@@ -7,16 +7,12 @@ import { CreateDirectChatApi } from "./apis/DirectChats/createDirectChatsApi";
 import { createCustomGroupApi } from "./apis/DirectChats/CustomGroups/createCustomGroupApi";
 import { sendMessageApi } from "./apis/DirectChats/sendMessageApi";
 import { deleteMessageApi } from "./apis/DirectChats/deleteMessageApi";
-import { getPresignedUrlApi } from "../cloud/apis/getPresignedUrlApi";
 import { gsap } from "gsap";
 import ChatWindow from "./ChatWindow";
 import RightSidebar from "./RightSidebar";
-import CallOverlay from "./CallOverlay";
 import NewChatModal from "./NewChatModal";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { ChatChannel, Message, ChatThreadMap, Attachment } from "./types";
-import { CallAcknowledgement, CallDto, CallTokenResponse } from "./callTypes";
-import { getCallToken, getCurrentCall } from "./apis/callApi";
 import { toast } from "sonner";
 import { authHeaders, backendBaseUrl, getAccessToken, readTokenUser, TokenUser, UserId } from "./helpers/mainHelper";
 import { formatMissedCallMessage, getMissedCallPreview } from "./helpers/callHelperFunctions";
@@ -47,6 +43,7 @@ import {
   emitEndMeeting,
   subscribeMeetingSocketEvents,
 } from "../meetings/meetingSocket";
+import { useRealtime } from "@/context/RealtimeContext";
 
 
 
@@ -54,14 +51,12 @@ import {
 export default function CollabStationPage() {
   const searchParams = useSearchParams();
   const chatIdParam = searchParams?.get("chatId");
+  const rt = useRealtime();
+
   const [activeChannelId, setActiveChannelId] = useState("");
   const [groups, setGroups] = useState<ChatChannel[]>([]);
   const [recentChats, setRecentChats] = useState<ChatChannel[]>([]);
   const [threads, setThreads] = useState<ChatThreadMap>({});
-  const [currentCall, setCurrentCall] = useState<CallDto | null>(null);
-  const [callSide, setCallSide] = useState<"caller" | "recipient" | undefined>();
-  const [callCredentials, setCallCredentials] = useState<CallTokenResponse | null>(null);
-  const [callError, setCallError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
 
@@ -71,373 +66,59 @@ export default function CollabStationPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
   const [rawGroupsDataMap, setRawGroupsDataMap] = useState<Record<string, any>>({});
-  const [currentUserId, setCurrentUserId] = useState<UserId | undefined>();
 
   // Group Meetings State
   const [activeMeeting, setActiveMeeting] = useState<MeetingResponseDto | null>(null);
   const [meetingToken, setMeetingToken] = useState<MeetingTokenResponse | null>(null);
-  const [groupMeetingsMap, setGroupMeetingsMap] = useState<Record<string, MeetingResponseDto>>({});
+  const [localGroupMeetingsMap, setLocalGroupMeetingsMap] = useState<Record<string, MeetingResponseDto>>({});
   const [isMeetingModalOpen, setIsMeetingModalOpen] = useState(false);
+
+  // Merge global meeting map with local
+  const groupMeetingsMap = { ...rt.groupMeetingsMap, ...localGroupMeetingsMap };
+  const currentUserId = rt.currentUserId;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const currentUserRef = useRef<TokenUser>({});
   const currentUserIdRef = useRef<UserId | undefined>(undefined);
   const chatIdsRef = useRef<string[]>([]);
-  const tokenRequestCallIdRef = useRef<string | null>(null);
-  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
-  const notificationAudioUnlockedRef = useRef(false);
 
-  const setCurrentUserIdentity = (userId?: UserId) => {
-    if (userId === undefined || userId === null) return;
-    currentUserIdRef.current = userId;
-    setCurrentUserId(userId);
-  };
-
-  // Reads the token, parses it, and syncs both the ref (for sync access in
-  // callbacks/sockets) and state (for renders). Returns the token + parsed user
-  // so callers needing the raw token (e.g. for Authorization headers) don't
-  // have to re-read the cookie.
   const identifyCurrentUser = () => {
     const token = getAccessToken();
     const user = token ? readTokenUser(token) : {};
     currentUserRef.current = user;
     const resolvedId = user.user_id ?? user.sub ?? user.id ?? user.userId;
-    setCurrentUserIdentity(resolvedId);
+    currentUserIdRef.current = resolvedId;
     return { token, user };
   };
 
-  const isCurrentUser = (target?: any) => {
-    if (target === undefined || target === null) return false;
-
-    const myId = currentUserIdRef.current ?? currentUserId;
-    const myEmail = currentUserRef.current?.email;
-
-    if (typeof target === "object") {
-      const targetId = target.user_id ?? target.id ?? target.userId;
-      const targetEmail = target.email;
-      if (myId !== undefined && myId !== null && targetId !== undefined && targetId !== null) {
-        if (String(targetId) === String(myId)) return true;
-      }
-      if (myEmail && targetEmail && String(myEmail).toLowerCase() === String(targetEmail).toLowerCase()) {
-        return true;
-      }
-      return false;
-    }
-
-    if (myId !== undefined && myId !== null) {
-      if (String(target) === String(myId)) return true;
-    }
-    return false;
-  };
-
-  const getCallSide = (call: CallDto): "caller" | "recipient" | undefined => {
-    if (!call) return undefined;
-    if (isCurrentUser(call.caller)) return "caller";
-    if (isCurrentUser(call.recipient)) return "recipient";
-    return undefined;
-  };
-
-  const playNotificationSound = () => {
-    triggerGlobalSound();
-  };
-
+  // Join chat group rooms when socket connects (chat-specific, not call-related)
   useEffect(() => {
-    const audio = new Audio("/sounds/sound.wav");
-    audio.preload = "auto";
-    audio.volume = 0.65;
-    notificationAudioRef.current = audio;
-
-    const unlockAudio = () => {
-      audio.muted = true;
-      void audio
-        .play()
-        .then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.muted = false;
-          notificationAudioUnlockedRef.current = true;
-        })
-        .catch(() => undefined);
-    };
-
-    window.addEventListener("click", unlockAudio, { once: true });
-    window.addEventListener("touchstart", unlockAudio, { once: true });
-
-    return () => {
-      window.removeEventListener("click", unlockAudio);
-      window.removeEventListener("touchstart", unlockAudio);
-      audio.pause();
-      notificationAudioRef.current = null;
-      notificationAudioUnlockedRef.current = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    const { token, user } = identifyCurrentUser();
-
-    const joinAllRooms = () => {
-      const myId = user?.user_id ?? user?.sub ?? user?.id ?? user?.userId;
-      if (myId) {
-        socket.emit("user:join", { userId: myId });
-      }
+    const joinChatRooms = () => {
       chatIdsRef.current.forEach((groupId) => {
         socket.emit("group:join", { groupId });
       });
     };
 
-    if (token) {
-      socket.auth = { token };
-      if (!socket.connected) socket.connect();
-      else joinAllRooms();
-    }
-
-    socket.on("connect", joinAllRooms);
-
-    return () => {
-      socket.off("connect", joinAllRooms);
-    };
+    if (socket.connected) joinChatRooms();
+    socket.on("connect", joinChatRooms);
+    return () => { socket.off("connect", joinChatRooms); };
   }, []);
 
-  const currentCallRef = useRef<CallDto | null>(null);
-
-  useEffect(() => {
-    currentCallRef.current = currentCall;
-  }, [currentCall]);
-
-  useEffect(() => {
-    const isCallParticipant = (call: CallDto) =>
-      !call || isCurrentUser(call.caller) || isCurrentUser(call.recipient);
-
-    const setTerminalCall = (rawPayload: any) => {
-      const call: CallDto = rawPayload?.call || rawPayload;
-      if (!call) return;
-
-      const activeCall = currentCallRef.current;
-      const isCurrentCall =
-        activeCall &&
-        (String(call.callId || (call as any).id) === String(activeCall.callId));
-
-      if (!isCurrentCall && !isCallParticipant(call)) return;
-
-      setCallSide(getCallSide(call));
-      setCurrentCall(call);
-      setCallCredentials(null);
-      tokenRequestCallIdRef.current = null;
-
-      // Automatically remove call banner when call transitions to terminal state (missed, cancelled, ended, rejected)
-      window.setTimeout(() => {
-        setCurrentCall(null);
-        setCallSide(undefined);
-      }, 400);
-    };
-
-    const onIncoming = (rawPayload: any) => {
-      const call: CallDto = rawPayload?.call || rawPayload;
-      if (!call || !isCurrentUser(call.recipient)) return;
-      playNotificationSound();
-      setCallSide("recipient");
-      setCallError("");
-      setCurrentCall(call);
-    };
-    const onRinging = (rawPayload: any) => {
-      const call: CallDto = rawPayload?.call || rawPayload;
-      if (!call || !isCurrentUser(call.caller)) return;
-      setCallSide("caller");
-      setCurrentCall(call);
-    };
-    const onAccepted = (rawPayload: any) => {
-      const call: CallDto = rawPayload?.call || rawPayload;
-      if (!call) return;
-      setCallSide(getCallSide(call));
-      setCallError("");
-      setCurrentCall(call);
-    };
-    const onError = (payload: { message?: string; error?: { message?: string } }) =>
-      setCallError(payload.error?.message || payload.message || "Call operation failed");
-
-    socket.on("call:incoming", onIncoming);
-    socket.on("call:ringing", onRinging);
-    socket.on("call:accepted", onAccepted);
-    socket.on("call:rejected", setTerminalCall);
-    socket.on("call:cancelled", setTerminalCall);
-    socket.on("call:missed", setTerminalCall);
-    socket.on("call:ended", setTerminalCall);
-    socket.on("call:error", onError);
-
-    getCurrentCall()
-      .then(async (call) => {
-        if (!call) return;
-        if (call.status === "missed" || call.status === "ended" || call.status === "cancelled") {
-          return;
-        }
-        const token = getAccessToken();
-        const email = token ? readTokenUser(token).email : undefined;
-        if (email) {
-          const response = await fetch(
-            `${backendBaseUrl}/collab-station/groups/${call.groupId}`,
-            { headers: authHeaders(token) }
-          );
-          if (response.ok) {
-            const group = await response.json();
-            const me = group.members?.find((member: any) => member.user?.email === email);
-            setCurrentUserIdentity(me?.userId);
-          }
-        }
-        const restoredSide = getCallSide(call);
-        if (!restoredSide) return;
-        setCallSide(restoredSide);
-        setCurrentCall(call);
-      })
-      .catch(() => undefined);
-
-    return () => {
-      socket.off("call:incoming", onIncoming);
-      socket.off("call:ringing", onRinging);
-      socket.off("call:accepted", onAccepted);
-      socket.off("call:rejected", setTerminalCall);
-      socket.off("call:cancelled", setTerminalCall);
-      socket.off("call:missed", setTerminalCall);
-      socket.off("call:ended", setTerminalCall);
-      socket.off("call:error", onError);
-    };
-  }, []);
-
-  // Centralized so an accept acknowledgement and the `call:accepted` broadcast
-  // cannot create two LiveKit room connections.
-  useEffect(() => {
-    if (!currentCall || currentCall.status !== "active" || callCredentials) return;
-    if (tokenRequestCallIdRef.current === currentCall.callId) return;
-
-    let cancelled = false;
-    tokenRequestCallIdRef.current = currentCall.callId;
-    getCallToken(currentCall.callId)
-      .then((credentials) => {
-        if (!cancelled) setCallCredentials(credentials);
-      })
-      .catch((error) => {
-        tokenRequestCallIdRef.current = null;
-        if (!cancelled) {
-          setCallError(error instanceof Error ? error.message : "Unable to join the voice call");
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [currentCall, callCredentials]);
-
-  const emitCallEvent = async (event: string, payload: Record<string, string>) => {
-    if (!socket.connected) throw new Error("Call signaling is disconnected");
-    const acknowledgement = (await socket
-      .timeout(10_000)
-      .emitWithAck(event, payload)) as CallAcknowledgement;
-    if (!acknowledgement.success || !acknowledgement.call) {
-      throw new Error(acknowledgement.error?.message || "Call operation failed");
-    }
-    return acknowledgement.call;
-  };
-
+  // Delegate call initiation to RealtimeProvider
   const handleStartCall = async () => {
     if (!activeChannel) {
       toast.error("No active chat selected");
       return;
     }
-
     const isDirectChat =
       activeChannel.type === "direct" ||
       String(activeChannel.groupType || "").toLowerCase() === "direct" ||
       activeChannel.membersCount === 2;
-
     if (!isDirectChat) {
       toast.error("1-on-1 voice calls are available for direct chats only");
       return;
     }
-
-    try {
-      setCallError("");
-      setCallSide("caller");
-
-      // Ensure Socket.IO is connected before inviting
-      if (!socket.connected) {
-        const { token } = identifyCurrentUser();
-        if (token) {
-          socket.auth = { token };
-          socket.connect();
-          await new Promise((resolve) => setTimeout(resolve, 400));
-        }
-      }
-
-      if (!socket.connected) {
-        throw new Error("Call signaling is disconnected. Please check connection.");
-      }
-
-      console.log(`[Initiating Voice Call] GroupId: ${activeChannel.id}`);
-      const invitedCall = await emitCallEvent("call:invite", { groupId: activeChannel.id });
-      console.log(`[Voice Call Invited Success]:`, invitedCall);
-      setCurrentCall(invitedCall);
-    } catch (error: any) {
-      const message = error instanceof Error ? error.message : "Unable to start voice call";
-      console.error("[Voice Call Start Error]:", error);
-      setCallError(message);
-      toast.error(message);
-      setCallSide(undefined);
-    }
-  };
-
-  const handleAcceptCall = async () => {
-    if (!currentCall) return;
-    try {
-      const call = await emitCallEvent("call:accept", { callId: currentCall.callId });
-      setCallSide("recipient");
-      setCurrentCall(call);
-    } catch (error) {
-      setCallError(error instanceof Error ? error.message : "Unable to accept call");
-    }
-  };
-
-  const handleCallAction = async (event: "call:reject" | "call:cancel" | "call:end") => {
-    if (!currentCall) return;
-
-    if (
-      currentCall.status === "missed" ||
-      currentCall.status === "cancelled" ||
-      currentCall.status === "ended" ||
-      currentCall.status === "rejected"
-    ) {
-      setCurrentCall(null);
-      setCallSide(undefined);
-      setCallCredentials(null);
-      tokenRequestCallIdRef.current = null;
-      return;
-    }
-
-    try {
-      const call = await emitCallEvent(event, { callId: currentCall.callId });
-      setCallSide(getCallSide(call));
-      setCurrentCall(call);
-      setCallCredentials(null);
-      tokenRequestCallIdRef.current = null;
-      window.setTimeout(() => {
-        setCurrentCall(null);
-        setCallSide(undefined);
-      }, 400);
-    } catch (error: any) {
-      const msg = String(error?.message || error || "");
-      if (
-        msg.includes("missed") ||
-        msg.includes("ended") ||
-        msg.includes("cancelled") ||
-        msg.includes("rejected") ||
-        msg.includes("Cannot cancel")
-      ) {
-        setCurrentCall(null);
-        setCallSide(undefined);
-        setCallCredentials(null);
-        tokenRequestCallIdRef.current = null;
-        return;
-      }
-      setCallError(msg || "Unable to update call");
-    }
+    await rt.inviteCall(activeChannel.id);
   };
 
   useEffect(() => {
@@ -589,7 +270,7 @@ export default function CollabStationPage() {
       const roomId = message.groupId;
       const formatted = formatMessage(message, currentUserRef.current);
       if (formatted.sender !== "me") {
-        playNotificationSound();
+        triggerGlobalSound();
       }
 
       setThreads((prev) => {
@@ -872,7 +553,7 @@ function getMeetingId(m: any): string {
   const handleLeaveActiveMeeting = async () => {
     if (!activeMeeting) return;
     const hostId = Number(activeMeeting.host?.user_id || 0);
-    const myId = Number(currentUserId || currentUserIdRef.current || 0);
+    const myId = Number(rt.currentUserId || currentUserIdRef.current || 0);
     const isHost = hostId > 0 && myId > 0 && hostId === myId;
 
     if (isHost) {
@@ -901,7 +582,7 @@ function getMeetingId(m: any): string {
     const targetGroupId = String(activeMeeting.groupId || "");
 
     // Optimistically update local groupMeetingsMap to ended status so banner closes
-    setGroupMeetingsMap((prev) => {
+    setLocalGroupMeetingsMap((prev) => {
       const next = { ...prev };
       if (targetGroupId && next[targetGroupId]) {
         next[targetGroupId] = { ...next[targetGroupId], status: "ended" };
@@ -936,7 +617,7 @@ function getMeetingId(m: any): string {
       }
       const createdId = getMeetingId(created);
       const createdGroupId = String(created.groupId || payload.groupId);
-      setGroupMeetingsMap((prev) => ({ ...prev, [createdGroupId]: created }));
+      setLocalGroupMeetingsMap((prev) => ({ ...prev, [createdGroupId]: created }));
 
       if (isInstant) {
         let liveMeeting: MeetingResponseDto;
@@ -948,7 +629,7 @@ function getMeetingId(m: any): string {
 
         const liveGroupId = String(liveMeeting.groupId || createdGroupId);
         const liveObject = { ...created, ...liveMeeting, status: "live" as const };
-        setGroupMeetingsMap((prev) => ({ ...prev, [liveGroupId]: liveObject }));
+        setLocalGroupMeetingsMap((prev) => ({ ...prev, [liveGroupId]: liveObject }));
         await handleJoinMeetingFromChat(liveObject);
         toast.success("Instant meeting started!");
       } else {
@@ -1010,18 +691,6 @@ function getMeetingId(m: any): string {
         </div>
       </div>
 
-      <CallOverlay
-        call={currentCall}
-        currentUserId={currentUserId}
-        callSide={callSide}
-        credentials={callCredentials}
-        error={callError}
-        onAccept={() => void handleAcceptCall()}
-        onReject={() => void handleCallAction("call:reject")}
-        onCancel={() => void handleCallAction("call:cancel")}
-        onEnd={() => void handleCallAction("call:end")}
-      />
-
       <NewChatModal isOpen={isNewChatOpen} onClose={() => setIsNewChatOpen(false)} onCreateChannel={handleCreateChannel} />
 
       {/* Chat Details Popup */}
@@ -1030,7 +699,7 @@ function getMeetingId(m: any): string {
         onClose={() => setIsDetailsModalOpen(false)}
         channel={activeChannel || null}
         rawGroupData={activeChannelId ? rawGroupsDataMap[activeChannelId] : null}
-        currentUserId={currentUserId}
+        currentUserId={rt.currentUserId}
         onOpenEdit={() => {
           setIsDetailsModalOpen(false);
           setIsEditModalOpen(true);
@@ -1151,7 +820,7 @@ function getMeetingId(m: any): string {
         <MeetingRoomModal
           meeting={activeMeeting}
           tokenResponse={meetingToken}
-          currentUserId={Number(currentUserId || 0)}
+          currentUserId={Number(rt.currentUserId || 0)}
           onLeave={handleLeaveActiveMeeting}
           onEndMeeting={
             activeMeeting.host?.user_id === Number(currentUserId)

@@ -135,15 +135,20 @@ export default function CallOverlay({
     };
 
     const attachExistingRemoteAudio = () => {
+      let foundRemote = false;
       room.remoteParticipants.forEach((participant) => {
         participant.audioTrackPublications.forEach((publication) => {
           if (publication.track) {
             attachTrack(publication.track);
+            foundRemote = true;
           } else if (!publication.isSubscribed) {
             publication.setSubscribed(true);
           }
         });
       });
+      if (foundRemote) {
+        setRemoteAudioConnected(true);
+      }
     };
 
     const attachTrack = (track: {
@@ -158,6 +163,7 @@ export default function CallOverlay({
           `[data-livekit-track-id="${trackId(track)}"]`
         )
       ) {
+        setRemoteAudioConnected(true);
         return;
       }
       const element = track.attach();
@@ -176,8 +182,14 @@ export default function CallOverlay({
       setRemoteAudioConnected(audioContainer?.children.length ? true : false);
     };
 
-    room.on(RoomEvent.TrackSubscribed, attachTrack);
+    room.on(RoomEvent.TrackSubscribed, (track) => {
+      attachTrack(track);
+      setRemoteAudioConnected(true);
+    });
     room.on(RoomEvent.TrackUnsubscribed, detachTrack);
+    room.on(RoomEvent.ParticipantConnected, () => attachExistingRemoteAudio());
+    room.on(RoomEvent.ParticipantDisconnected, () => attachExistingRemoteAudio());
+    room.on(RoomEvent.TrackPublished, () => attachExistingRemoteAudio());
     room.on(RoomEvent.Disconnected, () => {
       setMicrophonePublished(false);
       setRemoteAudioConnected(false);
@@ -216,8 +228,15 @@ export default function CallOverlay({
       }
     });
 
+    let connectUrl = credentialsUrl.trim();
+    if (connectUrl.startsWith("http://")) {
+      connectUrl = connectUrl.replace(/^http:\/\//i, "ws://");
+    } else if (connectUrl.startsWith("https://")) {
+      connectUrl = connectUrl.replace(/^https:\/\//i, "wss://");
+    }
+
     room
-      .connect(credentialsUrl, credentialsToken)
+      .connect(connectUrl, credentialsToken)
       .then(async () => {
         if (disposed) return;
         setAudioPlaybackBlocked(!room.canPlaybackAudio);
@@ -225,11 +244,12 @@ export default function CallOverlay({
         await publishMicrophone();
         microphoneWatchdog = window.setInterval(() => {
           if (disposed || isMutedRef.current || room.state !== ConnectionState.Connected) return;
+          attachExistingRemoteAudio();
           if (!hasLiveMicrophonePublication()) {
             setMicrophonePublished(false);
             scheduleMicrophoneRecovery();
           }
-        }, 3000);
+        }, 2000);
       })
       .catch((reason) => {
         if (!disposed) {
