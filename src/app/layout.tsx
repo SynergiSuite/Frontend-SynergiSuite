@@ -99,11 +99,26 @@ export default function RootLayout({
     const originalFetch = window.fetch.bind(window);
 
     window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+      const urlString =
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+          ? input.toString()
+          : input instanceof Request
+          ? input.url
+          : "";
+
+      const backendBase = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "";
+      const isBackendReq =
+        urlString.startsWith("/") ||
+        (backendBase && urlString.startsWith(backendBase)) ||
+        urlString.includes("ngrok");
+
       const isRequestObject = input instanceof Request;
       const requestHeaders = isRequestObject ? input.headers : undefined;
       const mergedHeaders = new Headers(init?.headers ?? requestHeaders);
 
-      if (!mergedHeaders.has("ngrok-skip-browser-warning")) {
+      if (isBackendReq && !mergedHeaders.has("ngrok-skip-browser-warning")) {
         mergedHeaders.set("ngrok-skip-browser-warning", "1");
       }
 
