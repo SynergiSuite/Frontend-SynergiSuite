@@ -1,5 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
-import { MeetingRecording, PlaybackUrlResponse } from "../types/recordingTypes";
+import { MeetingRecording } from "../types/recordingTypes";
 import { transcribeUrlApi, TranscriptionResult } from "./transcribeApi";
 
 const baseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "https://feline-unloaded-virtual.ngrok-free.dev";
@@ -106,6 +106,43 @@ export async function getRecordingPlaybackUrl(roomName: string): Promise<string>
     console.error(`[Recording Playback URL Failed] GET /api/recordings/${roomName}/playback-url error:`, error);
     throw error;
   }
+}
+
+export async function waitForRecordingPlaybackUrl(
+  roomName: string,
+  options: { intervalMs?: number; timeoutMs?: number } = {}
+): Promise<string> {
+  if (!roomName) throw new Error("Room name is required to fetch playback URL");
+
+  const intervalMs = options.intervalMs ?? 5000;
+  const timeoutMs = options.timeoutMs ?? 120000;
+  const startedAt = Date.now();
+  let lastRecording: MeetingRecording | null = null;
+
+  while (Date.now() - startedAt <= timeoutMs) {
+    const recording = await getRecording(roomName);
+    if (recording) {
+      lastRecording = recording;
+
+      if (recording.status === "complete") {
+        if (recording.playbackUrl) {
+          return recording.playbackUrl;
+        }
+        if (recording.filePath || recording.fileLocation) {
+          return getRecordingPlaybackUrl(roomName);
+        }
+      }
+
+      if (recording.status === "failed" || recording.status === "aborted" || recording.status === "limit_reached") {
+        throw new Error(recording.error || `Recording ended with status: ${recording.status}`);
+      }
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+
+  const statusText = lastRecording?.status ? ` Current status: ${lastRecording.status}.` : "";
+  throw new Error(`Recording upload is still processing.${statusText}`);
 }
 
 export async function getSavedTranscript(roomName: string): Promise<SavedTranscriptResponse | null> {

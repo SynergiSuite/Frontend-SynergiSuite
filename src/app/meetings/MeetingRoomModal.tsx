@@ -30,8 +30,8 @@ import {
 import { MeetingResponseDto, MeetingTokenResponse } from "./types/meetingTypes";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
-import { transcribeAudioApi, TranscriptionResult } from "./apis/transcribeApi";
-import { getRecording, stopRecording } from "./apis/recordingApi";
+import { TranscriptionResult } from "./apis/transcribeApi";
+import { getOrGenerateMeetingTranscript, getRecording, stopRecording, waitForRecordingPlaybackUrl } from "./apis/recordingApi";
 import { MeetingRecording } from "./types/recordingTypes";
 
 interface MeetingRoomModalProps {
@@ -39,7 +39,7 @@ interface MeetingRoomModalProps {
   tokenResponse: MeetingTokenResponse;
   currentUserId: number;
   onLeave: () => void;
-  onEndMeeting?: () => void;
+  onEndMeeting?: (options?: { skipStopRecording?: boolean }) => void | Promise<void>;
   onTranscriptionResult?: (result: TranscriptionResult) => void;
 }
 
@@ -167,8 +167,6 @@ export default function MeetingRoomModal({
 
   // Finalize recording on leave/end meeting and trigger transcription
   const handleFinalizeAndTranscribe = async () => {
-    let recordedBlob: Blob | null = null;
-
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       try {
         const recorder = mediaRecorderRef.current;
@@ -180,41 +178,41 @@ export default function MeetingRoomModal({
       }
     }
 
-    await new Promise((r) => setTimeout(r, 300));
+    let playbackUrl: string | undefined;
 
-    if (audioChunksRef.current.length > 0) {
-      recordedBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-    }
-
-    // If server egress recording is active/starting, trigger stopRecording so backend/LiveKit uploads file to MinIO
-    if (roomName && serverRecording && (serverRecording.status === "active" || serverRecording.status === "starting")) {
+    if (isHost && roomName) {
       try {
         console.log(`[Meeting End] Triggering stopRecording for room: "${roomName}"`);
-        await stopRecording(roomName).catch((err) => console.warn("[Meeting End] stopRecording error:", err));
+        const stoppedRecording = await stopRecording(roomName);
+        setServerRecording(stoppedRecording);
       } catch (err) {
         console.warn("[Meeting End] Could not call stopRecording:", err);
       }
     }
 
     if (isHost && onEndMeeting) {
-      onEndMeeting();
+      await onEndMeeting({ skipStopRecording: true });
     } else {
       onLeave();
     }
 
-    if (recordedBlob && recordedBlob.size > 1000) {
-      const toastId = toast.loading("Processing meeting audio with faster-whisper AI...");
+    if (isHost && roomName) {
+      const toastId = toast.loading("Uploading recording to storage...");
       try {
         const cleanTitle = (meeting.title || "meeting").replace(/[^a-zA-Z0-9-_]/g, "_");
-        const result = await transcribeAudioApi(
-          recordedBlob,
-          `${cleanTitle}-${Date.now()}.webm`
+        playbackUrl = await waitForRecordingPlaybackUrl(roomName);
+        toast.loading("Processing stored recording with faster-whisper AI...", { id: toastId });
+
+        const result = await getOrGenerateMeetingTranscript(
+          roomName,
+          playbackUrl,
+          `${cleanTitle}.mp4`
         );
         toast.success("Meeting transcribed successfully!", { id: toastId });
         onTranscriptionResult?.(result);
       } catch (err: any) {
-        console.error("Auto transcription failed:", err);
-        toast.error("Auto transcription failed: " + (err?.message || "Error"), { id: toastId });
+        console.error("Stored recording transcription failed:", err);
+        toast.error("Stored recording transcription failed: " + (err?.message || "Error"), { id: toastId });
       }
     }
   };

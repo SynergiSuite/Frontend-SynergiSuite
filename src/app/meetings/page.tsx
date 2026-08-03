@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import MeetingTranscriptionModal from "./MeetingTranscriptionModal";
-import { TranscriptionResult, transcribeUrlApi } from "./apis/transcribeApi";
+import { TranscriptionResult } from "./apis/transcribeApi";
 import { getRecording, stopRecording, getRecordingPlaybackUrl, getOrGenerateMeetingTranscript } from "./apis/recordingApi";
 import { MeetingRecording } from "./types/recordingTypes";
 import {
@@ -365,12 +365,15 @@ export default function MeetingsPage() {
   };
 
   // Host Action: End Meeting
-  const handleEndMeeting = async (meeting: MeetingResponseDto) => {
+  const handleEndMeeting = async (
+    meeting: MeetingResponseDto,
+    options: { skipStopRecording?: boolean } = {}
+  ) => {
     const targetId = getMeetingId(meeting);
     const roomName = meeting.roomName || meeting.meetingId;
 
     // Trigger stopRecording to tell NestJS / LiveKit to stop Egress and upload recording to MinIO bucket
-    if (roomName) {
+    if (roomName && !options.skipStopRecording) {
       stopRecording(roomName).catch((err) => {
         console.warn("[Meeting End] stopRecording error:", err);
       });
@@ -725,7 +728,7 @@ export default function MeetingsPage() {
           tokenResponse={livekitToken}
           currentUserId={currentUserId}
           onLeave={handleLeaveActiveMeeting}
-          onEndMeeting={() => handleEndMeeting(activeMeeting)}
+          onEndMeeting={(options) => handleEndMeeting(activeMeeting, options)}
           onTranscriptionResult={(res) => {
             setAutoTranscriptionResult(res);
             setIsTranscribeModalOpen(true);
