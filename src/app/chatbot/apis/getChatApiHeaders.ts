@@ -7,6 +7,7 @@ export async function getChatApiHeaders(): Promise<Record<string, string>> {
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": "1",
   };
 
   if (chatApiAuthKey) {

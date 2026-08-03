@@ -47,6 +47,8 @@ export async function chatWithUser(
 
     const headers = await getChatApiHeaders();
 
+    console.log("[Chat API Request] Sending payload to /api/users/chat:", payload);
+
     const response = await fetch(`${requestBaseUrl}/api/users/chat`, {
       method: "POST",
       headers,
@@ -54,10 +56,13 @@ export async function chatWithUser(
     });
 
     if (!response.ok) {
-      throw new Error("Failed to send chat message");
+      const errText = await response.text().catch(() => "");
+      console.error(`[Chat API Error] Status ${response.status}:`, errText);
+      throw new Error(`Failed to send chat message (${response.status})`);
     }
 
     const data: ChatApiResponse = await response.json();
+    console.log("[Chat API Response] Received data:", data);
     return data;
   } catch (error) {
     throw error;

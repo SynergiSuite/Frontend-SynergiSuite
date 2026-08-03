@@ -11,6 +11,7 @@ export async function getTeamsApi(): Promise<Team[]> {
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer " + token,
+        "ngrok-skip-browser-warning": "1",
       },
     });
 

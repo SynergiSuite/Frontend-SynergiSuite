@@ -91,11 +91,19 @@ const fetchEntitiesForCategory = async (category: SlashCategory): Promise<Entity
       }));
     } else if (category === "team") {
       const res = await getTeamsApi();
-      const teamsList = Array.isArray(res) ? res : res?.teams || [];
+      const teamsList = Array.isArray(res?.data)
+        ? res.data
+        : Array.isArray(res)
+        ? res
+        : Array.isArray(res?.teams)
+        ? res.teams
+        : Array.isArray(res?.data?.teams)
+        ? res.data.teams
+        : [];
       return teamsList.map((t: any) => ({
         id: String(t.id || t.team_id || t.teamId || t.name),
         name: t.name || t.team_name || t.teamName || "Team",
-        subtitle: `${t.membersCount || t.members?.length || 0} squad members`,
+        subtitle: `${t.membersCount || t.members?.length || (t.users ? t.users.length : 0)} squad members`,
         category: "team",
       }));
     } else if (category === "employee") {
@@ -243,7 +251,24 @@ const MessageInput = ({ input, setInput, sendMessage }: Props) => {
   };
 
   const handleSendMessage = () => {
-    sendMessage(selectedEntityId);
+    let targetEntityId = selectedEntityId;
+
+    if (!targetEntityId && entities.length > 0) {
+      const match = input.match(
+        /(?:^|\s)\/(?:report|status|progress)_(?:employee|business|team|client|project)(?:\s+(.+))?$/i
+      );
+      if (match && match[1]) {
+        const typedQuery = match[1].trim().toLowerCase();
+        const found = entities.find(
+          (e) => e.name.toLowerCase() === typedQuery || e.name.toLowerCase().includes(typedQuery)
+        );
+        if (found) {
+          targetEntityId = found.id;
+        }
+      }
+    }
+
+    sendMessage(targetEntityId);
     setSelectedEntityId(undefined);
   };
 

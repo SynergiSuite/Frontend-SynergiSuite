@@ -99,42 +99,33 @@ export default function RootLayout({
     const originalFetch = window.fetch.bind(window);
 
     window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-      const urlString =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-          ? input.toString()
-          : input instanceof Request
-          ? input.url
-          : "";
+      let urlString = "";
+      if (typeof input === "string") {
+        urlString = input;
+      } else if (input instanceof URL) {
+        urlString = input.toString();
+      } else if (input instanceof Request) {
+        urlString = input.url;
+      }
 
       const backendBase = process.env.NEXT_PUBLIC_BACKEND_BASE_URL || "";
+      const chatbotBase = process.env.NEXT_PUBLIC_BACKEND_CHATBOT_BASE_URL || "";
+
       const isBackendReq =
         urlString.startsWith("/") ||
         (backendBase && urlString.startsWith(backendBase)) ||
+        (chatbotBase && urlString.startsWith(chatbotBase)) ||
         urlString.includes("ngrok");
 
-      const isRequestObject = input instanceof Request;
-      const requestHeaders = isRequestObject ? input.headers : undefined;
-      const mergedHeaders = new Headers(init?.headers ?? requestHeaders);
-
-      if (isBackendReq && !mergedHeaders.has("ngrok-skip-browser-warning")) {
-        mergedHeaders.set("ngrok-skip-browser-warning", "1");
+      if (isBackendReq && !(input instanceof Request) && init) {
+        if (typeof init.headers === "object" && init.headers !== null && !Array.isArray(init.headers)) {
+          if (!("ngrok-skip-browser-warning" in init.headers)) {
+            (init.headers as Record<string, string>)["ngrok-skip-browser-warning"] = "1";
+          }
+        }
       }
 
-      if (isRequestObject) {
-        const nextRequest = new Request(input, {
-          ...init,
-          headers: mergedHeaders,
-        });
-
-        return originalFetch(nextRequest);
-      }
-
-      return originalFetch(input, {
-        ...init,
-        headers: mergedHeaders,
-      });
+      return originalFetch(input, init);
     };
 
     patchedWindow.__ngrokFetchPatched = true;

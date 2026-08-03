@@ -118,22 +118,57 @@ function renderValueWithBadges(val: string) {
 function FormattedMessageText({ text }: { text: string }) {
   const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
 
-  const isStructuredReport = lines.some((l) =>
-    /^(?:[\-*•]\s*)?\*\*.*?\*\*/.test(l)
-  );
-
-  if (!isStructuredReport) {
-    return (
-      <p className="text-sm leading-6 break-words whitespace-pre-wrap text-white/95">
-        {formatInlineMarkdown(text)}
-      </p>
-    );
-  }
+  if (lines.length === 0) return null;
 
   return (
     <div className="space-y-2.5 w-full">
       {lines.map((line, idx) => {
-        // 1. Header Line (e.g. "⚡ **Team Execution Report: Upper Management**")
+        // 1. Markdown H1 Header (# Heading)
+        const h1Match = line.match(/^#\s+(.*)$/);
+        if (h1Match) {
+          return (
+            <div key={idx} className="pb-3 mb-3 border-b border-white/15">
+              <h1 className="text-base sm:text-lg font-extrabold text-white tracking-tight flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[#5271ff]" />
+                {formatInlineMarkdown(h1Match[1])}
+              </h1>
+            </div>
+          );
+        }
+
+        // 2. Markdown H2 Header (## Heading)
+        const h2Match = line.match(/^##\s+(.*)$/);
+        if (h2Match) {
+          return (
+            <div key={idx} className="pt-2 pb-1.5 mb-2 border-b border-white/10 flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-bold text-white tracking-wide">
+                {formatInlineMarkdown(h2Match[1])}
+              </h2>
+            </div>
+          );
+        }
+
+        // 3. Markdown H3 Header (### Heading)
+        const h3Match = line.match(/^###\s+(.*)$/);
+        if (h3Match) {
+          return (
+            <h3 key={idx} className="text-xs sm:text-sm font-semibold text-[#8fa2ff] tracking-wide pt-1.5 mb-1">
+              {formatInlineMarkdown(h3Match[1])}
+            </h3>
+          );
+        }
+
+        // 4. Markdown H4 Header (#### Heading)
+        const h4Match = line.match(/^####\s+(.*)$/);
+        if (h4Match) {
+          return (
+            <h4 key={idx} className="text-xs font-semibold text-white/80 pt-1 mb-1">
+              {formatInlineMarkdown(h4Match[1])}
+            </h4>
+          );
+        }
+
+        // 5. Header Line with Emoji / Bold (e.g. "⚡ **Team Execution Report**")
         const headerMatch = line.match(/^(?:([⚡📊📁🤝🏢💡🚀📌])\s*)?\*\*(.*?)\*\*$/);
         if (headerMatch) {
           const icon = headerMatch[1];
@@ -141,15 +176,15 @@ function FormattedMessageText({ text }: { text: string }) {
           return (
             <div
               key={idx}
-              className="flex items-center gap-2.5 pb-3 mb-2 border-b border-white/10"
+              className="flex items-center gap-2.5 pb-2.5 mb-2 border-b border-white/10"
             >
               {icon ? (
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#5271ff]/20 to-[#3a4ec4]/10 border border-[#5271ff]/30 text-[#5271ff] text-base font-bold shadow-[0_0_12px_rgba(82,113,255,0.25)] shrink-0">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-[#5271ff]/20 to-[#3a4ec4]/10 border border-[#5271ff]/30 text-[#5271ff] text-sm font-bold shadow-[0_0_12px_rgba(82,113,255,0.25)] shrink-0">
                   {icon}
                 </span>
               ) : (
-                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#5271ff]/15 border border-[#5271ff]/20 text-[#5271ff] shrink-0">
-                  <Sparkles className="h-4 w-4" />
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#5271ff]/15 border border-[#5271ff]/20 text-[#5271ff] shrink-0">
+                  <Sparkles className="h-3.5 w-3.5" />
                 </span>
               )}
               <h3 className="text-sm sm:text-base font-bold text-white tracking-wide">
@@ -159,8 +194,8 @@ function FormattedMessageText({ text }: { text: string }) {
           );
         }
 
-        // 2. Key-Value bullet item (e.g. "- **Execution Velocity Index**: 100%")
-        const kvMatch = line.match(/^[\-*•]\s*\*\*(.*?)\*\*:\s*(.*)$/);
+        // 6. Key-Value bullet item (e.g. "- **Role**: Manager" or "**Role**: Manager")
+        const kvMatch = line.match(/^(?:[\-*•]\s*)?\*\*(.*?)\*\*:\s*(.*)$/);
         if (kvMatch) {
           const key = kvMatch[1];
           const val = kvMatch[2];
@@ -179,7 +214,7 @@ function FormattedMessageText({ text }: { text: string }) {
           );
         }
 
-        // 3. Regular bullet point (e.g. "- Some activity or item")
+        // 7. Regular bullet point (e.g. "- 4 / 7" or "* Completed Tasks")
         const bulletMatch = line.match(/^[\-*•]\s*(.*)$/);
         if (bulletMatch) {
           return (
@@ -190,7 +225,7 @@ function FormattedMessageText({ text }: { text: string }) {
           );
         }
 
-        // 4. Default text line
+        // 8. Default text line
         return (
           <p key={idx} className="text-xs text-white/90 leading-5">
             {formatInlineMarkdown(line)}

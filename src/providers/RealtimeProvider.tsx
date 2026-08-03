@@ -566,6 +566,12 @@ export default function RealtimeProvider({
 
     // ── Connect ──
     socket.auth = { token };
+    if (socket.io?.opts) {
+      socket.io.opts.extraHeaders = {
+        ...socket.io.opts.extraHeaders,
+        "ngrok-skip-browser-warning": "1",
+      };
+    }
     log.socket("Connecting with auth token present:", Boolean(token));
     if (!socket.connected) {
       socket.connect();

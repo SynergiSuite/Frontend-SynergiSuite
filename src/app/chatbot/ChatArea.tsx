@@ -63,6 +63,14 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
   }, [messages]);
 
   useEffect(() => {
+    const pendingPrompt = sessionStorage.getItem("pending_chat_prompt");
+    if (pendingPrompt) {
+      sessionStorage.removeItem("pending_chat_prompt");
+      setInput(pendingPrompt);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!sessionId) {
       setMessages([]);
       return;
@@ -132,16 +140,19 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
     setInput("");
 
     try {
+      console.log(`[ChatArea] Sending message: "${trimmedInput}" (selectedId: ${selectedId || "none"}, model: ${model})`);
       const response = await chatWithUser(trimmedInput, sessionId, model, selectedId);
-      console.log("Chat API response:", response);
+      console.log("[ChatArea] Received Chat Response Payload:", response);
 
       if (response.history?.length) {
+        console.log("[ChatArea] Updating messages from response history:", response.history);
         setMessages(mapApiHistoryToMessages(response.history));
         return;
       }
 
       const replyText = response.response?.trim();
       if (replyText) {
+        console.log("[ChatArea] Bot Reply Text:", replyText);
         setMessages((prev) => [
           ...prev.filter((message) => message.id !== typingMessageId),
           {
@@ -153,7 +164,7 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
         ]);
       }
     } catch (error) {
-      console.error("Chat API error:", error);
+      console.error("[ChatArea] Chat API error:", error);
       setMessages((prev) => prev.filter((message) => message.id !== typingMessageId));
     }
   };

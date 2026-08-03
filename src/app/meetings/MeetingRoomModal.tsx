@@ -24,10 +24,15 @@ import {
   Maximize2,
   Minimize2,
   Volume2,
+  Radio,
+  Sparkles,
 } from "lucide-react";
 import { MeetingResponseDto, MeetingTokenResponse } from "./types/meetingTypes";
 import { motion } from "framer-motion";
 import { toast } from "sonner";
+import { transcribeAudioApi, TranscriptionResult } from "./apis/transcribeApi";
+import { getRecording, stopRecording } from "./apis/recordingApi";
+import { MeetingRecording } from "./types/recordingTypes";
 
 interface MeetingRoomModalProps {
   meeting: MeetingResponseDto;
@@ -35,6 +40,7 @@ interface MeetingRoomModalProps {
   currentUserId: number;
   onLeave: () => void;
   onEndMeeting?: () => void;
+  onTranscriptionResult?: (result: TranscriptionResult) => void;
 }
 
 interface ParticipantTrackState {
@@ -54,6 +60,7 @@ export default function MeetingRoomModal({
   currentUserId,
   onLeave,
   onEndMeeting,
+  onTranscriptionResult,
 }: MeetingRoomModalProps) {
   const [room, setRoom] = useState<Room | null>(null);
   const [connectionState, setConnectionState] = useState<"connecting" | "connected" | "disconnected">("connecting");
@@ -63,9 +70,154 @@ export default function MeetingRoomModal({
   const [participantTracks, setParticipantTracks] = useState<ParticipantTrackState[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  // Auto Meeting Audio Recording Refs & State
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const [isAutoRecording, setIsAutoRecording] = useState(false);
+
   const hostUserId = Number(meeting.host?.user_id || 0);
   const myUserId = Number(currentUserId || 0);
   const isHost = hostUserId > 0 && myUserId > 0 && hostUserId === myUserId;
+
+  // Backend LiveKit Server Egress Recording State
+  const [serverRecording, setServerRecording] = useState<MeetingRecording | null>(null);
+  const [isStoppingServerRecording, setIsStoppingServerRecording] = useState(false);
+
+  const roomName = meeting.roomName || meeting.meetingId;
+
+  // Poll backend GET /api/recordings/:roomName for server-driven egress status
+  useEffect(() => {
+    if (!roomName) return;
+
+    let isMounted = true;
+    let pollTimer: number | null = null;
+
+    const fetchRecordingStatus = async () => {
+      const rec = await getRecording(roomName);
+      if (!isMounted) return;
+
+      if (rec) {
+        setServerRecording(rec);
+      }
+
+      const status = rec?.status;
+      const isTerminal =
+        status === "complete" ||
+        status === "failed" ||
+        status === "aborted" ||
+        status === "limit_reached";
+
+      if (isTerminal) {
+        return; // Stop polling on terminal states
+      }
+
+      // Poll every 5s while starting/active/ending, 10s if waiting for first record
+      const nextDelay = status ? 5000 : 10000;
+      pollTimer = window.setTimeout(fetchRecordingStatus, nextDelay);
+    };
+
+    void fetchRecordingStatus();
+
+    return () => {
+      isMounted = false;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
+  }, [roomName]);
+
+  const handleStopServerRecording = async () => {
+    if (!roomName || isStoppingServerRecording) return;
+    try {
+      setIsStoppingServerRecording(true);
+      const updated = await stopRecording(roomName);
+      setServerRecording(updated);
+      toast.success("Stop recording request sent");
+    } catch (err: any) {
+      console.error("[Recording Stop Failed]", err);
+      toast.error(err?.message || "Failed to stop recording");
+    } finally {
+      setIsStoppingServerRecording(false);
+    }
+  };
+
+  // Start automatic meeting audio recording
+  const startMeetingAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : "audio/webm";
+
+      const recorder = new MediaRecorder(stream, { mimeType });
+      audioChunksRef.current = [];
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.start(1000);
+      mediaRecorderRef.current = recorder;
+      setIsAutoRecording(true);
+      console.log("[Meeting Audio Recorder] Auto recording started.");
+    } catch (err) {
+      console.warn("[Meeting Audio Recorder] Could not start audio recording:", err);
+    }
+  };
+
+  // Finalize recording on leave/end meeting and trigger transcription
+  const handleFinalizeAndTranscribe = async () => {
+    let recordedBlob: Blob | null = null;
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+      try {
+        const recorder = mediaRecorderRef.current;
+        recorder.stop();
+        recorder.stream.getTracks().forEach((track) => track.stop());
+        setIsAutoRecording(false);
+      } catch (err) {
+        console.warn("[Meeting Audio Recorder] Error stopping recorder:", err);
+      }
+    }
+
+    await new Promise((r) => setTimeout(r, 300));
+
+    if (audioChunksRef.current.length > 0) {
+      recordedBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+    }
+
+    // If server egress recording is active/starting, trigger stopRecording so backend/LiveKit uploads file to MinIO
+    if (roomName && serverRecording && (serverRecording.status === "active" || serverRecording.status === "starting")) {
+      try {
+        console.log(`[Meeting End] Triggering stopRecording for room: "${roomName}"`);
+        await stopRecording(roomName).catch((err) => console.warn("[Meeting End] stopRecording error:", err));
+      } catch (err) {
+        console.warn("[Meeting End] Could not call stopRecording:", err);
+      }
+    }
+
+    if (isHost && onEndMeeting) {
+      onEndMeeting();
+    } else {
+      onLeave();
+    }
+
+    if (recordedBlob && recordedBlob.size > 1000) {
+      const toastId = toast.loading("Processing meeting audio with faster-whisper AI...");
+      try {
+        const cleanTitle = (meeting.title || "meeting").replace(/[^a-zA-Z0-9-_]/g, "_");
+        const result = await transcribeAudioApi(
+          recordedBlob,
+          `${cleanTitle}-${Date.now()}.webm`
+        );
+        toast.success("Meeting transcribed successfully!", { id: toastId });
+        onTranscriptionResult?.(result);
+      } catch (err: any) {
+        console.error("Auto transcription failed:", err);
+        toast.error("Auto transcription failed: " + (err?.message || "Error"), { id: toastId });
+      }
+    }
+  };
 
   useEffect(() => {
     let isSubscribed = true;
@@ -141,6 +293,7 @@ export default function MeetingRoomModal({
         if (!isSubscribed) return;
         setConnectionState("connected");
         updateParticipants();
+        void startMeetingAudioRecording();
 
         // Publish local mic and camera separately with graceful hardware fallback
         const initMedia = async () => {
@@ -274,6 +427,50 @@ export default function MeetingRoomModal({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Server Egress Recording Status Badge */}
+          {serverRecording &&
+            (serverRecording.status === "starting" ||
+              serverRecording.status === "active" ||
+              serverRecording.status === "ending") && (
+              <div className="hidden sm:flex items-center gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${
+                    serverRecording.status === "active"
+                      ? "border-red-500/40 bg-red-500/10 text-red-400"
+                      : "border-amber-500/40 bg-amber-500/10 text-amber-300"
+                  }`}
+                >
+                  <Radio className="h-3 w-3 text-red-500 animate-ping" />
+                  <span>
+                    {serverRecording.status === "starting"
+                      ? "Recording starting"
+                      : serverRecording.status === "active"
+                      ? "Recording"
+                      : "Recording stopping"}
+                  </span>
+                </span>
+
+                {isHost && (
+                  <button
+                    type="button"
+                    disabled={isStoppingServerRecording}
+                    onClick={handleStopServerRecording}
+                    className="rounded-full border border-rose-500/40 bg-rose-500/20 px-3 py-1 text-xs font-bold text-rose-300 transition hover:bg-rose-500/30 hover:border-rose-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  >
+                    {isStoppingServerRecording ? "Stopping..." : "Stop recording"}
+                  </button>
+                )}
+              </div>
+            )}
+
+          {/* Local Audio Recording Fallback Badge */}
+          {!serverRecording && isAutoRecording && (
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-red-500/40 bg-red-500/10 px-3 py-1 text-xs font-bold text-red-400">
+              <Radio className="h-3 w-3 text-red-500 animate-ping" />
+              <span>Recording Audio</span>
+            </span>
+          )}
+
           <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-white/70">
             <Users className="h-3.5 w-3.5 text-[#5271ff]" />
             {participantTracks.length} {participantTracks.length === 1 ? "person" : "people"}
@@ -371,7 +568,7 @@ export default function MeetingRoomModal({
           {/* Leave Button */}
           <button
             type="button"
-            onClick={isHost && onEndMeeting ? onEndMeeting : onLeave}
+            onClick={handleFinalizeAndTranscribe}
             className="flex items-center gap-2 rounded-2xl border border-rose-500/40 bg-rose-500/20 px-5 py-3 text-xs font-bold text-rose-300 transition hover:bg-rose-500/30 hover:border-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.25)] cursor-pointer"
           >
             <PhoneOff className="h-4 w-4" />

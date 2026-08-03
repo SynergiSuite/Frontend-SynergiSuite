@@ -17,8 +17,13 @@ import {
   RefreshCw,
   Search,
   Filter,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import MeetingTranscriptionModal from "./MeetingTranscriptionModal";
+import { TranscriptionResult, transcribeUrlApi } from "./apis/transcribeApi";
+import { getRecording, stopRecording, getRecordingPlaybackUrl, getOrGenerateMeetingTranscript } from "./apis/recordingApi";
+import { MeetingRecording } from "./types/recordingTypes";
 import {
   MeetingResponseDto,
   MeetingStatus,
@@ -51,6 +56,128 @@ import { useRealtime } from "@/context/RealtimeContext";
 
 type TabFilter = "all" | "live" | "scheduled" | "ended";
 
+function MeetingRecordingCardButton({
+  meeting,
+  onTranscribeResult,
+}: {
+  meeting: MeetingResponseDto;
+  onTranscribeResult?: (result: TranscriptionResult) => void;
+}) {
+  const [recording, setRecording] = useState<MeetingRecording | null>(null);
+  const [isLoadingPlayback, setIsLoadingPlayback] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+
+  const roomName = meeting.roomName || meeting.meetingId;
+
+  useEffect(() => {
+    if (!roomName) return;
+    let isMounted = true;
+
+    getRecording(roomName).then((rec) => {
+      if (isMounted && rec) {
+        setRecording(rec);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [roomName]);
+
+  if (!recording) return null;
+
+  const handlePlayRecording = async () => {
+    if (!roomName || isLoadingPlayback) return;
+    try {
+      setIsLoadingPlayback(true);
+      let url = recording?.playbackUrl;
+      if (!url) {
+        url = await getRecordingPlaybackUrl(roomName);
+      }
+      if (url) {
+        window.open(url, "_blank");
+      } else {
+        toast.error("Playback URL not available");
+      }
+    } catch (err: any) {
+      console.error("[Recording Playback URL Failed]", err);
+      toast.error(err?.message || "Recording is still processing");
+    } finally {
+      setIsLoadingPlayback(false);
+    }
+  };
+
+  const handleTranscribeRecording = async () => {
+    if (!roomName || isTranscribing) return;
+    const toastId = toast.loading("Checking transcript status...");
+    try {
+      setIsTranscribing(true);
+      const cleanTitle = (meeting.title || "meeting").replace(/[^a-zA-Z0-9-_]/g, "_");
+
+      // 1. Checks GET /api/recordings/:roomName/transcript for existing transcript
+      // 2. If missing, generates via faster-whisper AI once and saves via POST /api/recordings/:roomName/transcript
+      const result = await getOrGenerateMeetingTranscript(
+        roomName,
+        recording?.playbackUrl || undefined,
+        `${cleanTitle}.mp4`
+      );
+
+      toast.success("Meeting transcript ready!", { id: toastId });
+      onTranscribeResult?.(result);
+    } catch (err: any) {
+      console.error("Recording URL transcription error:", err);
+      toast.error(err?.message || "Failed to load transcript", { id: toastId });
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  if (recording.status === "complete" && (recording.playbackUrl || recording.filePath || recording.fileLocation)) {
+    return (
+      <div className="flex items-center gap-1.5">
+        <button
+          type="button"
+          disabled={isLoadingPlayback}
+          onClick={handlePlayRecording}
+          className="flex items-center gap-1.5 rounded-xl border border-[#5271ff]/40 bg-[#5271ff]/15 px-3 py-1.5 text-xs font-bold text-[#8fa2ff] hover:bg-[#5271ff]/30 transition cursor-pointer disabled:opacity-50"
+        >
+          <Play className="h-3.5 w-3.5" />
+          <span>{isLoadingPlayback ? "Loading..." : "Play"}</span>
+        </button>
+
+        <button
+          type="button"
+          disabled={isTranscribing}
+          onClick={handleTranscribeRecording}
+          className="flex items-center gap-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500/30 transition cursor-pointer disabled:opacity-50"
+        >
+          <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+          <span>{isTranscribing ? "Transcribing..." : "Transcribe"}</span>
+        </button>
+      </div>
+    );
+  }
+
+  if (recording.status === "ending" || recording.status === "starting" || recording.status === "active") {
+    return (
+      <span className="flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
+        <span className="h-2 w-2 rounded-full bg-amber-400 animate-ping" />
+        <span>{recording.status === "ending" ? "Processing recording..." : "Recording"}</span>
+      </span>
+    );
+  }
+
+  if (recording.status === "failed") {
+    return (
+      <span className="text-[11px] font-semibold text-rose-400" title={recording.error || "Recording failed"}>
+        Recording failed
+      </span>
+    );
+  }
+
+  return null;
+}
+
 function getMeetingId(m: any): string {
   return String(m?.meetingId || m?.id || m?.meeting_id || "");
 }
@@ -66,6 +193,8 @@ export default function MeetingsPage() {
 
   // Modal States
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isTranscribeModalOpen, setIsTranscribeModalOpen] = useState(false);
+  const [autoTranscriptionResult, setAutoTranscriptionResult] = useState<TranscriptionResult | null>(null);
   const [activeMeeting, setActiveMeeting] = useState<MeetingResponseDto | null>(null);
   const [livekitToken, setLivekitToken] = useState<MeetingTokenResponse | null>(null);
 
@@ -238,6 +367,14 @@ export default function MeetingsPage() {
   // Host Action: End Meeting
   const handleEndMeeting = async (meeting: MeetingResponseDto) => {
     const targetId = getMeetingId(meeting);
+    const roomName = meeting.roomName || meeting.meetingId;
+
+    // Trigger stopRecording to tell NestJS / LiveKit to stop Egress and upload recording to MinIO bucket
+    if (roomName) {
+      stopRecording(roomName).catch((err) => {
+        console.warn("[Meeting End] stopRecording error:", err);
+      });
+    }
 
     // Optimistically update local meetings list to status ended
     setMeetings((prev) =>
@@ -499,6 +636,15 @@ export default function MeetingsPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {/* Meeting Recording Action Button / Status */}
+                      <MeetingRecordingCardButton
+                        meeting={meeting}
+                        onTranscribeResult={(res) => {
+                          setAutoTranscriptionResult(res);
+                          setIsTranscribeModalOpen(true);
+                        }}
+                      />
+
                       {/* Host: Start Meeting button */}
                       {isHost && meeting.status === "scheduled" && (
                         <button
@@ -562,6 +708,16 @@ export default function MeetingsPage() {
         />
       )}
 
+      {/* Meeting Audio Transcription Modal */}
+      <MeetingTranscriptionModal
+        isOpen={isTranscribeModalOpen}
+        initialResult={autoTranscriptionResult}
+        onClose={() => {
+          setIsTranscribeModalOpen(false);
+          setAutoTranscriptionResult(null);
+        }}
+      />
+
       {/* Active LiveKit Video Conference Overlay */}
       {activeMeeting && livekitToken && (
         <MeetingRoomModal
@@ -570,6 +726,10 @@ export default function MeetingsPage() {
           currentUserId={currentUserId}
           onLeave={handleLeaveActiveMeeting}
           onEndMeeting={() => handleEndMeeting(activeMeeting)}
+          onTranscriptionResult={(res) => {
+            setAutoTranscriptionResult(res);
+            setIsTranscribeModalOpen(true);
+          }}
         />
       )}
     </div>
