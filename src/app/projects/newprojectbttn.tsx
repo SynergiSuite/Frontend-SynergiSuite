@@ -8,6 +8,8 @@ import { Client } from "./schemas/client";
 import { CreateNewProject } from "./apis/createNewProject";
 import { toast } from "sonner";
 
+import { CookieManager } from "@/lib/cookieManager";
+
 export default function NewProjectButton({
   teams,
   clients,
@@ -18,6 +20,34 @@ export default function NewProjectButton({
   onProjectCreated: () => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [userRole, setUserRole] = useState<string>(() =>
+    typeof window !== "undefined"
+      ? String(
+          CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+        ).toLowerCase()
+      : ""
+  );
+
+  React.useEffect(() => {
+    const rawRole = String(
+      CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+    ).toLowerCase();
+    setUserRole(rawRole);
+  }, []);
+
+  const primaryRoleStr = String(CookieManager("get", "primary_role") || "").toLowerCase().trim();
+  const displayRoleStr = String(CookieManager("get", "role") || "").toLowerCase().trim();
+  const effectiveRole = primaryRoleStr || displayRoleStr || userRole;
+
+  const isAllowedToCreate =
+    !effectiveRole.includes("client") &&
+    effectiveRole !== "employee" &&
+    effectiveRole !== "junior employee" &&
+    effectiveRole !== "junior_employee" &&
+    (effectiveRole.includes("founder") ||
+      effectiveRole.includes("manager") ||
+      effectiveRole.includes("admin") ||
+      effectiveRole.includes("senior"));
 
   const structureData = (
     clientId: string,
@@ -46,6 +76,11 @@ export default function NewProjectButton({
     duration: string;
     description?: string;
   }) => {
+    if (!isAllowedToCreate) {
+      toast.error("Only Founders, Managers, and Senior Employees are allowed to create projects.");
+      return;
+    }
+
     const payload = structureData(
       data.clientId,
       data.teamIds,
@@ -63,8 +98,11 @@ export default function NewProjectButton({
     } catch (error) {
       toast.error("Failed to create project" + error);
     }
-    
   };
+
+  if (!isAllowedToCreate) {
+    return null;
+  }
 
   return (
     <>

@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Download, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { getCookie } from "cookies-next";
 import dynamic from "next/dynamic";
 
@@ -28,19 +28,8 @@ export default function UserActions() {
     setIsDialogOpen(false);
   };
 
-  const handleExport = () => {};
-
   return (
     <div className="flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
-      {/* Export button */}
-      <button
-        onClick={handleExport}
-        className="flex w-full items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2.5 text-sm font-medium text-white/60 backdrop-blur-md transition-all duration-200 hover:border-white/[0.15] hover:bg-white/[0.06] hover:text-white sm:w-auto"
-      >
-        <Download size={15} />
-        Export
-      </button>
-
       {/* Add User button — role-gated */}
       {allowedRoles.includes(role) ? (
         <>

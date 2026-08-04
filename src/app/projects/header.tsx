@@ -5,6 +5,8 @@ import NewProjectButton from "./newprojectbttn";
 import { Team } from "./schemas/team";
 import { Client } from "./schemas/client";
 
+import { CookieManager } from "@/lib/cookieManager";
+
 interface HeaderProps {
   filter: string;
   setFilter: (value: string) => void;
@@ -26,6 +28,20 @@ export default function Header({
 }: HeaderProps) {
   const tabs = ["All", "In Queue", "In Progress", "Completed", "On Hold", "At Risk"];
 
+  const primaryRole = String(CookieManager("get", "primary_role") || "").toLowerCase().trim();
+  const displayRole = String(CookieManager("get", "role") || "").toLowerCase().trim();
+  const userRole = primaryRole || displayRole;
+
+  const isAllowedToCreateProject =
+    !userRole.includes("client") &&
+    userRole !== "employee" &&
+    userRole !== "junior employee" &&
+    userRole !== "junior_employee" &&
+    (userRole.includes("founder") ||
+      userRole.includes("manager") ||
+      userRole.includes("admin") ||
+      userRole.includes("senior"));
+
   return (
     <>
       {/* Top section: title + search + button */}
@@ -36,11 +52,13 @@ export default function Header({
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
-          <NewProjectButton
-            teams={teams}
-            clients={clients}
-            onProjectCreated={onProjectCreated}
-          />
+          {isAllowedToCreateProject && (
+            <NewProjectButton
+              teams={teams}
+              clients={clients}
+              onProjectCreated={onProjectCreated}
+            />
+          )}
         </div>
       </div>
 

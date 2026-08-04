@@ -79,14 +79,24 @@ export default function Sidebar({
     { label: "Cloud", route: "/cloud", icon: Cloud },
   ];
 
+  const isFounderOrManager = isFounder || isManager;
+
+  const allowedRoutesForOtherRoles = [
+    "/dashboard",
+    "/employees",
+    "/teams",
+    "/projects",
+    "/cloud",
+    "/chatbot",
+    "/collab-station",
+    "/meetings",
+  ];
+
   const sidebarItems = isClientRole
     ? clientSidebarItems
-    : allSidebarItems.filter((item) => {
-        if (item.route === "/analytics" || item.route === "/reports") {
-          return canAccessAnalytics;
-        }
-        return true;
-      });
+    : isFounderOrManager
+    ? allSidebarItems
+    : allSidebarItems.filter((item) => allowedRoutesForOtherRoles.includes(item.route));
 
   const isActiveRoute = (route: string) =>
     pathname === route || pathname.startsWith(`${route}/`);
