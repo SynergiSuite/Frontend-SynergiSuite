@@ -107,7 +107,9 @@ export default function ProjectCards({
     const safeName = encodeURIComponent(projectName || "");
     CookieManager("set", "client-name", clientName);
     CookieManager("set", "project-id", projectID);
-    const userRole = String(role || CookieManager("get", "role") || "").toLowerCase();
+    const userRole = String(
+      role || CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+    ).toLowerCase();
     if (userRole === "client") {
       router.push(`/projects/${safeName}/task`);
     } else {

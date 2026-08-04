@@ -28,7 +28,7 @@ export default function Page() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setRole(String(CookieManager("get", "role") || ""));
+    setRole(String(CookieManager("get", "primary_role") || CookieManager("get", "role") || ""));
   }, []);
 
   // Reset page to 1 when search query changes

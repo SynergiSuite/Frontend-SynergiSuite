@@ -29,13 +29,33 @@ const formatMessageTime = (value?: string) =>
     minute: "2-digit",
   });
 
+const toDisplayText = (value: unknown) => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+};
+
 const mapApiHistoryToMessages = (
   history: NonNullable<ChatApiResponse["history"]>,
 ) =>
   history.map((item, index) => ({
     id: Date.now() + index,
     sender: item.role === "assistant" ? "bot" : "user",
-    text: item.content,
+    text: toDisplayText(item.content),
     time: formatMessageTime(),
   })) as MessageType[];
 
@@ -45,7 +65,7 @@ const mapSessionHistoryToMessages = (
   history.map((item, index) => ({
     id: Date.now() + index,
     sender: item.role === "assistant" ? "bot" : "user",
-    text: item.content,
+    text: toDisplayText(item.content),
     time: formatMessageTime(item.ts),
   })) as MessageType[];
 
@@ -150,7 +170,7 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
         return;
       }
 
-      const replyText = response.response?.trim();
+      const replyText = toDisplayText(response.response).trim();
       if (replyText) {
         console.log("[ChatArea] Bot Reply Text:", replyText);
         setMessages((prev) => [

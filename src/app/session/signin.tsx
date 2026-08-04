@@ -57,6 +57,28 @@ export default function Signin() {
       CookieManager("set", "user-email", responseData.email);
       CookieManager("set", "user", responseData.name);
 
+      const extractRoleName =
+        responseData.role?.name ??
+        responseData.role_name ??
+        (typeof responseData.role === "string" ? responseData.role : undefined);
+
+      const extractPrimaryRoleName =
+        responseData.role?.primary_role?.name ??
+        responseData.primary_role?.name ??
+        responseData.primary_role_name ??
+        (typeof responseData.primary_role === "string"
+          ? responseData.primary_role
+          : typeof responseData.role?.primary_role === "string"
+          ? responseData.role.primary_role
+          : undefined);
+
+      if (extractRoleName) {
+        CookieManager("set", "role", extractRoleName);
+      }
+      if (extractPrimaryRoleName) {
+        CookieManager("set", "primary_role", String(extractPrimaryRoleName));
+      }
+
       // If user is created and not verified
       if (responseData.verified === false) {
         // Request email verification
@@ -93,7 +115,6 @@ export default function Signin() {
         const businessName = responseData.business_name ?? business?.name;
         const businessId =
           responseData.business_id ?? business?.business_id ?? business?.id ?? business?._id;
-        const roleName = responseData.role?.name ?? responseData.role_name;
 
         if (!businessName || !businessId) {
           CookieManager("set", "register-token", responseData.access_token);
@@ -104,8 +125,11 @@ export default function Signin() {
 
         CookieManager("set", "business-name", businessName);
         CookieManager("set", "business-id", businessId);
-        if (roleName) {
-          CookieManager("set", "role", roleName);
+        if (extractRoleName) {
+          CookieManager("set", "role", extractRoleName);
+        }
+        if (extractPrimaryRoleName) {
+          CookieManager("set", "primary_role", String(extractPrimaryRoleName));
         }
         router.push("/dashboard");
         toast.success("Logged in successfully");

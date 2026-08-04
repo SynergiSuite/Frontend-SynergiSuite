@@ -6,7 +6,7 @@ export type SessionHistoryResponse = {
   session_id: string;
   history: Array<{
     role: "user" | "assistant";
-    content: string;
+    content: unknown;
     ts: string;
   }>;
   count: number;

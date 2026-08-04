@@ -74,7 +74,9 @@ export default function AnalyticsPage() {
 
   // Role Access Guard
   useEffect(() => {
-    const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+    const userRole = String(
+      CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+    ).toLowerCase();
     setRole(userRole);
     const isFounder = userRole.includes("founder");
     const isManager = userRole.includes("manager") || userRole.includes("admin");

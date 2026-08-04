@@ -89,7 +89,7 @@ const ClientManagementPage = () => {
   }, [clients, search]);
 
   useEffect(() => {
-    const cookieRole = CookieManager("get", "role");
+    const cookieRole = CookieManager("get", "primary_role") || CookieManager("get", "role");
     setRole((cookieRole as string) ?? "");
   }, []);
 

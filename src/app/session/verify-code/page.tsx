@@ -89,6 +89,24 @@ export default function VerifyCode() {
       }
       CookieManager("delete", "verify-token");
       CookieManager("set", "register-token", accessToken as string);
+
+      const roleName = data.role?.name ?? data.role_name;
+      const primaryRoleName =
+        data.role?.primary_role?.name ??
+        data.primary_role?.name ??
+        data.primary_role_name ??
+        (typeof data.primary_role === "string"
+          ? data.primary_role
+          : typeof data.role?.primary_role === "string"
+          ? data.role.primary_role
+          : undefined);
+      if (roleName) {
+        CookieManager("set", "role", roleName);
+      }
+      if (primaryRoleName) {
+        CookieManager("set", "primary_role", String(primaryRoleName));
+      }
+
       router.push("/session/register-business");
     } catch (error) {
       if (error instanceof ZodError) {

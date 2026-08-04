@@ -55,7 +55,7 @@ export default function Page() {
 
   // Get Teams with tasks using backend pagination
   useEffect(() => {
-    const cookieRole = CookieManager("get", "role");
+    const cookieRole = CookieManager("get", "primary_role") || CookieManager("get", "role");
     setRole((cookieRole as string) ?? "");
 
     const fetchTeamsData = async () => {

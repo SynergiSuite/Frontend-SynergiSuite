@@ -8,7 +8,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CookieManager } from "@/lib/cookieManager";
 import { useParams } from "next/navigation";
 import { toast } from "sonner";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import Logo from "@/assets/Logo.png";
 import { gsap } from "gsap";
 import NotificationBell from "@/components/notifications/NotificationBell";
@@ -48,6 +48,7 @@ export default function Navbar() {
     CookieManager("delete", "user-id");
     CookieManager("delete", "user_id");
     CookieManager("delete", "role");
+    CookieManager("delete", "primary_role");
     CookieManager("delete", "verify-token");
     CookieManager("delete", "register-token");
 
@@ -284,6 +285,17 @@ export default function Navbar() {
                     onClick={() => setIsProfileOpen(false)}
                   >
                     Close
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProfileOpen(false);
+                      router.push("/settings");
+                    }}
+                    className="flex items-center justify-center gap-2 rounded-xl border border-[#5271ff]/40 bg-[#5271ff]/15 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_12px_rgba(82,113,255,0.25)] transition hover:bg-[#5271ff] hover:shadow-[0_0_20px_rgba(82,113,255,0.45)] cursor-pointer"
+                  >
+                    <Settings size={16} /> <span>Settings</span>
                   </button>
 
                   <button

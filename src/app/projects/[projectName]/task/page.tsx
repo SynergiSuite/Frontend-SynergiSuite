@@ -56,7 +56,7 @@ export default function TaskPage() {
   };
 
   useEffect(() => {
-    setRole(String(CookieManager("get", "role") || ""));
+    setRole(String(CookieManager("get", "primary_role") || CookieManager("get", "role") || ""));
 
     const initData = async () => {
       setIsLoading(true);

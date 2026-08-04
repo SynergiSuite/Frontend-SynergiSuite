@@ -17,6 +17,7 @@ const protectedRoutes = [
   "/employees",
   "/teams",
   "/clients",
+  "/reports",
 ];
 
 // Public routes accessible without login

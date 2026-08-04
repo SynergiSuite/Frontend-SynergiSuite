@@ -26,7 +26,7 @@ const ActivityFeed = ({ projectId, projectName }: ActivityFeedProps) => {
   const [role, setRole] = useState<string>("");
 
   useEffect(() => {
-    const userRole = CookieManager("get", "role");
+    const userRole = CookieManager("get", "primary_role") || CookieManager("get", "role");
     setRole(String(userRole || "").toLowerCase());
   }, []);
 

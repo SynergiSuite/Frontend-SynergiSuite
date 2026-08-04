@@ -10,10 +10,10 @@ type ChatPayload = {
 };
 
 export type ChatApiResponse = {
-  response?: string;
+  response?: unknown;
   history?: Array<{
     role: "user" | "assistant";
-    content: string;
+    content: unknown;
   }>;
   session_id: string;
   user_id: string;
@@ -47,7 +47,7 @@ export async function chatWithUser(
 
     const headers = await getChatApiHeaders();
 
-    console.log("[Chat API Request] Sending payload to /api/users/chat:", payload);
+    console.log("[Chat API Request] Sending payload to:", `${requestBaseUrl}/api/users/chat`, payload);
 
     const response = await fetch(`${requestBaseUrl}/api/users/chat`, {
       method: "POST",
@@ -55,14 +55,16 @@ export async function chatWithUser(
       body: JSON.stringify(payload),
     });
 
+    console.log("[Chat API Response] HTTP Status:", response.status, response.statusText);
+
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
       console.error(`[Chat API Error] Status ${response.status}:`, errText);
-      throw new Error(`Failed to send chat message (${response.status})`);
+      throw new Error(`Failed to send chat message (${response.status}): ${errText}`);
     }
 
     const data: ChatApiResponse = await response.json();
-    console.log("[Chat API Response] Received data:", data);
+    console.log("[Chat API Response] Full JSON Payload Received:", JSON.stringify(data, null, 2));
     return data;
   } catch (error) {
     throw error;

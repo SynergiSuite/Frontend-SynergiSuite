@@ -72,6 +72,29 @@ export default function Signup() {
         CookieManager("set", "access-token", responseData.access_token);
         CookieManager("set", "user", responseData.name);
         CookieManager("set", "user-email", responseData.email);
+
+        const extractRoleName =
+          responseData.role?.name ??
+          responseData.role_name ??
+          (typeof responseData.role === "string" ? responseData.role : undefined);
+
+        const extractPrimaryRoleName =
+          responseData.role?.primary_role?.name ??
+          responseData.primary_role?.name ??
+          responseData.primary_role_name ??
+          (typeof responseData.primary_role === "string"
+            ? responseData.primary_role
+            : typeof responseData.role?.primary_role === "string"
+            ? responseData.role.primary_role
+            : undefined);
+
+        if (extractRoleName) {
+          CookieManager("set", "role", extractRoleName);
+        }
+        if (extractPrimaryRoleName) {
+          CookieManager("set", "primary_role", String(extractPrimaryRoleName));
+        }
+
         router.push(`/session/verify-code`);
       } else {
         throw new Error(

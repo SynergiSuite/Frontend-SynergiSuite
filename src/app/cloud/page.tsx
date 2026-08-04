@@ -158,7 +158,7 @@ export default function CloudStoragePage() {
 
   useEffect(() => {
     setUserId(String(CookieManager("get", "user-id") || ""));
-    setRole(String(CookieManager("get", "role") || ""));
+    setRole(String(CookieManager("get", "primary_role") || CookieManager("get", "role") || ""));
     loadDocuments();
   }, []);
 

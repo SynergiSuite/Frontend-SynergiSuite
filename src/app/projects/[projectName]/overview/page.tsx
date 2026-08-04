@@ -36,7 +36,7 @@ const Page = () => {
   
   // Fetch project details
   useEffect(() => {
-    const cookieRole = CookieManager("get", "role");
+    const cookieRole = CookieManager("get", "primary_role") || CookieManager("get", "role");
     setRole((cookieRole as string) ?? "");
 
     const fetchProjectDetails = async () => {

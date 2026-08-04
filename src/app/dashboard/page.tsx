@@ -25,7 +25,9 @@ export default function Page() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+    const userRole = String(
+      CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+    ).toLowerCase();
     if (userRole === "client") {
       router.replace("/projects");
     }

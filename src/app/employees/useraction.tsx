@@ -14,7 +14,7 @@ export default function UserActions() {
   const allowedRoles = ["Founder", "Manager"];
 
   useEffect(() => {
-    const role = getCookie("role");
+    const role = getCookie("primary_role") || getCookie("role");
     setRole(role as string);
   }, []);
 

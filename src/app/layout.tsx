@@ -45,7 +45,9 @@ const protectedRoutes = [
   "/feedback",
   "/feedback/*",
   "/client",
-  "/client/*"
+  "/client/*",
+  "/reports",
+  "/reports/*"
 ];
 
 const publicRoutes = ["/session", "/login", "/signup", "/forgot-password"];
@@ -219,7 +221,9 @@ export default function RootLayout({
               return;
             }
 
-            const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+            const userRole = String(
+              CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+            ).toLowerCase();
             if (userRole === "client") {
               router.replace("/projects");
               return;
@@ -244,7 +248,9 @@ export default function RootLayout({
           return;
         }
 
-        const userRole = String(CookieManager("get", "role") || "").toLowerCase();
+        const userRole = String(
+          CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+        ).toLowerCase();
         const allowedClientRoutes = ["/projects", "/feedback", "/client", "/cloud", "/task", "/meetings"];
         const isAllowedClientRoute = allowedClientRoutes.some(
           (route) => pathName === route || pathName.startsWith(route + "/")

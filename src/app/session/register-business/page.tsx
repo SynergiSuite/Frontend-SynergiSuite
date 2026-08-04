@@ -109,7 +109,22 @@ export default function RegisterBusiness() {
         CookieManager("delete", "resgister-token");
         CookieManager("set", "business-name", responseData.business_name);
         CookieManager("set", "business-id", responseData.business_id);
-        CookieManager("set", "role", responseData.role_name);
+        const roleName = responseData.role?.name ?? responseData.role_name;
+        const primaryRoleName =
+          responseData.role?.primary_role?.name ??
+          responseData.primary_role?.name ??
+          responseData.primary_role_name ??
+          (typeof responseData.primary_role === "string"
+            ? responseData.primary_role
+            : typeof responseData.role?.primary_role === "string"
+            ? responseData.role.primary_role
+            : undefined);
+        if (roleName) {
+          CookieManager("set", "role", roleName);
+        }
+        if (primaryRoleName) {
+          CookieManager("set", "primary_role", String(primaryRoleName));
+        }
         router.push("/dashboard");
       }
     } catch (e) {
@@ -144,7 +159,20 @@ export default function RegisterBusiness() {
         if (responseData.business_id) {
           CookieManager("set", "business-id", responseData.business_id);
         }
-        CookieManager("set", "role", responseData.role_name || "client");
+        const roleName = responseData.role?.name ?? responseData.role_name ?? "client";
+        const primaryRoleName =
+          responseData.role?.primary_role?.name ??
+          responseData.primary_role?.name ??
+          responseData.primary_role_name ??
+          (typeof responseData.primary_role === "string"
+            ? responseData.primary_role
+            : typeof responseData.role?.primary_role === "string"
+            ? responseData.role.primary_role
+            : undefined);
+        CookieManager("set", "role", roleName);
+        if (primaryRoleName) {
+          CookieManager("set", "primary_role", String(primaryRoleName));
+        }
         router.push("/dashboard");
       }
     } catch (e) {
@@ -191,6 +219,22 @@ export default function RegisterBusiness() {
       CookieManager("delete", "register-token");
       CookieManager("set", "business-name", responseData.business_name);
       CookieManager("set", "business-id", responseData.business_id);
+      const roleName = responseData.role?.name ?? responseData.role_name;
+      const primaryRoleName =
+        responseData.role?.primary_role?.name ??
+        responseData.primary_role?.name ??
+        responseData.primary_role_name ??
+        (typeof responseData.primary_role === "string"
+          ? responseData.primary_role
+          : typeof responseData.role?.primary_role === "string"
+          ? responseData.role.primary_role
+          : undefined);
+      if (roleName) {
+        CookieManager("set", "role", roleName);
+      }
+      if (primaryRoleName) {
+        CookieManager("set", "primary_role", String(primaryRoleName));
+      }
       router.replace("/dashboard");
     } catch (error) {
       if (error instanceof ZodError) {

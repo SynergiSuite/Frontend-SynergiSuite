@@ -77,7 +77,7 @@ export default function UserManagement() {
   }, [currentPage, limit, searchQuery, reload]);
 
   useEffect(() => {
-    const role = getCookie("role");
+    const role = getCookie("primary_role") || getCookie("role");
     setCurrentUserRole((role as string) || "");
   }, []);
 
