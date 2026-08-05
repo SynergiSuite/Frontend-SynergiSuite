@@ -14,6 +14,7 @@ import {
   Sparkles,
   ChevronRight,
   ShieldCheck,
+  Download,
 } from "lucide-react";
 import { ReportItemType } from "./reportsStatsCards";
 
@@ -193,6 +194,18 @@ export default function ReportsTable({
                   {/* Actions */}
                   <td className="py-3.5 px-4 whitespace-nowrap text-right">
                     <div className="flex items-center justify-end gap-1.5">
+                      {report.url && (
+                        <a
+                          href={report.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex h-8 items-center gap-1.5 rounded-lg border border-cyan-500/30 bg-cyan-500/15 px-2.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500 hover:text-white transition-all shadow-sm"
+                          title="Open PDF"
+                        >
+                          <Download className="h-3.5 w-3.5" /> PDF
+                        </a>
+                      )}
+
                       <button
                         onClick={() => onSelectReport(report)}
                         className="flex h-8 items-center gap-1.5 rounded-lg border border-[#5271ff]/30 bg-[#5271ff]/15 px-3 text-xs font-bold text-[#5271ff] hover:bg-[#5271ff] hover:text-white transition-all shadow-sm"

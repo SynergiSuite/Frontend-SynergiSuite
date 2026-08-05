@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import TaskCard from "./taskcard";
 import { Task } from "./schemas/task";
@@ -44,16 +44,21 @@ export default function TaskKanban({
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dropTargetStatus, setDropTargetStatus] = useState<string | null>(null);
   const [pendingTaskIds, setPendingTaskIds] = useState<string[]>([]);
+  const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
+
+  useEffect(() => {
+    setLocalTasks(tasks);
+  }, [tasks]);
 
   const filteredTasks = useMemo(
     () =>
       filterTasks({
-        tasks,
+        tasks: localTasks,
         searchQuery,
         statusFilter,
         dueFilter,
       }),
-    [dueFilter, searchQuery, statusFilter, tasks]
+    [dueFilter, searchQuery, statusFilter, localTasks]
   );
 
   const columns = useMemo(
@@ -79,7 +84,7 @@ export default function TaskKanban({
       return;
     }
 
-    const task = tasks.find((item) => item.id === activeTaskId);
+    const task = localTasks.find((item) => item.id === activeTaskId);
     if (!task) {
       setDraggedTaskId(null);
       setDropTargetStatus(null);
@@ -93,23 +98,38 @@ export default function TaskKanban({
       return;
     }
 
-    setPendingTaskIds((prev) => [...prev, task.id]);
+    // Save previous state for rollback on API failure
+    const previousTasks = [...localTasks];
+
+    // Optimistically update card position in local state immediately
+    setLocalTasks((prev) =>
+      prev.map((t) => (t.id === activeTaskId ? { ...t, status: targetStatus } : t))
+    );
+
+    setPendingTaskIds((prev) => [...prev, activeTaskId]);
+    setDraggedTaskId(null);
+    setDropTargetStatus(null);
 
     try {
-      await onUpdateTask({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        due_date: task.due_date,
-        status: targetStatus,
-        priority: task.priority,
-      }, {
-        showSuccessToast: false,
-      });
+      await onUpdateTask(
+        {
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          due_date: task.due_date,
+          status: targetStatus,
+          priority: task.priority,
+        },
+        {
+          showSuccessToast: false,
+        }
+      );
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+      // Rollback on error
+      setLocalTasks(previousTasks);
     } finally {
-      setPendingTaskIds((prev) => prev.filter((id) => id !== task.id));
-      setDraggedTaskId(null);
-      setDropTargetStatus(null);
+      setPendingTaskIds((prev) => prev.filter((id) => id !== activeTaskId));
     }
   };
 

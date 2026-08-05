@@ -142,22 +142,22 @@ export default function CreateMilestoneModal({
             </label>
             <div className="flex gap-2">
               <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                <SelectTrigger className="flex-1 border border-white/[0.08] bg-white/[0.02] text-white rounded-xl focus:ring-1 focus:ring-[#5271ff] hover:bg-white/[0.04] transition-colors cursor-pointer p-3 h-auto">
+                <SelectTrigger className="flex-1 border border-white/[0.12] bg-[#030114]/60 text-white rounded-xl h-11 px-3.5 focus:ring-1 focus:ring-[#5271ff]/50 focus:border-[#5271ff] hover:bg-white/[0.04] transition-all cursor-pointer flex items-center justify-between">
                   <SelectValue placeholder="Select a task to link" />
                 </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0c0a2d] text-white rounded-xl shadow-xl">
+                <SelectContent className="z-[10050] border border-white/15 bg-[#0c0a2d] text-white rounded-xl shadow-2xl backdrop-blur-2xl max-h-56">
                   {availableTasks.length > 0 ? (
                     availableTasks.map((task: any) => (
                       <SelectItem
-                        key={task.id}
-                        value={task.id}
-                        className="cursor-pointer focus:bg-white/10 focus:text-white"
+                        key={String(task.id)}
+                        value={String(task.id)}
+                        className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white my-0.5 rounded-lg py-2 px-3 transition-colors text-white/90"
                       >
                         {taskTitle(task)}
                       </SelectItem>
                     ))
                   ) : (
-                    <SelectItem value="no-tasks" disabled>
+                    <SelectItem value="no-tasks" disabled className="text-white/40">
                       No tasks available
                     </SelectItem>
                   )}

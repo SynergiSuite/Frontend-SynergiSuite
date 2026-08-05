@@ -9,6 +9,8 @@ import {
   SessionHistoryResponse,
 } from "./apis/getSessionHistory";
 import { gsap } from "gsap";
+import { toast } from "sonner";
+import { CookieManager } from "@/lib/cookieManager";
 
 export interface MessageType {
   id: number;
@@ -136,6 +138,16 @@ const ChatArea = ({ sessionId, model }: ChatAreaProps) => {
     const trimmedInput = input.trim();
 
     if (!trimmedInput) return;
+
+    const primaryRole = String(
+      CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+    ).toLowerCase();
+    const isAllowedToUseReport = primaryRole.includes("founder") || primaryRole.includes("manager");
+
+    if (/(?:^|\s)\/report/i.test(trimmedInput) && !isAllowedToUseReport) {
+      toast.error("Only higher officials are allowed to use this command");
+      return;
+    }
 
     const typingMessageId = Date.now() + 1;
 

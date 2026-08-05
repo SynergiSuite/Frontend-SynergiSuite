@@ -133,6 +133,25 @@ export default function TaskPage() {
       toast.error("Clients are not allowed to edit tasks.");
       return;
     }
+
+    const previousTasks = [...tasks];
+
+    // Optimistically update task in parent state
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === payload.id
+          ? {
+              ...t,
+              title: payload.title ?? t.title,
+              description: payload.description ?? t.description,
+              status: payload.status ?? t.status,
+              priority: payload.priority ?? t.priority,
+              due_date: payload.due_date ?? t.due_date,
+            }
+          : t
+      )
+    );
+
     try {
       await updateTaskApi(payload);
       if (projectId) {
@@ -142,6 +161,7 @@ export default function TaskPage() {
         toast.success("Task updated successfully");
       }
     } catch (error) {
+      setTasks(previousTasks);
       toast.error("Failed to update task: " + error);
     }
   };

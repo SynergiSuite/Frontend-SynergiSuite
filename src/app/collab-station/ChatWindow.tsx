@@ -200,18 +200,6 @@ export default function ChatWindow({
           >
             <Phone size={16} />
           </motion.button>
-
-          {/* Video Call Button */}
-          <motion.button
-            type="button"
-            onClick={() => onInitiateCall("video")}
-            whileHover={{ scale: 1.08, backgroundColor: "rgba(82, 113, 255, 0.15)" }}
-            whileTap={{ scale: 0.95 }}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:text-white hover:border-[#5271ff]/30 shadow-sm cursor-pointer"
-            aria-label="Video call button"
-          >
-            <Video size={16} />
-          </motion.button>
         </div>
       </div>
 

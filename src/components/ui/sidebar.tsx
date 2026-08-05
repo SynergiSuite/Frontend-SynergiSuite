@@ -69,8 +69,6 @@ export default function Sidebar({
     { label: "Meetings", route: "/meetings", icon: Video },
     { label: "Analytics", route: "/analytics", icon: BarChart3 },
     { label: "Reports", route: "/reports", icon: FileText },
-    { label: "Settings", route: "/settings", icon: Settings },
-    { label: "Support", route: "/support", icon: LifeBuoy },
   ];
 
   const clientSidebarItems: SidebarItem[] = [

@@ -12,6 +12,7 @@ import ReportsFooter from "./reportsFooter";
 import ReportDetailModal from "./reportDetailModal";
 
 import { getAnalyticsIndexesApi } from "@/app/analytics/apis/getAnalyticsIndexesApi";
+import { getChatbotReportsApi, type ChatbotReportApiItem } from "./apis/getChatbotReportsApi";
 import { CookieManager } from "@/lib/cookieManager";
 
 const INITIAL_REPORTS: ReportItemType[] = [
@@ -132,19 +133,82 @@ export default function ReportsPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 5;
 
-  // Load real analytics telemetry if available
+  // Load real chatbot reports & analytics telemetry
   useEffect(() => {
-    const loadAnalytics = async () => {
+    const loadReportsAndAnalytics = async () => {
+      try {
+        const response = await getChatbotReportsApi(100, 300);
+        if (response && Array.isArray(response.data) && response.data.length > 0) {
+          const mappedChatbotReports: ReportItemType[] = response.data.map((item: ChatbotReportApiItem) => {
+            const lowerName = (item.reportName || item.objectKey || "").toLowerCase();
+
+            let section: "BUSINESS" | "TEAMS" | "EMPLOYEE" = "BUSINESS";
+            if (lowerName.includes("team") || lowerName.includes("squad") || lowerName.includes("project")) {
+              section = "TEAMS";
+            } else if (lowerName.includes("employee") || lowerName.includes("user") || lowerName.includes("staff")) {
+              section = "EMPLOYEE";
+            }
+
+            const formattedSize = item.fileSize
+              ? `${(Number(item.fileSize) / 1024).toFixed(1)} KB`
+              : "N/A";
+
+            const formattedDate = item.createdAt
+              ? new Date(item.createdAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "2-digit",
+                })
+              : "Recent";
+
+            const cleanTitle = (item.reportName || "Generated Report.pdf")
+              .replace(/^\d{4}-\d{2}-\d{2}-/, "")
+              .replace(/\.pdf$/i, "")
+              .replace(/[-_]/g, " ")
+              .replace(/\b\w/g, (c: string) => c.toUpperCase());
+
+            return {
+              id: item.id,
+              title: cleanTitle || item.reportName,
+              section,
+              category: item.contentType === "application/pdf" ? "PDF Document" : "System Report",
+              generatedAt: formattedDate,
+              generatedBy: "AI Assistant",
+              status: "Verified",
+              summaryText: `AI-generated report artifact "${item.reportName}". Bucket: ${item.bucket}, ObjectKey: ${item.objectKey}.`,
+              url: item.url,
+              fileSize: formattedSize,
+              metrics: {
+                "File Size": formattedSize,
+                "Content Type": item.contentType || "application/pdf",
+                "Storage Bucket": item.bucket || "reports",
+                "Signed Link Expiry": `${item.expiresIn || 300}s`,
+              },
+            };
+          });
+
+          setReports((prev) => {
+            // Filter out existing duplicates by ID
+            const existingIds = new Set(prev.map((r) => r.id));
+            const newUnique = mappedChatbotReports.filter((r) => !existingIds.has(r.id));
+            return [...newUnique, ...prev];
+          });
+        }
+      } catch (err) {
+        console.error("Error loading chatbot reports API:", err);
+      }
+
       try {
         const data = await getAnalyticsIndexesApi();
         if (data && (data as any).overview) {
-          toast.success("Analytics indexes synced with live database");
+          console.log("Analytics indexes synced");
         }
       } catch (err) {
         console.log("Using cached reports index", err);
       }
     };
-    loadAnalytics();
+
+    loadReportsAndAnalytics();
   }, []);
 
   // GSAP Entry Animation

@@ -20,6 +20,8 @@ import {
 import { getAllProjectsApi } from "@/app/projects/apis/getAllProjectsApi";
 import { getTeamsApi } from "@/app/teams/apis/getTeamsApi";
 import getEmployeeAnalyticsApi from "@/app/analytics/apis/getEmployeeAnalyticsApi";
+import { CookieManager } from "@/lib/cookieManager";
+import { toast } from "sonner";
 
 interface Props {
   input: string;
@@ -224,10 +226,24 @@ const MessageInput = ({ input, setInput, sendMessage }: Props) => {
     }
   }, [selectedIndex, isOpen, dropdownMode]);
 
+  const primaryRole = String(
+    CookieManager("get", "primary_role") || CookieManager("get", "role") || ""
+  ).toLowerCase();
+  const isAllowedToUseReport = primaryRole.includes("founder") || primaryRole.includes("manager");
+
   // Detect slash commands when typing
   useEffect(() => {
     if (justSelectedRef.current) {
       justSelectedRef.current = false;
+      setIsOpen(false);
+      setDropdownMode(null);
+      activeCategoryRef.current = "";
+      return;
+    }
+
+    // Block /report popup menu completely for unauthorized roles
+    const isReportTyped = /(?:^|\s)\/report/i.test(input);
+    if (isReportTyped && !isAllowedToUseReport) {
       setIsOpen(false);
       setDropdownMode(null);
       activeCategoryRef.current = "";
@@ -302,19 +318,26 @@ const MessageInput = ({ input, setInput, sendMessage }: Props) => {
     setIsOpen(false);
     setDropdownMode(null);
     activeCategoryRef.current = "";
-  }, [input]);
+  }, [input, isAllowedToUseReport]);
 
   // Dynamic category options based on root command (/report vs /get)
   const categoryOptionsToRender = command === "get" ? GET_CATEGORY_OPTIONS : REPORT_CATEGORY_OPTIONS;
 
   // Filter root command options by command query typed after /
   const filteredRootOptions = ROOT_COMMAND_OPTIONS.filter((opt) => {
+    if (opt.id === "report" && !isAllowedToUseReport) return false;
     if (!command) return true;
     return opt.label.startsWith(command) || opt.label.includes(command);
   });
 
   // Handle selecting a root command (/report or /get)
   const handleSelectRootCommand = (cmd: RootCommand) => {
+    if (cmd === "report" && !isAllowedToUseReport) {
+      toast.error("Only higher officials are allowed to use this command");
+      setIsOpen(false);
+      return;
+    }
+
     const regex = new RegExp(`/(?:report|get|[a-z]*)$`, "i");
     const updatedInput = input.replace(regex, `/${cmd}`);
     setInput(updatedInput);
@@ -327,6 +350,12 @@ const MessageInput = ({ input, setInput, sendMessage }: Props) => {
 
   // Handle selecting a category from Category Dropdown
   const handleSelectCategory = (catLabel: SlashCategory) => {
+    if (command === "report" && !isAllowedToUseReport) {
+      toast.error("Only higher officials are allowed to use this command");
+      setIsOpen(false);
+      return;
+    }
+
     const regex = new RegExp(`/(report|get)\\b`, "i");
     const updatedInput = input.replace(regex, `/$1_${catLabel} `);
     setInput(updatedInput);
@@ -383,6 +412,14 @@ const MessageInput = ({ input, setInput, sendMessage }: Props) => {
   };
 
   const handleSendMessage = () => {
+    const isReportCommand = /(?:^|\s)\/report/i.test(input.trim());
+    if (isReportCommand && !isAllowedToUseReport) {
+      toast.error("Only higher officials are allowed to use this command");
+      setIsOpen(false);
+      setDropdownMode(null);
+      return;
+    }
+
     let targetEntityId = selectedEntityId;
 
     if (!targetEntityId && entities.length > 0) {

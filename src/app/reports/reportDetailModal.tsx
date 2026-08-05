@@ -125,17 +125,29 @@ export default function ReportDetailModal({ report, onClose }: ReportDetailModal
         </div>
 
         {/* Modal Footer Controls */}
-        <div className="flex items-center justify-between pt-5 border-t border-white/10">
-          <button
-            onClick={handlePrint}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 transition-all"
-          >
-            <Printer className="h-3.5 w-3.5 text-white/60" /> Print / Export PDF
-          </button>
+        <div className="flex items-center justify-between gap-2 pt-5 border-t border-white/10">
+          <div className="flex items-center gap-2">
+            {report.url && (
+              <a
+                href={report.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 px-4 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500 hover:text-white transition-all shadow-sm"
+              >
+                <Download className="h-3.5 w-3.5" /> Download / View PDF
+              </a>
+            )}
+            <button
+              onClick={handlePrint}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white hover:bg-white/10 transition-all cursor-pointer"
+            >
+              <Printer className="h-3.5 w-3.5 text-white/60" /> Print Report
+            </button>
+          </div>
 
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#5271ff] px-5 py-2 text-xs font-bold text-white shadow-[0_0_14px_rgba(82,113,255,0.4)] hover:bg-[#4362ef] transition-all"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#5271ff] px-5 py-2 text-xs font-bold text-white shadow-[0_0_14px_rgba(82,113,255,0.4)] hover:bg-[#4362ef] transition-all cursor-pointer"
           >
             Close Report
           </button>

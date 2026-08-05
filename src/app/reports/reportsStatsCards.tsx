@@ -12,6 +12,8 @@ export interface ReportItemType {
   generatedBy: string;
   status: "Verified" | "Completed" | "Pending";
   summaryText: string;
+  url?: string;
+  fileSize?: string;
   metrics?: Record<string, string | number>;
 }
 
