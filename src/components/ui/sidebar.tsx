@@ -54,6 +54,7 @@ export default function Sidebar({
   const isFounder = role.includes("founder");
   const isManager = role.includes("manager") || role.includes("admin");
   const canAccessAnalytics = isFounder || isManager;
+  const isFounderOrManager = isFounder || isManager;
 
   const allSidebarItems: SidebarItem[] = [
     { label: "Dashboard", route: "/dashboard", icon: LayoutDashboard },
@@ -61,7 +62,7 @@ export default function Sidebar({
     { label: "Teams", route: "/teams", icon: UserRoundCog },
     { label: "Projects", route: "/projects", icon: FolderKanban },
     { label: "Clients", route: "/clients", icon: Component },
-    { label: "Feedback", route: "/feedback", icon: MessageSquareQuote },
+    { label: isFounderOrManager ? "Client Tickets" : "Feedback", route: "/feedback", icon: MessageSquareQuote },
     { label: "Resources", route: "/resources", icon: Boxes },
     { label: "Cloud", route: "/cloud", icon: Cloud },
     { label: "AI Assistant", route: "/chatbot", icon: BrainCircuit },
@@ -76,8 +77,6 @@ export default function Sidebar({
     { label: "Feedback", route: "/feedback", icon: MessageSquareQuote },
     { label: "Cloud", route: "/cloud", icon: Cloud },
   ];
-
-  const isFounderOrManager = isFounder || isManager;
 
   const allowedRoutesForOtherRoles = [
     "/dashboard",

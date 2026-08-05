@@ -26,11 +26,11 @@ export default function DeleteMilestoneModal({
 }: DeleteMilestoneModalProps) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="bg-[#0a0826]/95 border border-white/[0.08] backdrop-blur-md rounded-2xl shadow-2xl shadow-rose-500/5 text-white max-w-md p-6 relative overflow-hidden">
+      <AlertDialogContent className="bg-[#0a0826]/95 border border-white/[0.08] backdrop-blur-md rounded-2xl shadow-2xl shadow-rose-500/5 text-white max-w-md p-6 overflow-hidden">
         {/* Top Danger Line Accent */}
         <div className="absolute top-0 left-0 right-0 h-[3px] bg-rose-500" />
         
-        <AlertDialogHeader>
+        <AlertDialogHeader className="border-b-0 p-0 text-left sm:text-left flex flex-col gap-1.5">
           <AlertDialogTitle className="text-lg font-bold text-white tracking-tight">
             Delete this milestone?
           </AlertDialogTitle>
@@ -39,12 +39,12 @@ export default function DeleteMilestoneModal({
           </AlertDialogDescription>
         </AlertDialogHeader>
         
-        <AlertDialogFooter className="mt-5 gap-2">
-          <AlertDialogCancel className="cursor-pointer px-4 py-2 text-xs font-semibold text-white/70 hover:text-white bg-white/[0.02] border border-white/[0.08] rounded-xl hover:bg-white/[0.05] transition-all duration-200">
+        <AlertDialogFooter className="border-t-0 p-0 mt-6 gap-2 flex flex-row justify-end items-center">
+          <AlertDialogCancel className="cursor-pointer px-4 py-2 text-xs font-semibold text-white/70 hover:text-white bg-white/[0.02] border border-white/[0.08] rounded-xl hover:bg-white/[0.05] transition-all duration-200 h-auto">
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
-            className="cursor-pointer px-4 py-2 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl hover:shadow-[0_0_15px_rgba(239,68,68,0.25)] hover:scale-[1.02] transition-all duration-200"
+            className="cursor-pointer px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/30 rounded-xl hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] hover:scale-[1.02] transition-all duration-200 h-auto"
             onClick={() => {
               if (milestoneId) {
                 onConfirm?.(milestoneId);

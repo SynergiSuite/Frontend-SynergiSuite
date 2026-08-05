@@ -16,8 +16,13 @@ export async function fetchRoles(): Promise<Role[]> {
     throw new Error(response.statusText);
   }
 
-  const data: Role[] = await response.json();
+  const data = await response.json();
   return Array.isArray(data)
-    ? data.filter((r) => r?.name && !r.name.toLowerCase().includes("client"))
+    ? data
+        .filter((r: any) => r?.name && !r.name.toLowerCase().includes("client"))
+        .map((r: any) => ({
+          id: Number(r.id),
+          name: String(r.name),
+        }))
     : [];
 }

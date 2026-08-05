@@ -4,6 +4,7 @@ import { Pencil, Trash, CheckCircle2, Circle, Calendar, Trophy } from "lucide-re
 import { Milestone, MilestoneUpdate } from "../schemas/milestone";
 import MilestoneEditModal from "./milestoneEditModal";
 import { UpdateMilestone } from "../apis/updateMilestone";
+import { DeleteMilestone } from "../apis/deleteMilestone";
 import DeleteMilestoneModal from "./deleteModal";
 import { Task } from "../task/schemas/task";
 import { toast } from "sonner";
@@ -92,10 +93,12 @@ const Milestones = ({
     setDeleteMilestoneId(null);
     setActiveMilestone(null);
     try {
-      // TODO: Wire delete API call here when available.
+      await DeleteMilestone(milestoneId);
       await onRefresh?.();
+      toast.success("Milestone deleted successfully.");
     } catch (error) {
       console.error("Error deleting milestone:", error);
+      toast.error("Unable to delete milestone.");
     }
   };
 

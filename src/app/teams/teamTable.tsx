@@ -345,28 +345,33 @@ export default function TeamTable({
       />
 
       <AlertDialog open={canManageTeams ? isDelete : false} onOpenChange={setIsDelete}>
-        <AlertDialogContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-[24px] shadow-[0_24px_80px_rgba(0,0,0,0.65)] p-6 backdrop-blur-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-white font-bold text-lg">Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription className="text-white/50 text-sm leading-relaxed mt-2">
-              This action cannot be undone. This will permanently delete the team
-              and remove its data from our servers.
+        <AlertDialogContent className="bg-[#0a0826]/95 border border-white/[0.08] backdrop-blur-md rounded-2xl shadow-2xl shadow-rose-500/5 text-white max-w-md p-6 overflow-hidden">
+          {/* Top Danger Line Accent */}
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-rose-500" />
+
+          <AlertDialogHeader className="border-b-0 p-0 text-left sm:text-left flex flex-col gap-1.5">
+            <AlertDialogTitle className="text-lg font-bold text-white tracking-tight">
+              Delete this team?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-white/50 leading-relaxed font-medium">
+              This action cannot be undone. This will permanently delete the team and remove all associated squad data.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 flex justify-end space-x-3">
+
+          <AlertDialogFooter className="border-t-0 p-0 mt-6 gap-2 flex flex-row justify-end items-center">
             <AlertDialogCancel
               onClick={() => {
                 setTeamId("");
               }}
-              className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.04] px-5 py-2.5 text-sm text-white/60 hover:text-white hover:bg-white/[0.08] transition-all"
+              className="cursor-pointer px-4 py-2 text-xs font-semibold text-white/70 hover:text-white bg-white/[0.02] border border-white/[0.08] rounded-xl hover:bg-white/[0.05] transition-all duration-200 h-auto"
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="cursor-pointer rounded-xl bg-red-500/20 border border-red-500/30 px-5 py-2.5 text-sm font-semibold text-red-400 hover:bg-red-500/30 transition-all"
+              className="cursor-pointer px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/30 rounded-xl hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] hover:scale-[1.02] transition-all duration-200 h-auto"
             >
-              Continue
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
