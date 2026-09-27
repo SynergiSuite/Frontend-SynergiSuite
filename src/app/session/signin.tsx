@@ -16,7 +16,6 @@ export default function Signin() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   // Upon submit
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -35,11 +34,10 @@ export default function Signin() {
       }
       const userData = validation.data;
 
-      const res = await fetch(`${requestBaseUrl}/auth/login`, {
+      const res = await fetch(`/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify(userData),
       });
@@ -83,7 +81,7 @@ export default function Signin() {
       if (responseData.verified === false) {
         // Request email verification
         const req = await fetch(
-          `${requestBaseUrl}/user/request-verify-email`,
+          `/api/auth/request-verification`,
           {
             method: "POST",
             headers: {
@@ -99,13 +97,13 @@ export default function Signin() {
           );
         }
         CookieManager("set", "verify-token", responseData.access_token);
-        router.push(`/session/verify-code`);
+        router.push(`/sessions/verify`);
         toast.success("Logged in successfully, verification required.");
 
         // If user is verified, but does not have a business
       } else if (!responseData.business) {
         CookieManager("set", "register-token", responseData.access_token);
-        router.push("/session/register-business");
+        router.push("/sessions/register");
         toast.success("Logged in successfully, registration required.");
       } else {
         const business =
@@ -118,7 +116,7 @@ export default function Signin() {
 
         if (!businessName || !businessId) {
           CookieManager("set", "register-token", responseData.access_token);
-          router.push("/session/register-business");
+          router.push("/sessions/register");
           toast.success("Logged in successfully, registration required.");
           return;
         }

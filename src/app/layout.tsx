@@ -50,10 +50,12 @@ const protectedRoutes = [
   "/reports/*"
 ];
 
-const publicRoutes = ["/session", "/login", "/signup", "/forgot-password"];
+const publicRoutes = ["/session", "/sessions", "/login", "/signup", "/forgot-password"];
 
 const programmaticOnlyRoutes = [
   "/session/verify-code",
+  "/sessions/verify",
+  "/sessions/register",
   "/session/register-business",
 ];
 
@@ -180,17 +182,31 @@ export default function RootLayout({
         setShowSidebar(false);
         setShowRightSidebar(false);
         setIsMobileSidebarOpen(false);
-        if (pathName.startsWith("/session/verify-code")) {
+        if (
+          pathName.startsWith("/session/verify-code") ||
+          pathName.startsWith("/sessions/verify")
+        ) {
           const codeToken = CookieManager("get", "verify-token");
           if (!codeToken) {
-            router.replace("/session");
+            router.replace(
+              pathName.startsWith("/sessions/")
+                ? "/sessions?form=signup"
+                : "/session",
+            );
             return;
           }
         }
-        if (pathName.startsWith("/session/register-business")) {
+        if (
+          pathName.startsWith("/session/register-business") ||
+          pathName.startsWith("/sessions/register")
+        ) {
           const codeToken = CookieManager("get", "register-token");
           if (!codeToken) {
-            router.replace("/session");
+            router.replace(
+              pathName.startsWith("/sessions/")
+                ? "/sessions?form=signin"
+                : "/session",
+            );
             return;
           }
         }
@@ -212,12 +228,12 @@ export default function RootLayout({
             const businessName = CookieManager("get", "business-name");
 
             if (verifyToken) {
-              router.replace("/session/verify-code");
+              router.replace("/sessions/verify");
               return;
             }
 
             if (registerToken && (!businessId || !businessName)) {
-              router.replace("/session/register-business");
+              router.replace("/sessions/register");
               return;
             }
 
@@ -244,7 +260,7 @@ export default function RootLayout({
         const registerToken = CookieManager("get", "register-token");
 
         if (registerToken) {
-          router.replace("/session/register-business");
+          router.replace("/sessions/register");
           return;
         }
 
@@ -318,14 +334,14 @@ export default function RootLayout({
                     type="button"
                     aria-label="Open sidebar"
                     onClick={() => setIsMobileSidebarOpen(true)}
-                    className="fixed left-4 top-20 z-50 inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#5271ff]/30 bg-[#030114]/90 text-white shadow-[0_0_15px_rgba(82,113,255,0.15)] backdrop-blur-md transition hover:bg-[#5271ff]/10 hover:border-[#5271ff]/60 md:hidden"
+                    className="fixed left-4 top-20 z-50 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-v2-neutral-500 bg-v2-neutral-600 text-v2-neutral-100 shadow-lg transition-colors hover:bg-v2-neutral-500 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25 md:hidden"
                   >
                     <Menu size={18} />
                   </button>
                 )}
 
                 {isMobileSidebarOpen && (
-                  <div className="fixed inset-0 z-40 bg-black/45 backdrop-blur-sm md:hidden">
+                  <div className="fixed inset-0 z-40 bg-v2-neutral-600/55 backdrop-blur-sm md:hidden">
                     <button
                       type="button"
                       aria-label="Close sidebar overlay"
@@ -340,10 +356,10 @@ export default function RootLayout({
                     isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
                   }`}
                 >
-                  <div className="flex h-full flex-col border-r border-[#5271ff]/15 bg-[#030114] shadow-2xl">
-                    <div className="flex items-center justify-between border-b border-[#5271ff]/15 px-4 py-4">
+                  <div className="flex h-full flex-col border-r border-v2-neutral-500 bg-v2-neutral-600 shadow-2xl">
+                    <div className="flex items-center justify-between border-b border-v2-neutral-500 px-4 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/30 shadow-[inset_0_0_10px_rgba(82,113,255,0.2)]">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-v2-neutral-100 shadow-sm">
                           <Image
                             src={Logo}
                             alt="SynergiSuite"
@@ -353,7 +369,7 @@ export default function RootLayout({
                             priority
                           />
                         </div>
-                        <span className="text-base font-bold tracking-wide text-white">
+                        <span className="text-base font-semibold tracking-[-0.02em] text-v2-neutral-100">
                           SynergiSuite
                         </span>
                       </div>
@@ -361,14 +377,14 @@ export default function RootLayout({
                         type="button"
                         aria-label="Close sidebar"
                         onClick={() => setIsMobileSidebarOpen(false)}
-                        className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#5271ff]/20 text-gray-400 transition hover:text-white hover:bg-white/5"
+                        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-v2-neutral-500 text-v2-neutral-300 transition-colors hover:bg-v2-neutral-500 hover:text-v2-neutral-100 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25"
                       >
                         <X size={18} />
                       </button>
                     </div>
 
                     <Sidebar
-                      className="h-full border-r-0 p-4"
+                      className="h-full border-r-0"
                       onNavigate={() => setIsMobileSidebarOpen(false)}
                     />
                   </div>
@@ -378,7 +394,7 @@ export default function RootLayout({
 
             {/* Sidebar (left) */}
             {showSidebar && (
-              <aside className="hidden w-64 border-r border-[#5271ff]/15 bg-[#030114] md:block">
+              <aside className="hidden w-64 border-r border-v2-neutral-500 bg-v2-neutral-600 md:block">
                 <Sidebar className="h-full" />
               </aside>
             )}

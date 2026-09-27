@@ -37,6 +37,13 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* V2 redesign palette: lightest (100) to darkest (600). */
+  --color-v2-neutral-100: #ebedf1;
+  --color-v2-neutral-200: #d4d8df;
+  --color-v2-neutral-300: #acadb1;
+  --color-v2-neutral-400: #706f70;
+  --color-v2-neutral-500: #353536;
+  --color-v2-neutral-600: #080808;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -127,6 +134,25 @@ body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(82, 113, 255, 0.75);
+}
+
+/* V2 sidebar scrollbar stays scoped to the reusable navigation component. */
+[data-sidebar-scroll] {
+  scrollbar-color: #706f70 transparent;
+}
+
+[data-sidebar-scroll]::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-sidebar-scroll]::-webkit-scrollbar-thumb {
+  background: #706f70;
+  border-color: transparent;
+}
+
+[data-sidebar-scroll]::-webkit-scrollbar-thumb:hover {
+  background: #acadb1;
+  border-color: transparent;
 }
 
 /* Buttons */

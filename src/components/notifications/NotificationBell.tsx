@@ -295,10 +295,10 @@ export default function NotificationBell() {
       <DropdownMenuContent
         align="end"
         sideOffset={10}
-        className="w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0a2f]/95 p-0 text-white shadow-[0_20px_50px_rgba(82,113,255,0.25)] backdrop-blur-2xl"
+        className="w-[min(92vw,380px)] overflow-hidden p-0"
       >
-        <div className="flex h-13 items-center justify-between px-4 py-3 bg-white/[0.02]">
-          <DropdownMenuLabel className="p-0 text-xs font-bold uppercase tracking-wider text-white/80">
+        <div className="flex h-13 items-center justify-between bg-v2-neutral-200/45 px-4 py-3">
+          <DropdownMenuLabel className="p-0 text-v2-neutral-600">
             Notifications
           </DropdownMenuLabel>
           <button
@@ -307,20 +307,20 @@ export default function NotificationBell() {
             aria-label="Mark all notifications as read"
             disabled={unreadCount === 0}
             onClick={() => void markAllRead()}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-lg border border-white/10 text-white/50 transition hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
+            className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border border-v2-neutral-300 text-v2-neutral-400 transition hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 disabled:cursor-not-allowed disabled:opacity-30"
           >
             <CheckCheck className="h-3.5 w-3.5" />
           </button>
         </div>
-        <DropdownMenuSeparator className="m-0 bg-white/[0.08]" />
+        <DropdownMenuSeparator className="m-0" />
         <div className="max-h-[min(65vh,440px)] overflow-y-auto p-1.5 custom-scrollbar">
           {isLoading ? (
-            <div className="flex h-28 items-center justify-center text-white/40">
-              <Loader2 className="h-5 w-5 animate-spin text-[#5271ff]" />
+            <div className="flex h-28 items-center justify-center text-v2-neutral-400">
+              <Loader2 className="h-5 w-5 animate-spin text-v2-neutral-600" />
             </div>
           ) : notifications.length === 0 ? (
-            <div className="flex h-28 flex-col items-center justify-center gap-2 text-white/40">
-              <Bell className="h-5 w-5 text-white/20" />
+            <div className="flex h-28 flex-col items-center justify-center gap-2 text-v2-neutral-400">
+              <Bell className="h-5 w-5 text-v2-neutral-300" />
               <p className="text-xs">No notifications yet</p>
             </div>
           ) : (
@@ -328,32 +328,32 @@ export default function NotificationBell() {
               <DropdownMenuItem
                 key={notification.id}
                 onSelect={() => openNotification(notification)}
-                className="group relative items-start gap-3 rounded-xl px-3 py-3 pr-10 text-white transition hover:bg-white/[0.04] focus:bg-white/[0.04] focus:text-white cursor-pointer border border-transparent hover:border-white/[0.04]"
+                className="group relative items-start gap-3 border border-transparent px-3 py-3 pr-10 hover:border-v2-neutral-200"
               >
                 <span
                   className={`mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${
                     notification.isRead
-                      ? "border-white/10 bg-white/[0.03] text-white/40"
-                      : "border-[#5271ff]/30 bg-[#5271ff]/15 text-[#5271ff]"
+                      ? "border-v2-neutral-200 bg-v2-neutral-200/40 text-v2-neutral-400"
+                      : "border-v2-neutral-400 bg-v2-neutral-200 text-v2-neutral-600"
                   }`}
                 >
                   <NotificationIcon type={notification.type} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-start gap-2">
-                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-white">
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-v2-neutral-600">
                       {notification.title}
                     </span>
                     {!notification.isRead && (
-                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#5271ff] shadow-[0_0_6px_#5271ff]" />
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-v2-neutral-600" />
                     )}
                   </span>
                   {notification.body && (
-                    <span className="mt-0.5 block line-clamp-2 text-[11px] leading-relaxed text-white/60">
+                    <span className="mt-0.5 block line-clamp-2 text-[11px] leading-relaxed text-v2-neutral-400">
                       {notification.body}
                     </span>
                   )}
-                  <span className="mt-1 block text-[9px] font-medium text-white/40">
+                  <span className="mt-1 block text-[10px] font-medium text-v2-neutral-400">
                     {formatDistanceToNow(new Date(notification.createdAt), {
                       addSuffix: true,
                     })}
@@ -366,7 +366,7 @@ export default function NotificationBell() {
                   onClick={(event) =>
                     void removeNotification(event, notification)
                   }
-                  className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-lg text-white/30 opacity-0 transition hover:bg-rose-500/20 hover:text-rose-400 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+                  className="absolute right-2 top-2 inline-flex size-7 cursor-pointer items-center justify-center rounded-lg text-v2-neutral-300 opacity-0 transition hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 focus:opacity-100"
                 >
                   <Trash2 className="h-3 w-3" />
                 </button>
@@ -378,10 +378,10 @@ export default function NotificationBell() {
               type="button"
               disabled={isLoadingMore}
               onClick={() => void loadNotifications(nextCursor)}
-              className="flex h-9 w-full items-center justify-center gap-2 rounded-xl border border-white/10 text-xs font-medium text-white/60 transition hover:bg-white/[0.06] hover:text-white disabled:opacity-50 cursor-pointer"
+              className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-v2-neutral-200 text-xs font-medium text-v2-neutral-500 transition hover:border-v2-neutral-300 hover:bg-v2-neutral-200/60 hover:text-v2-neutral-600 disabled:opacity-50"
             >
               {isLoadingMore && (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#5271ff]" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-v2-neutral-600" />
               )}
               Load earlier
             </button>

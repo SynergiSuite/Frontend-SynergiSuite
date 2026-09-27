@@ -234,21 +234,21 @@ export function Actions({ id, role, name, isFounderUser, onRefresh }: ActionsPro
         </DropdownMenuTrigger>
         <DropdownMenuContent
           ref={menuRef}
-          className="w-48 rounded-2xl border border-white/[0.08] bg-[#0a0826]/95 p-2 text-white shadow-[0_18px_50px_rgba(3,1,20,0.45)] backdrop-blur-xl"
+          className="w-52"
           align="end"
           sideOffset={8}
         >
-          <DropdownMenuLabel className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+          <DropdownMenuLabel>
             Actions
           </DropdownMenuLabel>
-          <DropdownMenuGroup className="space-y-1">
+          <DropdownMenuGroup>
             <DropdownMenuItem
               data-employee-action-item
               variant="destructive"
               onSelect={() => setShowNewDialog(true)}
-              className="cursor-pointer rounded-xl px-3 py-2.5 text-sm text-red-300 outline-none transition-colors focus:bg-red-500/10 focus:text-red-200 data-[highlighted]:bg-red-500/10"
+              className="py-2.5"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-500/20 bg-red-500/10 text-red-300">
+              <span className="flex size-8 items-center justify-center rounded-lg border border-destructive/20 bg-destructive/10 text-destructive">
                 <Trash2 className="h-4 w-4" />
               </span>
               <span className="font-medium">Delete user</span>
@@ -256,9 +256,9 @@ export function Actions({ id, role, name, isFounderUser, onRefresh }: ActionsPro
             <DropdownMenuItem
               data-employee-action-item
               onSelect={() => setShowShareDialog(true)}
-              className="cursor-pointer rounded-xl px-3 py-2.5 text-sm text-white/75 outline-none transition-colors focus:bg-[#5271ff]/12 focus:text-white data-[highlighted]:bg-[#5271ff]/12"
+              className="py-2.5"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#5271ff]/25 bg-[#5271ff]/10 text-[#8fa2ff]">
+              <span className="flex size-8 items-center justify-center rounded-lg border border-v2-neutral-200 bg-v2-neutral-200/60 text-v2-neutral-500">
                 <Pencil className="h-4 w-4" />
               </span>
               <span className="font-medium">Edit employee</span>

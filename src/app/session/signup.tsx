@@ -15,7 +15,6 @@ export default function Signup() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
-  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -36,7 +35,7 @@ export default function Signup() {
       }
       const userData = validation.data;
 
-      const res = await fetch(`${requestBaseUrl}/auth/new`, {
+      const res = await fetch(`/api/auth/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,7 +55,7 @@ export default function Signup() {
 
       // Request email verification
       const req = await fetch(
-        `${requestBaseUrl}/user/request-verify-email`,
+        `/api/auth/request-verification`,
         {
           method: "POST",
           headers: {
@@ -95,7 +94,7 @@ export default function Signup() {
           CookieManager("set", "primary_role", String(extractPrimaryRoleName));
         }
 
-        router.push(`/session/verify-code`);
+        router.push(`/sessions/verify`);
       } else {
         throw new Error(
           "Failed to request email verification. Try Again later.",

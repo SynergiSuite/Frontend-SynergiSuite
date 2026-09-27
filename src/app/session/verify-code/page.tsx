@@ -170,7 +170,7 @@ export default function VerifyCode() {
       }
 
       toast.success("Email verified successfully!");
-      router.push("/session/register-business");
+      router.push("/sessions/register");
     } catch (error) {
       if (error instanceof ZodError) {
         setError(error.issues[0]?.message || "Invalid input");
