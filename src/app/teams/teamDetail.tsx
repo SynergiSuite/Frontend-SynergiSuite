@@ -1,17 +1,31 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import React, { useEffect, useLayoutEffect, useState, useRef } from "react";
 import { gsap } from "gsap";
 import {
-  ChartNoAxesColumn,
   Crown,
-  FileText,
-  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  FolderKanban,
+  LoaderCircle,
+  TrendingUp,
   Users,
-  X,
+  ShieldCheck,
+  UserCheck,
+  Mail,
+  Activity,
+  Layers,
 } from "lucide-react";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Teams } from "./schemas/types";
 import { getTeamProgress } from "./apis/getTeamProgress";
 
@@ -21,23 +35,34 @@ type TeamDetailProps = {
   onClose: () => void;
 };
 
-const DetailRow = ({
-  icon,
+function Metric({
   label,
   value,
+  icon,
+  subtext,
 }: {
-  icon: React.ReactNode;
   label: string;
-  value: string;
-}) => (
-  <div className="detail-card opacity-0 rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 p-4 backdrop-blur-md transition-all duration-300 hover:border-[#5271ff]/30 hover:bg-[#0a0826]/60">
-    <div className="mb-2 flex items-center gap-2 text-sm font-medium text-white/60">
-      <span className="text-[#5271ff]">{icon}</span>
-      <span>{label}</span>
-    </div>
-    <p className="break-words text-sm font-semibold text-white">{value}</p>
-  </div>
-);
+  value: React.ReactNode;
+  icon: React.ReactNode;
+  subtext?: string;
+}) {
+  return (
+    <Card data-detail-item size="sm" variant="outline" className="min-w-0 transition-all hover:border-v2-neutral-300">
+      <CardContent className="p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3 text-v2-neutral-400">
+          <span className="text-xs font-medium">{label}</span>
+          <span className="text-v2-neutral-500">{icon}</span>
+        </div>
+        <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-v2-neutral-600">
+          {value}
+        </p>
+        {subtext && (
+          <p className="mt-1 text-xs text-v2-neutral-400 truncate">{subtext}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 const normalizeMember = (member: any) => {
   const user = member?.user ?? member;
@@ -46,6 +71,7 @@ const normalizeMember = (member: any) => {
     id: user?.user_id ?? user?.id ?? member?.id ?? user?.email ?? user?.name,
     name: user?.name ?? "Unnamed member",
     email: user?.email ?? "",
+    role: user?.role?.name || user?.role || "Member",
   };
 };
 
@@ -61,19 +87,24 @@ const resolveTeamMembers = (team: Teams) => {
   return [];
 };
 
-const resolveLeaderName = (team: Teams) => {
+const resolveLeader = (team: Teams) => {
   if (team.leader?.name) {
-    return team.leader.name;
+    return {
+      name: team.leader.name,
+      email: team.leader.email || "",
+      id: team.leader.user_id || team.leader.id,
+    };
   }
 
-  const matchedMember = resolveTeamMembers(team).find(
+  const membersList = resolveTeamMembers(team);
+  const matchedMember = membersList.find(
     (member) =>
       String(member.id) === String(team.leader_id) ||
       String(member.id) === String(team.leader?.id) ||
       String(member.id) === String(team.leader?.user_id)
   );
 
-  return matchedMember?.name || "No leader assigned";
+  return matchedMember || null;
 };
 
 const resolveProgressValue = (response: unknown) => {
@@ -95,191 +126,303 @@ const resolveProgressValue = (response: unknown) => {
   return null;
 };
 
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export default function TeamDetailModal({
   team,
   open,
   onClose,
 }: TeamDetailProps) {
-  const [mounted, setMounted] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const [loadingProgress, setLoadingProgress] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
-  const members = team ? resolveTeamMembers(team) : [];
-  const progressLabel = progress === null ? "Not available" : `${progress}%`;
-  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!open || !team?.id) {
+      setProgress(null);
+      return;
+    }
 
-  useEffect(() => {
-    const loadProgress = async () => {
-      if (!open || !team?.id) {
-        setProgress(null);
-        return;
-      }
+    let isMounted = true;
+    setLoadingProgress(true);
 
-      try {
-        const response = await getTeamProgress(team.id);
-        setProgress(resolveProgressValue(response));
-      } catch (error) {
-        setProgress(null);
-      }
+    getTeamProgress(team.id)
+      .then((res) => {
+        if (isMounted) {
+          setProgress(resolveProgressValue(res));
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setProgress(null);
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setLoadingProgress(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
     };
-
-    loadProgress();
   }, [open, team?.id]);
 
-  // GSAP Entrance animation on opening modal or when dependencies load
-  useEffect(() => {
-    if (open && containerRef.current) {
-      const timer = setTimeout(() => {
-        const items = containerRef.current?.querySelectorAll(".detail-card, .member-card");
-        if (items && items.length > 0) {
-          gsap.killTweensOf(items);
-          gsap.fromTo(
-            items,
-            { opacity: 0, y: 15 },
-            {
-              opacity: 1,
-              y: 0,
-              duration: 0.4,
-              stagger: 0.04,
-              ease: "power2.out",
-            }
-          );
-        }
-      }, 100);
-      return () => clearTimeout(timer);
+  useLayoutEffect(() => {
+    if (
+      !open ||
+      !contentRef.current ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
     }
-  }, [open, team?.id, progress]);
 
-  if (!mounted || !team) {
-    return null;
-  }
+    const context = gsap.context(() => {
+      gsap.from("[data-detail-item]", {
+        autoAlpha: 0,
+        y: 10,
+        duration: 0.35,
+        stagger: 0.04,
+        ease: "power3.out",
+      });
+    }, contentRef.current);
 
-  const modal = (
-    <AnimatePresence>
-      {open ? (
-        <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-        >
-          <motion.button
-            type="button"
-            aria-label="Close team details"
-            onClick={onClose}
-            className="absolute inset-0 bg-[#030114]/65 backdrop-blur-md"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          />
+    return () => context.revert();
+  }, [open, team]);
 
-          <motion.div
-            className="relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.65)]"
-            initial={{ opacity: 0, y: 16, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+  if (!team) return null;
+
+  const membersList = resolveTeamMembers(team);
+  const leader = resolveLeader(team);
+  const leaderName = leader?.name || "No leader assigned";
+  const totalTasks = team.totalTasks ?? 0;
+  const completedTasks = team.completedTasks ?? 0;
+  const ongoingTasks = team.ongoingTasks ?? 0;
+  const calculatedProgress =
+    progress !== null
+      ? progress
+      : totalTasks > 0
+      ? Math.round((completedTasks / totalTasks) * 100)
+      : 0;
+
+  return (
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+      <DialogContent
+        ref={contentRef}
+        className="max-h-[calc(100dvh-2rem)] overflow-hidden border-v2-neutral-200 bg-v2-neutral-100 p-0 text-v2-neutral-600 shadow-[0_24px_80px_rgba(53,53,54,0.22)] sm:max-w-3xl"
+      >
+        <div className="max-h-[calc(100dvh-2rem)] overflow-y-auto" data-sidebar-scroll>
+          {/* Header Profile Banner */}
+          <DialogHeader
+            data-detail-item
+            className="border-b border-v2-neutral-200 px-6 py-6 sm:px-8 pr-16 bg-gradient-to-b from-v2-neutral-200/40 to-transparent"
           >
-            {/* Top blue glow element */}
-            <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.15),transparent_58%)] pointer-events-none" />
+            <div className="flex items-start gap-4 sm:gap-5">
+              <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-v2-neutral-500 text-v2-neutral-100 text-xl font-bold shadow-md">
+                {team.name.charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-v2-neutral-400">
+                  Squad Profile
+                </p>
+                <DialogTitle className="mt-1 truncate text-2xl font-semibold tracking-[-0.035em] text-v2-neutral-600 sm:text-3xl">
+                  {team.name}
+                </DialogTitle>
+                <DialogDescription className="mt-2 text-xs leading-5 text-v2-neutral-400 max-w-xl">
+                  {team.description || "Active squad unit within workspace."}
+                </DialogDescription>
 
-            <div ref={containerRef} className="relative overflow-y-auto max-h-[calc(100vh-2.5rem)] flex-1">
-              <div className="border-b border-white/[0.08] px-6 py-6 sm:px-8">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-sm shadow-inner shrink-0">
-                      <span className="bg-gradient-to-br from-[#5271ff] to-cyan-400 bg-clip-text text-2xl font-black text-transparent">
-                        {team.name?.charAt(0)?.toUpperCase() || "T"}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-white/50">
-                        Team Overview
-                      </p>
-                      <h2 className="mt-1 text-2xl font-bold text-white">
-                        {team.name || "Unnamed Team"}
-                      </h2>
-                      <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className="inline-flex rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 px-3 py-1 text-xs font-semibold text-[#5271ff]">
-                          {members.length} member{members.length === 1 ? "" : "s"}
-                        </span>
-                        <span className="inline-flex rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400">
-                          Active Team
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 px-2.5 py-1 text-xs font-medium text-v2-neutral-600 shadow-xs">
+                    <Users className="size-3.5 text-v2-neutral-400" />
+                    {membersList.length} squad {membersList.length === 1 ? "member" : "members"}
+                  </span>
+                  {leader && (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800 shadow-xs">
+                      <Crown className="size-3 text-amber-600" />
+                      Lead: {leaderName}
+                    </span>
+                  )}
                 </div>
-              </div>
-
-              <div className="grid gap-4 px-6 py-6 sm:grid-cols-2 sm:px-8">
-                <DetailRow
-                  icon={<Users className="h-4 w-4" />}
-                  label="Members"
-                  value={`${members.length}`}
-                />
-                <DetailRow
-                  icon={<Crown className="h-4 w-4" />}
-                  label="Team Leader"
-                  value={resolveLeaderName(team)}
-                />
-                <DetailRow
-                  icon={<ChartNoAxesColumn className="h-4 w-4" />}
-                  label="Progress"
-                  value={progressLabel}
-                />
-                <div className="sm:col-span-2">
-                  <DetailRow
-                    icon={<FileText className="h-4 w-4" />}
-                    label="Description"
-                    value={team.description?.trim() || "No description available"}
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-white/[0.08] px-6 py-6 sm:px-8">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-[0.18em] text-white/50">
-                  Members List
-                </h3>
-                {members.length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {members.map((member) => (
-                      <div
-                        key={member.id}
-                        className="member-card opacity-0 rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 px-4 py-3 backdrop-blur-sm transition-all duration-300 hover:border-[#5271ff]/30 hover:bg-[#0a0826]/60"
-                      >
-                        <p className="text-sm font-semibold text-white">
-                          {member.name}
-                        </p>
-                        <p className="mt-1 text-xs text-white/60">
-                          {member.email || "No email available"}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.01] px-4 py-6 text-sm text-white/40 text-center">
-                    No members assigned yet.
-                  </div>
-                )}
               </div>
             </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
-  );
+          </DialogHeader>
 
-  return createPortal(modal, document.body);
+          <div className="space-y-7 px-6 py-6 sm:px-8">
+            {/* Velocity & Progress Banner */}
+            <Card data-detail-item variant="subtle" size="sm" className="overflow-hidden border-v2-neutral-200/80">
+              <CardContent className="p-5 sm:p-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="size-4 text-v2-neutral-500" />
+                      <h3 className="text-sm font-semibold text-v2-neutral-600">
+                        Execution Velocity & Completion
+                      </h3>
+                    </div>
+                    <p className="mt-1 text-xs text-v2-neutral-400">
+                      Overall task deliverable progress recorded across assigned workspace initiatives.
+                    </p>
+                  </div>
+                  <div className="flex items-baseline gap-1.5 shrink-0">
+                    <span className="text-3xl font-bold tracking-tight text-v2-neutral-600">
+                      {loadingProgress ? (
+                        <LoaderCircle className="size-6 animate-spin text-v2-neutral-400" />
+                      ) : (
+                        `${calculatedProgress}%`
+                      )}
+                    </span>
+                    <span className="text-xs font-medium text-v2-neutral-400">efficiency</span>
+                  </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mt-4 h-2.5 w-full rounded-full bg-v2-neutral-300/40 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-v2-neutral-500 transition-all duration-700 ease-out"
+                    style={{ width: `${Math.min(calculatedProgress, 100)}%` }}
+                  />
+                </div>
+
+                <div className="mt-3 flex items-center justify-between text-xs text-v2-neutral-400 font-medium">
+                  <span>{completedTasks} tasks completed</span>
+                  <span>{ongoingTasks} ongoing in flight</span>
+                  <span>{totalTasks} total in scope</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Metrics Overview Grid */}
+            <section data-detail-item aria-labelledby="metrics-title">
+              <h3 id="metrics-title" className="text-sm font-semibold text-v2-neutral-600 mb-3">
+                Squad Performance Metrics
+              </h3>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Metric
+                  label="Completed Deliverables"
+                  value={completedTasks}
+                  icon={<CheckCircle2 className="size-4 text-emerald-600" />}
+                  subtext="Tasks successfully delivered"
+                />
+                <Metric
+                  label="In-Flight Tasks"
+                  value={ongoingTasks}
+                  icon={<Clock className="size-4 text-amber-600" />}
+                  subtext="Currently in active progress"
+                />
+                <Metric
+                  label="Squad Size"
+                  value={membersList.length}
+                  icon={<UserCheck className="size-4 text-indigo-600" />}
+                  subtext="Active assigned personnel"
+                />
+              </div>
+            </section>
+
+            {/* Team Leadership Card */}
+            {leader && (
+              <section data-detail-item aria-labelledby="leadership-title">
+                <h3 id="leadership-title" className="text-sm font-semibold text-v2-neutral-600 mb-3">
+                  Designated Squad Leader
+                </h3>
+                <Card variant="outline" size="sm" className="bg-v2-neutral-100">
+                  <CardContent className="flex items-center justify-between gap-4 p-4 sm:p-5">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <Avatar className="size-11 rounded-xl">
+                        <AvatarFallback className="rounded-xl bg-amber-100 text-amber-900 font-bold text-sm">
+                          {getInitials(leader.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-v2-neutral-600 truncate">
+                            {leader.name}
+                          </h4>
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                            <Crown className="size-3" /> Team Lead
+                          </span>
+                        </div>
+                        {leader.email && (
+                          <p className="mt-0.5 text-xs text-v2-neutral-400 truncate">
+                            {leader.email}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+            )}
+
+            {/* Members Roster List */}
+            <section data-detail-item aria-labelledby="members-roster-title">
+              <div className="flex items-center justify-between mb-3 border-b border-v2-neutral-200 pb-2">
+                <h3 id="members-roster-title" className="text-sm font-semibold text-v2-neutral-600">
+                  Squad Personnel ({membersList.length})
+                </h3>
+                <span className="text-xs text-v2-neutral-400 font-medium">
+                  Assigned Team Members
+                </span>
+              </div>
+
+              {membersList.length > 0 ? (
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {membersList.map((member, idx) => {
+                    const isLead =
+                      String(member.id) === String(team.leader_id) ||
+                      String(member.id) === String(team.leader?.user_id) ||
+                      String(member.id) === String(team.leader?.id);
+
+                    return (
+                      <div
+                        key={member.id ?? idx}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 p-3.5 transition-all hover:border-v2-neutral-300 hover:shadow-xs"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="size-9 rounded-lg">
+                            <AvatarFallback className="rounded-lg bg-v2-neutral-200 text-xs font-semibold text-v2-neutral-600">
+                              {getInitials(member.name)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0">
+                            <p className="truncate text-xs font-semibold text-v2-neutral-600">
+                              {member.name}
+                            </p>
+                            <p className="truncate text-[11px] text-v2-neutral-400">
+                              {member.email || "Workspace employee"}
+                            </p>
+                          </div>
+                        </div>
+
+                        {isLead ? (
+                          <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                            <Crown className="size-2.5" /> Lead
+                          </span>
+                        ) : (
+                          <span className="inline-flex shrink-0 rounded-md bg-v2-neutral-200/70 px-2 py-0.5 text-[10px] font-medium text-v2-neutral-500">
+                            Member
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-dashed border-v2-neutral-300 py-8 text-center text-xs text-v2-neutral-400">
+                  No squad members assigned yet.
+                </div>
+              )}
+            </section>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }

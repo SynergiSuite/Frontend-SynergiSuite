@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface PrimaryRole {
   id: number;
   name: string;
@@ -19,7 +17,7 @@ export interface CustomRole {
 export async function fetchPrimaryRoles(): Promise<PrimaryRole[]> {
   try {
     const token = await CookieManager("get", "access-token");
-    const res = await fetch(`${requestBaseUrl}/roles/primary-roles`, {
+    const res = await fetch("/api/roles/primary", {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -51,7 +49,7 @@ export async function createCustomRole(
   primary_role_id: number
 ): Promise<CustomRole> {
   const token = await CookieManager("get", "access-token");
-  const res = await fetch(`${requestBaseUrl}/roles/create`, {
+  const res = await fetch("/api/roles/create", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,

@@ -1,447 +1,448 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
+import React, { useState, useEffect, useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
 import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-} from "@/components/ui/select";
-import { X } from "lucide-react";
-import { Employee, Teams } from "./schemas/types";
+  Crown,
+  Info,
+  LoaderCircle,
+  Pencil,
+  Plus,
+  Users,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Employee, Teams } from "./schemas/types";
+
 type EditTeamModalProps = {
+  isOpen: boolean;
   onClose: () => void;
-  onUpdate: (team: Teams) => void;
-  team: Teams;
+  onUpdate: (team: Teams) => Promise<void>;
+  team: Teams | null;
   employees: Employee[];
 };
 
+const inputClassName =
+  "h-12 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-300 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/15";
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export default function EditTeamModal({
+  isOpen,
   onClose,
   onUpdate,
   team,
   employees,
 }: EditTeamModalProps) {
-  // ===== State =====
+  const contentRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState<Teams>({
-    id: team.id,
-    name: team.name,
-    description: team.description,
+    id: "",
+    name: "",
+    description: "",
     members: [],
-    leader_id: team.leader_id || team.leader?.user_id || 0,
+    leader_id: 0,
   });
-  const [members, setMembers] = useState<any[]>([]);
+  const [members, setMembers] = useState<Employee[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
-  const [leaderName, setLeaderName] = useState<string>("");
-  const [mounted, setMounted] = useState(false);
-
-  const shellRef = useRef<HTMLDivElement>(null);
-
-  // ===== Animations =====
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (shellRef.current) {
-      gsap.fromTo(
-        shellRef.current,
-        { opacity: 0, scale: 0.96, y: 12 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: "power2.out" }
-      );
-    }
-  }, []);
-
-  // Helper function to extract or match employee user object
-  const extractMemberUser = (item: any): Employee | null => {
-    if (!item) return null;
-
-    // Number ID
-    if (typeof item === "number") {
-      return employees.find((emp) => emp.user_id === item) || null;
-    }
-
-    // String number ID
-    if (typeof item === "string" && !isNaN(Number(item))) {
-      const numId = Number(item);
-      return employees.find((emp) => emp.user_id === numId) || null;
-    }
-
-    // Object with nested user property { id, user: { user_id, name, email } }
-    if (typeof item === "object" && item.user) {
-      return {
-        user_id: item.user.user_id || item.user.id,
-        name: item.user.name,
-        email: item.user.email,
-      };
-    }
-
-    // Direct user object { user_id: 5, name: "zain usmani", email: "..." }
-    if (typeof item === "object" && (item.user_id || item.id)) {
-      return {
-        user_id: item.user_id || Number(item.id),
-        name: item.name || "Unnamed",
-        email: item.email || "",
-      };
-    }
-
-    return null;
-  };
-
-  // ===== Effects =====
-  // Robustly normalize team members regardless of API response shape
-  useEffect(() => {
-    const rawMembers = team.teamMembers || team.members || [];
-    const normalizedMembers: Employee[] = [];
-
-    if (Array.isArray(rawMembers)) {
-      rawMembers.forEach((item) => {
-        const userObj = extractMemberUser(item);
-        if (userObj && userObj.user_id) {
-          if (!normalizedMembers.some((m) => m.user_id === userObj.user_id)) {
-            normalizedMembers.push(userObj);
-          }
-        }
+    if (team && isOpen) {
+      setFormData({
+        id: team.id,
+        name: team.name || "",
+        description: team.description || "",
+        members: team.members || [],
+        leader_id: team.leader_id || team.leader?.user_id || 0,
       });
+
+      // Extract existing members into normalized Employee array
+      const rawList = team.members || team.teamMembers || [];
+      const normalized = rawList
+        .map((item: any) => {
+          if (typeof item === "number") {
+            return employees.find((e) => Number(e.user_id) === item);
+          }
+          const user = item.user || item;
+          const uId = Number(user.user_id || user.id || item.user_id || item.id);
+          const matched = employees.find((e) => Number(e.user_id) === uId);
+          return (
+            matched || {
+              user_id: uId,
+              name: user.name || "Unnamed member",
+              email: user.email || "",
+            }
+          );
+        })
+        .filter(Boolean) as Employee[];
+
+      setMembers(normalized);
     }
+  }, [team, isOpen, employees]);
 
-    setMembers(normalizedMembers);
-
-    const initialLeaderId =
-      team.leader_id ||
-      team.leader?.user_id ||
-      (typeof team.leader === "number" ? team.leader : 0);
-
-    setFormData({
-      id: team.id,
-      name: team.name,
-      description: team.description,
-      members: normalizedMembers,
-      leader_id: initialLeaderId,
-    });
-  }, [team, employees]);
-
-  // Update leader name display whenever leader_id or members list changes
-  useEffect(() => {
-    const currentLeaderId = formData.leader_id || team.leader_id || team.leader?.user_id;
-    if (!currentLeaderId) {
-      setLeaderName("");
+  useLayoutEffect(() => {
+    if (
+      !isOpen ||
+      !contentRef.current ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       return;
     }
 
-    const foundInMembers = members.find((m) => {
-      const id = m.user ? m.user.user_id : m.user_id;
-      return id === currentLeaderId;
-    });
+    const context = gsap.context(() => {
+      gsap.from("[data-edit-section]", {
+        autoAlpha: 0,
+        y: 10,
+        duration: 0.35,
+        stagger: 0.055,
+        ease: "power3.out",
+      });
+    }, contentRef.current);
 
-    if (foundInMembers) {
-      setLeaderName(foundInMembers.user ? foundInMembers.user.name : foundInMembers.name);
-      return;
-    }
-
-    const foundInEmployees = employees.find((e) => e.user_id === currentLeaderId);
-    if (foundInEmployees) {
-      setLeaderName(foundInEmployees.name);
-      return;
-    }
-
-    if (team.leader?.name) {
-      setLeaderName(team.leader.name);
-    }
-  }, [formData.leader_id, members, employees, team]);
-
-  // ===== Helpers =====
-  const stringToInt = (str: string) => parseInt(str, 10);
-
-  // ===== Handlers =====
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+    return () => context.revert();
+  }, [isOpen]);
 
   const handleAddMember = () => {
-    const selectedEmployee = employees.find(
-      (e) => e.user_id === stringToInt(selectedMemberId)
-    );
-    if (!selectedEmployee) return;
+    if (!selectedMemberId) return;
+    const empId = Number(selectedMemberId);
+    const selectedEmployee = employees.find((e) => Number(e.user_id) === empId);
 
-    const alreadyIn = members.some((m) => {
-      const mId = m.user ? m.user.user_id : m.user_id;
-      return mId === selectedEmployee.user_id;
-    });
-
-    if (alreadyIn) return;
-
-    const updatedMembers = [...members, selectedEmployee];
-
-    setMembers(updatedMembers);
-    setFormData((prev) => ({
-      ...prev,
-      members: updatedMembers,
-    }));
-
-    setSelectedMemberId("");
+    if (selectedEmployee) {
+      if (!members.some((m) => Number(m.user_id) === empId)) {
+        const nextMembers = [...members, selectedEmployee];
+        setMembers(nextMembers);
+        if (!formData.leader_id || formData.leader_id === 0) {
+          setFormData((prev) => ({ ...prev, leader_id: empId }));
+        }
+      }
+      setSelectedMemberId("");
+      setError(null);
+    }
   };
 
-  const handleRemoveMember = (idToRemove: string) => {
-    const targetId = stringToInt(idToRemove);
-    const updatedMembers = members.filter((member) => {
-      const memberId = member.user ? member.user.user_id : member.user_id;
-      return memberId !== targetId;
-    });
-
-    setMembers(updatedMembers);
-    setFormData((prev) => ({
-      ...prev,
-      members: updatedMembers,
-      leader_id: prev.leader_id === targetId ? 0 : prev.leader_id,
-    }));
+  const handleRemoveMember = (idToRemove: number) => {
+    const nextMembers = members.filter((m) => Number(m.user_id) !== idToRemove);
+    setMembers(nextMembers);
+    if (Number(formData.leader_id) === idToRemove) {
+      setFormData((prev) => ({
+        ...prev,
+        leader_id: nextMembers.length > 0 ? Number(nextMembers[0].user_id) : 0,
+      }));
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
 
-    if (members.length === 0) {
-      toast.warning("Teams cannot exist without members.");
+    const trimmedName = formData.name.trim();
+    if (!trimmedName) {
+      setError("Team name is required.");
       return;
     }
 
-    const updatedTeam: Teams = {
-      ...formData,
-      members: members.map((m) => (m.user ? m.user.user_id : m.user_id)),
-    };
-    onUpdate(updatedTeam);
-    onClose();
+    if (!/^[A-Za-z0-9\s-_]+$/.test(trimmedName)) {
+      setError("Team name must contain letters, numbers, hyphens, and spaces only.");
+      return;
+    }
+
+    if (members.length === 0) {
+      setError("Please ensure at least one member is in the team.");
+      return;
+    }
+
+    if (!formData.leader_id || formData.leader_id === 0) {
+      setError("Please select a team leader.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const updated: Teams = {
+        ...formData,
+        name: trimmedName,
+        description: (formData.description || "").trim(),
+        leader_id: Number(formData.leader_id),
+        members: members.map((m) => Number(m.user_id)) as any,
+      };
+
+      await onUpdate(updated);
+      onClose();
+    } catch (err: any) {
+      const message = err?.message || "Failed to update team.";
+      setError(message);
+      toast.error(message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const availableEmployees = employees.filter((emp) => {
-    return !members.some((member) => {
-      const memberId = member.user ? member.user.user_id : member.user_id;
-      return memberId === emp.user_id;
-    });
-  });
-
-  if (!mounted) {
-    return null;
-  }
-
-  // ===== Render =====
-  const modal = (
-    <motion.div
-      className="fixed inset-0 z-50 flex min-h-screen items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="absolute inset-0 bg-[#030114]/60 backdrop-blur-md"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      />
-      <motion.div
-        ref={shellRef}
-        className="relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/95 shadow-[0_24px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl"
-      >
-        {/* Top radial glow element */}
-        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.12),transparent_50%)] pointer-events-none" />
-
-        {/* Header */}
-        <div className="relative z-10 px-6 py-6 sm:px-8 border-b border-white/[0.08] flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white">Edit Team</h2>
-            <p className="mt-1 text-sm text-white/50">
-              Update team details and manage members
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="relative z-10 flex flex-col flex-1 overflow-hidden">
-          {/* Body */}
-          <div className="px-6 py-6 sm:px-8 space-y-6 overflow-y-auto max-h-[calc(100vh-14rem)]">
-            {/* Team Info */}
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-white/70 mb-1.5">
-                  Team Name
-                </label>
-                <input
-                  name="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter team name"
-                  className="w-full h-11 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-white/70 mb-1.5">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Enter description"
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all resize-none"
-                  rows={3}
-                />
-              </div>
-            </div>
-
-            {/* Members */}
-            <div className="space-y-3 pt-2">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-white/60">
-                  Team Members
-                </h3>
-                <button
-                  className="relative overflow-hidden bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-xs font-semibold h-9 px-4 rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98]"
-                  type="button"
-                  onClick={handleAddMember}
-                  disabled={!selectedMemberId}
-                >
-                  Add Member
-                </button>
-              </div>
-
-              <Select
-                value={selectedMemberId}
-                onValueChange={(value) => setSelectedMemberId(value)}
-              >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left">
-                  <SelectValue placeholder="Select a Member" />
-                </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                  {availableEmployees.map((o) => (
-                    <SelectItem
-                      key={o.user_id}
-                      value={String(o.user_id)}
-                      className="cursor-pointer text-white focus:bg-white/5 focus:text-white"
-                    >
-                      {o.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {members.length === 0 ? (
-                  <span className="text-sm text-white/30 italic">
-                    No members added yet.
-                  </span>
-                ) : (
-                  members.map((member) => {
-                    const name = member.user ? member.user.name : member.name;
-                    const id = member.user ? member.user.user_id : member.user_id;
-                    if (!name || !id) return null;
-
-                    return (
-                      <span
-                        key={id}
-                        className="flex max-w-full items-center gap-2 rounded-full bg-white/[0.03] border border-white/[0.08] pl-2.5 pr-3.5 py-1.5 text-sm text-white"
-                      >
-                        <span className="w-6 h-6 bg-gradient-to-br from-[#5271ff] to-[#3a4ec4] text-white font-bold rounded-full flex items-center justify-center text-xs">
-                          {name.charAt(0)?.toUpperCase()}
-                        </span>
-                        <span className="break-words font-medium">{name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(String(id))}
-                          className="text-white/40 hover:text-white ml-1 cursor-pointer transition-colors"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Leader Selection */}
-            <div className="pt-2">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-white/60 mb-3">
-                Team Leader
-              </h3>
-              <Select
-                value={formData.leader_id ? String(formData.leader_id) : ""}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    leader_id: stringToInt(value),
-                  }))
-                }
-              >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left">
-                  <SelectValue placeholder={leaderName || "Select a Lead"} />
-                </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                  {members.map((o) => {
-                    const id = o.user?.user_id ?? o.user_id;
-                    const name = o.user?.name ?? o.name;
-                    if (!id || !name) return null;
-                    return (
-                      <SelectItem
-                        key={id}
-                        value={String(id)}
-                        className="cursor-pointer text-white focus:bg-white/5 focus:text-white"
-                      >
-                        {name}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-            </div>
-
-          </div>
-
-          {/* Footer */}
-          <div className="relative z-10 px-6 py-6 sm:px-8 border-t border-white/[0.08] bg-white/[0.01] flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-white/70 hover:bg-white/[0.08] hover:text-white transition-all"
-            >
-              Cancel
-            </button>
-            <button
-              className="px-6 py-2.5 bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-sm font-medium rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 hover:scale-[1.02] active:scale-[0.98]"
-              type="submit"
-            >
-              Update Team
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </motion.div>
+  const availableEmployees = employees.filter(
+    (emp) => !members.some((m) => Number(m.user_id) === Number(emp.user_id))
   );
 
-  return createPortal(modal, document.body);
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-[0_24px_80px_rgba(53,53,54,0.22)] sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader data-edit-section className="border-v2-neutral-200 pb-5">
+          <div className="flex items-start gap-3.5 pr-12">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-v2-neutral-500 text-v2-neutral-100 shadow-sm">
+              <Pencil className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <DialogTitle className="text-xl tracking-[-0.03em] text-v2-neutral-600">
+                Edit team
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-xs leading-5 text-v2-neutral-400">
+                Update squad details, adjust member roster, or reassign leadership.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} noValidate>
+          <div ref={contentRef} className="px-6 py-5 sm:px-8 space-y-5">
+            {error && (
+              <FieldError className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+                {error}
+              </FieldError>
+            )}
+
+            <FieldGroup className="gap-5">
+              {/* Team Name */}
+              <Field data-edit-section data-invalid={Boolean(error && !formData.name.trim())}>
+                <FieldLabel htmlFor="edit-team-name">Team name</FieldLabel>
+                <div className="relative">
+                  <input
+                    id="edit-team-name"
+                    name="name"
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, name: e.target.value }));
+                      setError(null);
+                    }}
+                    placeholder="Team name"
+                    className={inputClassName}
+                  />
+                </div>
+              </Field>
+
+              {/* Description */}
+              <Field data-edit-section>
+                <FieldLabel htmlFor="edit-team-desc">Description (Optional)</FieldLabel>
+                <textarea
+                  id="edit-team-desc"
+                  name="description"
+                  rows={2}
+                  value={formData.description}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  placeholder="Outline key objectives or core squad scope..."
+                  className="w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 p-3 text-sm text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-300 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20"
+                />
+              </Field>
+
+              {/* Add Squad Members */}
+              <Field data-edit-section>
+                <div className="flex items-center justify-between">
+                  <FieldLabel>Manage squad members</FieldLabel>
+                  <span className="text-xs font-semibold text-v2-neutral-500">
+                    {members.length} members
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Select
+                      value={selectedMemberId}
+                      onValueChange={(val) => {
+                        setSelectedMemberId(val);
+                        setError(null);
+                      }}
+                    >
+                      <SelectTrigger className="h-12 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20 text-v2-neutral-600">
+                        <SelectValue placeholder="Add new member to squad..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56 rounded-xl border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                        {availableEmployees.map((emp) => (
+                          <SelectItem
+                            key={emp.user_id}
+                            value={String(emp.user_id)}
+                            className="rounded-lg focus:bg-v2-neutral-200/70 focus:text-v2-neutral-600"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{emp.name}</span>
+                              <span className="text-xs text-v2-neutral-400">
+                                ({emp.email || "No email"})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {availableEmployees.length === 0 && (
+                          <div className="py-2.5 px-3 text-xs text-v2-neutral-400 text-center">
+                            All employees in this squad
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddMember}
+                    disabled={!selectedMemberId}
+                    className="h-12 px-4 shrink-0 font-medium"
+                  >
+                    <Plus className="size-4" />
+                    Add
+                  </Button>
+                </div>
+
+                {/* Members Chips */}
+                <div className="mt-2 min-h-16 rounded-xl border border-dashed border-v2-neutral-300 bg-v2-neutral-200/40 p-3">
+                  {members.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {members.map((m) => {
+                        const isLeader = Number(formData.leader_id) === Number(m.user_id);
+                        return (
+                          <div
+                            key={m.user_id}
+                            className="inline-flex items-center gap-2 rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 py-1.5 pl-2 pr-1.5 text-xs font-medium text-v2-neutral-600 shadow-xs"
+                          >
+                            <Avatar className="size-5 rounded-md">
+                              <AvatarFallback className="rounded-md bg-v2-neutral-200 text-[10px] font-bold text-v2-neutral-600">
+                                {getInitials(m.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="max-w-32 truncate">{m.name}</span>
+                            {isLeader && (
+                              <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.2 text-[10px] font-bold text-amber-800">
+                                <Crown className="size-2.5" /> Lead
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMember(Number(m.user_id))}
+                              className="inline-flex size-4 items-center justify-center rounded-md hover:bg-v2-neutral-200 text-v2-neutral-400 hover:text-v2-neutral-600 transition-colors"
+                              title="Remove member"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-center text-xs text-v2-neutral-400 py-3">
+                      No members in this team.
+                    </p>
+                  )}
+                </div>
+              </Field>
+
+              {/* Select Team Leader */}
+              <Field data-edit-section data-invalid={Boolean(error && !formData.leader_id)}>
+                <FieldLabel htmlFor="edit-team-leader">
+                  <span className="flex items-center gap-1.5">
+                    <Crown className="size-4 text-amber-500" />
+                    Team leader
+                  </span>
+                </FieldLabel>
+                <Select
+                  value={formData.leader_id ? String(formData.leader_id) : ""}
+                  onValueChange={(val) => {
+                    setFormData((prev) => ({ ...prev, leader_id: Number(val) }));
+                    setError(null);
+                  }}
+                  disabled={members.length === 0}
+                >
+                  <SelectTrigger
+                    id="edit-team-leader"
+                    className="h-12 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20 text-v2-neutral-600"
+                  >
+                    <SelectValue placeholder="Choose a leader from squad members..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56 rounded-xl border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                    {members.map((m) => (
+                      <SelectItem
+                        key={m.user_id}
+                        value={String(m.user_id)}
+                        className="rounded-lg focus:bg-v2-neutral-200/70 focus:text-v2-neutral-600"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Crown className="size-3.5 text-amber-500" />
+                          <span className="font-semibold">{m.name}</span>
+                          <span className="text-xs text-v2-neutral-400">
+                            ({m.email || "Member"})
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </FieldGroup>
+          </div>
+
+          <DialogFooter data-edit-section className="border-v2-neutral-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                  Saving changes...
+                </>
+              ) : (
+                "Save changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
 }

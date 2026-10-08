@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface EmployeeDetailData {
   employee: {
     userId: number;
@@ -83,7 +81,7 @@ export async function fetchEmployeeDetail(
   }
 
   const response = await fetch(
-    `${requestBaseUrl}/business/employees/${employeeId}`,
+    `/api/employees/${employeeId}`,
     {
       method: "GET",
       headers: {

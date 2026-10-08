@@ -1,6 +1,7 @@
 export type AddEmployeeDialogProps = {
   isOpen: boolean;
   onClose: () => void;
+  onEmployeeAdded?: () => void;
 };
 
 export type InviteEmployeePayload = {

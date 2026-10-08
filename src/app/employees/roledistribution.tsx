@@ -1,118 +1,117 @@
 "use client";
-import React from "react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { Users } from "lucide-react";
+
+import { UsersRound } from "lucide-react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+
+import { CardDescription, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
 
 type Role = {
   label: string;
   value: number;
 };
 
-type Props = {
+type RoleDistributionProps = {
   roles: Role[];
 };
 
-// Brand-aligned colors
-const COLORS = ["#5271ff", "#22d3ee", "#a78bfa", "#f59e0b", "#34d399", "#fb7185"];
+const COLORS = ["#353536", "#706f70", "#8e8d90", "#acadb1", "#d4d8df"];
 
-interface CustomTooltipProps {
+function RoleTooltip({
+  active,
+  payload,
+}: {
   active?: boolean;
-  payload?: { name: string; value: number; payload: Role }[];
-}
+  payload?: Array<{ value: number; payload: Role }>;
+}) {
+  const entry = payload?.[0];
 
-function CustomTooltip({ active, payload }: CustomTooltipProps) {
-  if (active && payload && payload.length) {
-    const entry = payload[0];
-    return (
-      <div className="rounded-xl border border-white/[0.08] bg-[#0f0c2e]/90 px-3 py-2 text-xs backdrop-blur-md">
-        <p className="font-semibold text-white">{entry.payload.label}</p>
-        <p className="text-white/50">{entry.value} employees</p>
-      </div>
-    );
-  }
-  return null;
-}
-
-export default function RoleDistribution({ roles }: Props) {
-  const total = roles.reduce((sum, r) => sum + r.value, 0);
-
-  if (roles.length === 0) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.03]">
-          <Users size={20} className="text-white/30" />
-        </div>
-        <p className="text-sm text-white/30">No roles to display yet</p>
-      </div>
-    );
+  if (!active || !entry) {
+    return null;
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="mb-4">
-        <p className="text-xs font-semibold uppercase tracking-widest text-white/40">Breakdown</p>
-        <h2 className="mt-0.5 text-base font-semibold text-white">Role Distribution</h2>
-      </div>
-
-      {/* Donut chart */}
-      <div className="relative flex items-center justify-center">
-        <ResponsiveContainer width="100%" height={220}>
-          <PieChart>
-            <Pie
-              data={roles}
-              dataKey="value"
-              nameKey="label"
-              outerRadius={90}
-              innerRadius={58}
-              paddingAngle={3}
-              stroke="none"
-            >
-              {roles.map((_, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                  style={{ filter: `drop-shadow(0 0 6px ${COLORS[index % COLORS.length]}60)` }}
-                />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-
-        {/* Center overlay */}
-        <div className="pointer-events-none absolute flex flex-col items-center">
-          <span className="text-2xl font-bold text-white">{total}</span>
-          <span className="text-[10px] text-white/40">Total</span>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="mt-4 flex flex-col gap-2.5">
-        {roles.map((role, idx) => {
-          const color = COLORS[idx % COLORS.length];
-          const pct = total > 0 ? Math.round((role.value / total) * 100) : 0;
-          return (
-            <div key={role.label} className="flex items-center gap-3">
-              <span
-                className="h-2.5 w-2.5 flex-shrink-0 rounded-full"
-                style={{ background: color, boxShadow: `0 0 6px ${color}80` }}
-              />
-              <div className="flex flex-1 items-center justify-between gap-2 min-w-0">
-                <span className="truncate text-sm text-white/60">{role.label}</span>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <div className="h-1 w-14 overflow-hidden rounded-full bg-white/[0.05]">
-                    <div
-                      className="h-full rounded-full"
-                      style={{ width: `${pct}%`, background: color }}
-                    />
-                  </div>
-                  <span className="w-6 text-right text-xs font-semibold text-white/50">{pct}%</span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+    <div className="rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 px-3 py-2 text-xs shadow-xl">
+      <p className="font-medium text-v2-neutral-600">{entry.payload.label}</p>
+      <p className="mt-0.5 text-v2-neutral-400">{entry.value} employees</p>
     </div>
   );
 }
+
+export default function RoleDistribution({ roles }: RoleDistributionProps) {
+  const total = roles.reduce((sum, role) => sum + role.value, 0);
+
+  return (
+    <div>
+      <div>
+        <CardDescription className="text-xs font-medium">Current page</CardDescription>
+        <CardTitle className="mt-1 text-lg font-semibold tracking-[-0.025em]">
+          Role distribution
+        </CardTitle>
+        <CardDescription className="mt-1 text-xs leading-5">
+          Breakdown of employees shown in this result set.
+        </CardDescription>
+      </div>
+
+      {roles.length === 0 ? (
+        <div className="flex min-h-72 flex-col items-center justify-center text-center">
+          <span className="grid size-11 place-items-center rounded-2xl bg-v2-neutral-200 text-v2-neutral-400">
+            <UsersRound className="size-5" aria-hidden="true" />
+          </span>
+          <p className="mt-3 text-sm text-v2-neutral-400">No roles to display</p>
+        </div>
+      ) : (
+        <>
+          <div className="relative mt-4 flex items-center justify-center">
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie
+                  data={roles}
+                  dataKey="value"
+                  nameKey="label"
+                  outerRadius={88}
+                  innerRadius={60}
+                  paddingAngle={2}
+                  stroke="#ebedf1"
+                  strokeWidth={2}
+                >
+                  {roles.map((role, index) => (
+                    <Cell key={role.label} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip content={<RoleTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute text-center">
+              <span className="block text-2xl font-semibold tracking-[-0.04em] text-v2-neutral-600">
+                {total}
+              </span>
+              <span className="text-[10px] font-medium uppercase tracking-wider text-v2-neutral-400">
+                Employees
+              </span>
+            </div>
+          </div>
+
+          <Separator className="mt-4 mb-5" />
+
+          <div className="space-y-3">
+            {roles.map((role, index) => {
+              const percentage = total > 0 ? Math.round((role.value / total) * 100) : 0;
+              const color = COLORS[index % COLORS.length];
+
+              return (
+                <div key={role.label} className="flex items-center gap-3">
+                  <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
+                  <span className="min-w-0 flex-1 truncate text-sm text-v2-neutral-500">{role.label}</span>
+                  <span className="text-xs font-medium text-v2-neutral-400">{role.value}</span>
+                  <span className="w-8 text-right text-xs font-medium text-v2-neutral-600">{percentage}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 type ProxyBackendOptions = {
   backendPath: string;
   forwardAuthorization?: boolean;
-  method?: "GET" | "PATCH" | "POST";
+  method?: "DELETE" | "GET" | "PATCH" | "POST";
 };
 
 export async function proxyBackendRequest(
@@ -36,7 +36,7 @@ export async function proxyBackendRequest(
   }
 
   try {
-    const body = method === "GET" ? undefined : await request.text();
+    const body = method === "GET" || method === "DELETE" ? undefined : await request.text();
     const response = await fetch(
       `${backendBaseUrl.replace(/\/$/, "")}${backendPath}`,
       {

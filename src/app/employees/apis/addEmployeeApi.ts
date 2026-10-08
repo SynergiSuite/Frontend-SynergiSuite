@@ -1,8 +1,6 @@
 import { CookieManager } from "@/lib/cookieManager";
 import { InviteEmployeePayload } from "../schemas/addEmployee";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function inviteEmployee(payload: InviteEmployeePayload): Promise<boolean> {
   const token = await CookieManager("get", "access-token");
   if (!token) {
@@ -23,7 +21,7 @@ export async function inviteEmployee(payload: InviteEmployeePayload): Promise<bo
     salary: numSalary,
   };
 
-  const res = await fetch(`${requestBaseUrl}/business/invite`, {
+  const res = await fetch("/api/employees/invite", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

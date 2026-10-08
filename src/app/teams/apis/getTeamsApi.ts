@@ -1,24 +1,23 @@
-import { CookieManager } from "@/lib/cookieManager"
-
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL
+import { CookieManager } from "@/lib/cookieManager";
 
 export const getTeamsApi = async () => {
-  try {
-    const accessToken = CookieManager("get", "access-token");
-    const response = await fetch(
-      `${requestBaseUrl}/teams/get-all-teams`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "ngrok-skip-browser-warning": "1",
-        },
-      },
-    );
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching teams:", error);
-    throw error;
+  const accessToken = CookieManager("get", "access-token");
+  if (!accessToken) {
+    throw new Error("Authentication token not found");
   }
+
+  const response = await fetch("/api/teams/all", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || "Failed to fetch teams");
+  }
+
+  return response.json();
 };

@@ -1,23 +1,39 @@
 "use client";
+
 import React from "react";
 import { Search } from "lucide-react";
+import { Field, FieldLabel } from "@/components/ui/field";
 
 type SearchBarProps = {
   searchQuery: string;
   onSearch: (query: string) => void;
 };
 
+const inputClassName =
+  "h-11 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 pl-11 pr-4 text-sm text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-300 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20";
+
 export default function SearchBar({ searchQuery, onSearch }: SearchBarProps) {
   return (
-    <div className="flex w-full items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2 transition-all duration-200 focus-within:border-[#5271ff]/50 focus-within:bg-white/[0.05] focus-within:shadow-[0_0_12px_rgba(82,113,255,0.12)]">
-      <Search size={15} className="shrink-0 text-white/30 transition-colors duration-200 group-focus-within:text-[#5271ff]" />
-      <input
-        type="text"
-        placeholder="Search employees..."
-        value={searchQuery}
-        onChange={(e) => onSearch(e.target.value)}
-        className="flex-1 bg-transparent text-sm text-white placeholder-white/20 outline-none"
-      />
-    </div>
+    <Field>
+      <FieldLabel htmlFor="employee-search" className="sr-only">
+        Search employees
+      </FieldLabel>
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-v2-neutral-400"
+          aria-hidden="true"
+        />
+        <input
+          id="employee-search"
+          name="search"
+          type="text"
+          data-slot="input"
+          placeholder="Search employees..."
+          value={searchQuery}
+          onChange={(event) => onSearch(event.target.value)}
+          className={inputClassName}
+        />
+      </div>
+    </Field>
   );
 }

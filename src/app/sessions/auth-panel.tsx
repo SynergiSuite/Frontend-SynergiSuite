@@ -10,9 +10,7 @@ import {
   Eye,
   EyeOff,
   LoaderCircle,
-  LockKeyhole,
   ShieldCheck,
-  Sparkles,
   UsersRound,
   Zap,
 } from "lucide-react";
@@ -21,6 +19,7 @@ import type { ZodIssue } from "zod";
 import { gsap } from "gsap";
 
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
   Field,
   FieldDescription,
@@ -44,8 +43,10 @@ type AuthResponse = {
   email: string;
   verified?: boolean;
   role?: string | {
+    id?: number | string;
     name?: string;
-    primary_role?: string | { name?: string };
+    role?: string | { id?: number | string; name?: string };
+    primary_role?: string | { id?: number | string; name?: string };
   };
   role_name?: string;
   primary_role?: string | { name?: string };
@@ -97,20 +98,28 @@ function issuesToFieldErrors(issues: ZodIssue[]) {
 }
 
 function saveIdentity(response: AuthResponse) {
+  console.log(response);
   CookieManager("set", "user-id", response.user_id);
   CookieManager("set", "access-token", response.access_token);
   CookieManager("set", "user-email", response.email);
   CookieManager("set", "user", response.name);
 
+  const roleObj =
+    typeof response.role === "object" && response.role !== null
+      ? (response.role as any)
+      : undefined;
+
+  const nestedRole = roleObj?.role;
   const roleName =
-    (typeof response.role === "object" ? response.role?.name : response.role) ??
+    (typeof nestedRole === "object" ? nestedRole?.name : nestedRole) ??
+    (typeof response.role === "object" ? (response.role as any)?.name : response.role) ??
     response.role_name;
-  const rolePrimary =
-    typeof response.role === "object" ? response.role?.primary_role : undefined;
+
+  const rolePrimary = roleObj?.primary_role;
   const primaryRoleName =
     (typeof rolePrimary === "object" ? rolePrimary?.name : rolePrimary) ??
     (typeof response.primary_role === "object"
-      ? response.primary_role?.name
+      ? (response.primary_role as any)?.name
       : response.primary_role) ??
     response.primary_role_name;
 
@@ -387,10 +396,15 @@ export default function AuthPanel({ initialMode }: AuthPanelProps) {
                 { icon: BarChart3, label: "Insights ready" },
                 { icon: ShieldCheck, label: "Work protected" },
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="rounded-2xl border border-v2-neutral-500 bg-v2-neutral-500/15 p-4">
+                <Card
+                  key={label}
+                  variant="dark"
+                  size="sm"
+                  className="border-v2-neutral-500 bg-v2-neutral-500/15 p-4 shadow-none"
+                >
                   <Icon className="size-4 text-v2-neutral-200" aria-hidden="true" />
                   <p className="mt-6 text-xs font-medium text-v2-neutral-200">{label}</p>
-                </div>
+                </Card>
               ))}
             </div>
           </div>

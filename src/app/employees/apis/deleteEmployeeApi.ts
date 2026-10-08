@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function deleteEmployeeApi(employeeId: number) {
   const token = await CookieManager("get", "access-token");
   if (!token) {
@@ -9,7 +7,7 @@ export async function deleteEmployeeApi(employeeId: number) {
   }
 
   const response = await fetch(
-    `${requestBaseUrl}/business/employees/${employeeId}`,
+    `/api/employees/${employeeId}`,
     {
       method: "DELETE",
       headers: {

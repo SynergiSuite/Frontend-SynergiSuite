@@ -92,6 +92,10 @@ export default function RootLayout({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isChatbotRightBarOpen, setIsChatbotRightBarOpen] = useState(false);
   const isChatbotRoute = pathName.startsWith("/chatbot");
+  const usesV2WorkspaceSurface =
+    pathName.startsWith("/employees") ||
+    pathName.startsWith("/settings") ||
+    pathName.startsWith("/teams");
 
   useEffect(() => {
     const patchedWindow = window as WindowWithPatchedFetch;
@@ -320,9 +324,9 @@ export default function RootLayout({
         <div className="flex h-screen flex-col overflow-hidden">
           {/* Navbar (always on top) */}
           {showSidebar && (
-            <header className="border-b border-[#5271ff]/15 bg-[#030114]">
+            <div className="border-b border-v2-neutral-400/70 bg-v2-neutral-500">
               <Navbar />
-            </header>
+            </div>
           )}
 
           <div className="flex flex-1 min-h-0">
@@ -334,14 +338,14 @@ export default function RootLayout({
                     type="button"
                     aria-label="Open sidebar"
                     onClick={() => setIsMobileSidebarOpen(true)}
-                    className="fixed left-4 top-20 z-50 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-v2-neutral-500 bg-v2-neutral-600 text-v2-neutral-100 shadow-lg transition-colors hover:bg-v2-neutral-500 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25 md:hidden"
+                    className="fixed left-4 top-20 z-50 inline-flex h-10 w-10 items-center justify-center rounded-xl border border-v2-neutral-400 bg-v2-neutral-500 text-v2-neutral-100 shadow-lg transition-colors hover:bg-v2-neutral-600 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25 md:hidden"
                   >
                     <Menu size={18} />
                   </button>
                 )}
 
                 {isMobileSidebarOpen && (
-                  <div className="fixed inset-0 z-40 bg-v2-neutral-600/55 backdrop-blur-sm md:hidden">
+                  <div className="fixed inset-0 z-40 bg-v2-neutral-500/65 backdrop-blur-sm md:hidden">
                     <button
                       type="button"
                       aria-label="Close sidebar overlay"
@@ -402,7 +406,11 @@ export default function RootLayout({
             {/* Main content (right) */}
             <main
               className={`flex-1 min-h-0 ${
-                showSidebar ? "bg-[#030114] p-6 lg:p-8" : ""
+                showSidebar
+                  ? usesV2WorkspaceSurface
+                    ? "bg-v2-neutral-600 p-4 sm:p-6 lg:p-8"
+                    : "bg-[#030114] p-6 lg:p-8"
+                  : ""
               } ${
                 isChatbotRoute ? "overflow-hidden" : "overflow-y-auto"
               }`}

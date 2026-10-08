@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { MoreHorizontalIcon, Pencil, Shield, Trash2, UserRound, X, DollarSign } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  CircleDollarSign,
+  LoaderCircle,
+  MoreHorizontal,
+  Pencil,
+  Shield,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { gsap } from "gsap";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogClose,
@@ -23,6 +32,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -30,10 +40,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Role } from "./schemas/roles";
-import { fetchRoles } from "./apis/getRoleApi";
-import { editEmployeeApi, EditEmployeePayload } from "./apis/editEmployeeApi";
+
 import { deleteEmployeeApi } from "./apis/deleteEmployeeApi";
+import { editEmployeeApi, type EditEmployeePayload } from "./apis/editEmployeeApi";
+import { fetchRoles } from "./apis/getRoleApi";
+import type { Role } from "./schemas/roles";
+import { CookieManager } from "@/lib/cookieManager";
 
 type ActionsProps = {
   id: number;
@@ -43,10 +55,23 @@ type ActionsProps = {
   onRefresh?: () => void;
 };
 
-export function Actions({ id, role, name, isFounderUser, onRefresh }: ActionsProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [showNewDialog, setShowNewDialog] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
+const inputClassName =
+  "h-12 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-300 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20 disabled:cursor-not-allowed disabled:bg-v2-neutral-200 disabled:text-v2-neutral-400";
+
+export function Actions({
+  id,
+  role,
+  name,
+  isFounderUser,
+  onRefresh,
+}: ActionsProps) {
+  const currentUserId = CookieManager("get", "user-id");
+  const isSelf = currentUserId ? String(id) === String(currentUserId) : false;
+
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const editDialogRef = useRef<HTMLDivElement>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [roleValue, setRoleValue] = useState(role);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [salaryValue, setSalaryValue] = useState("");
@@ -54,384 +79,246 @@ export function Actions({ id, role, name, isFounderUser, onRefresh }: ActionsPro
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-  const deleteDialogRef = useRef<HTMLDivElement | null>(null);
-  const editDialogRef = useRef<HTMLDivElement | null>(null);
+  if (isSelf) {
+    return null;
+  }
 
-  const isFounder = isFounderUser;
   const normalizedEmployeeRole = role.trim().toLowerCase();
   const isRestrictedEmployee =
-    !isFounder &&
+    !isFounderUser &&
     (normalizedEmployeeRole === "founder" || normalizedEmployeeRole === "manager");
 
   const baseRoles = (
-    isFounder
+    isFounderUser
       ? roles
       : roles.filter((item) => {
-          const roleName = item.name.trim().toLowerCase();
-          return roleName !== "founder" && roleName !== "manager";
+          const name = item.name.trim().toLowerCase();
+          return name !== "founder" && name !== "manager";
         })
   ).filter((item) => !item.name.toLowerCase().includes("client"));
 
-  const visibleRoles = (
-    isRestrictedEmployee
-      ? [{ id: -1, name: role }, ...baseRoles.filter((item) => item.name.toLowerCase() !== role.toLowerCase())]
-      : baseRoles
-  ).filter((item) => !item.name.toLowerCase().includes("client"));
+  const visibleRoles = isRestrictedEmployee
+    ? [
+        { id: -1, name: role },
+        ...baseRoles.filter(
+          (item) => item.name.toLowerCase() !== role.toLowerCase(),
+        ),
+      ]
+    : baseRoles;
+
+  useEffect(() => {
+    fetchRoles().then(setRoles).catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    if (!editOpen) {
+      return;
+    }
+
+    setRoleValue(role);
+    setSalaryValue("");
+    const currentRole = roles.find(
+      (item) => item.name.toLowerCase() === role.trim().toLowerCase(),
+    );
+    setSelectedRoleId(currentRole?.id ?? null);
+  }, [editOpen, role, roles]);
+
+  useLayoutEffect(() => {
+    const dialog = deleteOpen
+      ? deleteDialogRef.current
+      : editOpen
+        ? editDialogRef.current
+        : null;
+
+    if (!dialog || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const context = gsap.context(() => {
+      gsap.from("[data-employee-dialog-section]", {
+        autoAlpha: 0,
+        y: 8,
+        duration: 0.3,
+        stagger: 0.05,
+        ease: "power3.out",
+      });
+    }, dialog);
+
+    return () => context.revert();
+  }, [deleteOpen, editOpen]);
 
   const handleDelete = async () => {
+    setIsDeleting(true);
+
     try {
-      setIsDeleting(true);
-      const res = await deleteEmployeeApi(id);
-      toast.success(res?.message || "Employee removed from business successfully.");
-      setShowNewDialog(false);
+      const response = await deleteEmployeeApi(id);
+      toast.success(response?.message || "Employee removed from the workspace.");
+      setDeleteOpen(false);
       onRefresh?.();
-    } catch (error: any) {
-      console.error("Error deleting employee:", error);
-      toast.error(error?.message || "Failed to remove employee.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The employee could not be removed.");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  useEffect(() => {
-    const loadRoles = async () => {
-      try {
-        const rolesData = await fetchRoles();
-        setRoles(rolesData);
-      } catch (error) {
-        console.error("Failed to load roles", error);
-      }
-    };
-    loadRoles();
-  }, []);
-
-  useEffect(() => {
-    if (showShareDialog) {
-      setRoleValue(role);
-      setSalaryValue("");
-      if (roles.length > 0) {
-        const found = roles.find(
-          (r) => r.name.toLowerCase() === role.trim().toLowerCase()
-        );
-        if (found) {
-          setSelectedRoleId(found.id);
-        } else {
-          setSelectedRoleId(null);
-        }
-      }
-    }
-  }, [role, showShareDialog, roles]);
-
-  const handleEditOpenChange = (open: boolean) => {
-    setShowShareDialog(open);
-  };
-
   const handleSaveEdit = async () => {
+    const payload: EditEmployeePayload = {};
+    const activeRoleId =
+      selectedRoleId && selectedRoleId > 0
+        ? selectedRoleId
+        : roles.find((item) => item.name.toLowerCase() === roleValue.toLowerCase())?.id;
+
+    if (activeRoleId) {
+      payload.roleId = activeRoleId;
+    }
+
+    if (salaryValue.trim()) {
+      payload.salary = salaryValue.trim();
+    }
+
+    if (!payload.roleId && !payload.salary) {
+      toast.warning("Select a role or enter a salary to update.");
+      return;
+    }
+
+    setIsSaving(true);
+
     try {
-      setIsSaving(true);
-      const payload: EditEmployeePayload = {};
-
-      const activeRoleId =
-        selectedRoleId && selectedRoleId > 0
-          ? selectedRoleId
-          : roles.find((r) => r.name.toLowerCase() === roleValue.toLowerCase())?.id;
-
-      if (activeRoleId) {
-        payload.roleId = activeRoleId;
-      }
-
-      if (salaryValue.trim() !== "") {
-        payload.salary = salaryValue.trim();
-      }
-
-      if (!payload.roleId && !payload.salary) {
-        toast.warning("Please select a valid role or enter a salary to update.");
-        setIsSaving(false);
-        return;
-      }
-
-      const res = await editEmployeeApi(id, payload);
-      toast.success(res?.message || "Employee updated successfully.");
-      setShowShareDialog(false);
+      const response = await editEmployeeApi(id, payload);
+      toast.success(response?.message || "Employee updated successfully.");
+      setEditOpen(false);
       onRefresh?.();
-    } catch (error: any) {
-      console.error("Error updating employee:", error);
-      toast.error(error?.message || "Failed to update employee.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "The employee could not be updated.");
     } finally {
       setIsSaving(false);
     }
   };
 
-  useEffect(() => {
-    if (!menuOpen || !menuRef.current) return;
-
-    const items = menuRef.current.querySelectorAll("[data-employee-action-item]");
-    gsap.fromTo(
-      items,
-      { opacity: 0, y: -6, scale: 0.98 },
-      {
-        opacity: 1,
-        y: 0,
-        scale: 1,
-        duration: 0.22,
-        ease: "power2.out",
-        stagger: 0.04,
-      }
-    );
-  }, [menuOpen]);
-
-  useEffect(() => {
-    const activeDialog = showNewDialog
-      ? deleteDialogRef.current
-      : showShareDialog
-      ? editDialogRef.current
-      : null;
-    if (!activeDialog) return;
-
-    const sections = activeDialog.querySelectorAll("[data-action-dialog-section]");
-    gsap.fromTo(
-      sections,
-      { opacity: 0, y: 12 },
-      {
-        opacity: 1,
-        y: 0,
-        duration: 0.32,
-        ease: "power3.out",
-        stagger: 0.06,
-      }
-    );
-  }, [showNewDialog, showShareDialog]);
-
-  const animateTrigger = (scale: number, y: number) => {
-    if (!triggerRef.current) return;
-    gsap.to(triggerRef.current, {
-      scale,
-      y,
-      duration: 0.2,
-      ease: "power2.out",
-    });
-  };
-
   return (
     <>
-      <DropdownMenu modal={false} open={menuOpen} onOpenChange={setMenuOpen}>
+      <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            ref={triggerRef}
-            variant="ghost"
-            aria-label="Open employee actions"
-            size="icon-sm"
-            className="rounded-full border border-white/[0.08] bg-white/[0.03] text-white/55 shadow-[0_0_0_rgba(82,113,255,0)] transition-colors hover:border-[#5271ff]/50 hover:bg-[#5271ff]/10 hover:text-white hover:shadow-[0_0_18px_rgba(82,113,255,0.22)] focus-visible:border-[#5271ff]/60 focus-visible:ring-[#5271ff]/25"
-            onMouseEnter={() => animateTrigger(1.06, -1)}
-            onMouseLeave={() => animateTrigger(1, 0)}
-            onFocus={() => animateTrigger(1.06, -1)}
-            onBlur={() => animateTrigger(1, 0)}
-          >
-            <MoreHorizontalIcon className="h-4 w-4" />
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Actions for ${name}`}>
+            <MoreHorizontal aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          ref={menuRef}
-          className="w-52"
-          align="end"
-          sideOffset={8}
-        >
-          <DropdownMenuLabel>
-            Actions
-          </DropdownMenuLabel>
+        <DropdownMenuContent align="end" sideOffset={8} className="w-52">
+          <DropdownMenuLabel>Employee actions</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <DropdownMenuItem
-              data-employee-action-item
-              variant="destructive"
-              onSelect={() => setShowNewDialog(true)}
-              className="py-2.5"
-            >
-              <span className="flex size-8 items-center justify-center rounded-lg border border-destructive/20 bg-destructive/10 text-destructive">
-                <Trash2 className="h-4 w-4" />
+            <DropdownMenuItem onSelect={() => setEditOpen(true)} className="py-2.5">
+              <span className="grid size-8 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-500">
+                <Pencil className="size-4" aria-hidden="true" />
               </span>
-              <span className="font-medium">Delete user</span>
+              Edit employee
             </DropdownMenuItem>
-            <DropdownMenuItem
-              data-employee-action-item
-              onSelect={() => setShowShareDialog(true)}
-              className="py-2.5"
-            >
-              <span className="flex size-8 items-center justify-center rounded-lg border border-v2-neutral-200 bg-v2-neutral-200/60 text-v2-neutral-500">
-                <Pencil className="h-4 w-4" />
+            <DropdownMenuItem variant="destructive" onSelect={() => setDeleteOpen(true)} className="py-2.5">
+              <span className="grid size-8 place-items-center rounded-lg bg-destructive/10 text-destructive">
+                <Trash2 className="size-4" aria-hidden="true" />
               </span>
-              <span className="font-medium">Edit employee</span>
+              Remove employee
             </DropdownMenuItem>
           </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <Dialog open={showNewDialog} onOpenChange={setShowNewDialog}>
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent
           ref={deleteDialogRef}
-          showCloseButton={false}
-          className="border border-white/[0.08] bg-[#0a0826]/95 text-white shadow-[0_24px_80px_rgba(3,1,20,0.55)] backdrop-blur-xl sm:max-w-[425px]"
+          className="border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-[0_24px_80px_rgba(53,53,54,0.22)] sm:max-w-md"
         >
-          <DialogHeader className="border-b border-white/[0.08] px-6 py-6 sm:px-8" data-action-dialog-section>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <DialogTitle className="text-xl font-semibold text-white">Delete user</DialogTitle>
-                <DialogDescription className="mt-2 text-sm text-white/45">
-                  Are you sure you want to delete this user?
-                </DialogDescription>
-              </div>
-              <DialogClose asChild>
-                <button
-                  type="button"
-                  aria-label="Close delete user dialog"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/45 transition hover:border-white/[0.16] hover:bg-white/[0.08] hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </DialogClose>
-            </div>
+          <DialogHeader data-employee-dialog-section className="border-v2-neutral-200">
+            <DialogTitle className="text-xl tracking-[-0.03em] text-v2-neutral-600">Remove employee</DialogTitle>
+            <DialogDescription className="leading-5 text-v2-neutral-400">
+              This removes their access to the current business workspace.
+            </DialogDescription>
           </DialogHeader>
-          <div className="px-6 py-5 sm:px-8" data-action-dialog-section>
-            <div className="rounded-2xl border border-red-500/15 bg-red-500/5 p-4 text-sm text-red-100/80">
-              This action is permanent for <span className="font-semibold text-red-100">{name}</span>.
-            </div>
+          <div data-employee-dialog-section className="px-6 py-5 sm:px-8">
+            <Card variant="subtle" size="sm">
+              <CardContent className="text-sm leading-6 text-v2-neutral-500">
+                Remove <span className="font-semibold text-v2-neutral-600">{name}</span>? This action cannot be undone from this screen.
+              </CardContent>
+            </Card>
           </div>
-          <DialogFooter className="border-t border-white/[0.08] px-6 py-4 sm:px-8" data-action-dialog-section>
-            <DialogClose asChild>
-              <Button
-                variant="ghost"
-                className="rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="rounded-xl bg-red-500/85 text-white shadow-[0_0_18px_rgba(239,68,68,0.24)] hover:bg-red-500 disabled:opacity-50 cursor-pointer"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
+          <DialogFooter data-employee-dialog-section className="border-v2-neutral-200">
+            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+            <Button type="button" variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              {isDeleting ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Trash2 aria-hidden="true" />}
+              {isDeleting ? "Removing..." : "Remove employee"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showShareDialog} onOpenChange={handleEditOpenChange}>
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent
           ref={editDialogRef}
-          showCloseButton={false}
-          className="border border-white/[0.08] bg-[#0a0826]/95 text-white shadow-[0_24px_80px_rgba(3,1,20,0.55)] backdrop-blur-xl sm:max-w-[460px]"
+          className="border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-[0_24px_80px_rgba(53,53,54,0.22)] sm:max-w-lg"
         >
-          <DialogHeader className="border-b border-white/[0.08] px-6 py-6 sm:px-8" data-action-dialog-section>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <DialogTitle className="text-xl font-semibold text-white">Edit Employee</DialogTitle>
-                <DialogDescription className="mt-2 text-sm text-white/45">Update designation or salary details.</DialogDescription>
-              </div>
-              <DialogClose asChild>
-                <button
-                  type="button"
-                  aria-label="Close edit user dialog"
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] text-white/45 transition hover:border-white/[0.16] hover:bg-white/[0.08] hover:text-white"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </DialogClose>
-            </div>
+          <DialogHeader data-employee-dialog-section className="border-v2-neutral-200">
+            <DialogTitle className="text-xl tracking-[-0.03em] text-v2-neutral-600">Edit employee</DialogTitle>
+            <DialogDescription className="leading-5 text-v2-neutral-400">
+              Update the workspace role or salary for this employee.
+            </DialogDescription>
           </DialogHeader>
-          <div className="px-6 pb-3 pt-5 sm:px-8" data-action-dialog-section>
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <label htmlFor={`employee-name-${id}`} className="block text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
-                  Name
-                </label>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5">
-                  <UserRound className="h-4 w-4 text-[#8fa2ff]" />
-                  <input
-                    id={`employee-name-${id}`}
-                    name="name"
-                    type="text"
-                    value={name}
-                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-white outline-none"
-                    readOnly
-                  />
+          <div data-employee-dialog-section className="px-6 py-6 sm:px-8">
+            <FieldGroup className="gap-5">
+              <Field data-disabled="true">
+                <FieldLabel htmlFor={`employee-name-${id}`}>Employee</FieldLabel>
+                <div className="relative">
+                  <UserRound className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-v2-neutral-400" aria-hidden="true" />
+                  <input id={`employee-name-${id}`} value={name} readOnly disabled className={`${inputClassName} pl-11`} />
                 </div>
-              </div>
+              </Field>
 
-              <div className="space-y-2">
-                <label htmlFor={`employee-role-${id}`} className="block text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
-                  Designation
-                </label>
+              <Field data-disabled={isRestrictedEmployee}>
+                <FieldLabel htmlFor={`employee-role-${id}`}>Workspace role</FieldLabel>
                 <Select
                   disabled={isRestrictedEmployee}
                   value={selectedRoleId ? String(selectedRoleId) : ""}
                   onValueChange={(value) => {
-                    const numId = Number(value);
-                    setSelectedRoleId(numId);
-                    const found = roles.find((r) => r.id === numId);
-                    if (found) {
-                      setRoleValue(found.name);
-                    }
+                    const nextId = Number(value);
+                    setSelectedRoleId(nextId);
+                    const selected = roles.find((item) => item.id === nextId);
+                    if (selected) setRoleValue(selected.name);
                   }}
                 >
-                  <SelectTrigger
-                    id={`employee-role-${id}`}
-                    className="h-12 w-full cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-white transition hover:border-[#5271ff]/35 focus:ring-[#5271ff]/25 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    <span className="flex items-center gap-3">
-                      <Shield className="h-4 w-4 text-[#8fa2ff]" />
-                      <SelectValue placeholder="Select a role" />
-                    </span>
+                  <SelectTrigger id={`employee-role-${id}`} className="h-12 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                    <span className="flex items-center gap-2.5"><Shield className="size-4 text-v2-neutral-400" aria-hidden="true" /><SelectValue placeholder="Select a role" /></span>
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border border-white/[0.08] bg-[#0a0826] text-white shadow-[0_18px_50px_rgba(3,1,20,0.45)]">
-                    {visibleRoles.map((r) => (
-                      <SelectItem key={r.id} value={String(r.id)} className="cursor-pointer rounded-lg focus:bg-[#5271ff]/12 focus:text-white">
-                        {r.name}
-                      </SelectItem>
+                  <SelectContent className="rounded-xl border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                    {visibleRoles.map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)} className="rounded-lg focus:bg-v2-neutral-200/70 focus:text-v2-neutral-600">{item.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {isRestrictedEmployee && (
-                  <p className="text-xs text-white/35">Only founders can update founder or manager roles.</p>
-                )}
-              </div>
+                {isRestrictedEmployee && <FieldDescription>Only founders can change founder or manager roles.</FieldDescription>}
+              </Field>
 
-              <div className="space-y-2">
-                <label htmlFor={`employee-salary-${id}`} className="block text-xs font-semibold uppercase tracking-[0.16em] text-white/40">
-                  Salary
-                </label>
-                <div className="flex h-12 items-center gap-3 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 transition focus-within:border-[#5271ff]/50">
-                  <DollarSign className="h-4 w-4 text-[#8fa2ff]" />
+              <Field>
+                <FieldLabel htmlFor={`employee-salary-${id}`}>Salary</FieldLabel>
+                <div className="relative">
+                  <CircleDollarSign className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-v2-neutral-400" aria-hidden="true" />
                   <input
                     id={`employee-salary-${id}`}
-                    name="salary"
-                    type="text"
-                    placeholder="Enter salary (optional)"
+                    type="number"
+                    min={0}
+                    max={1000000}
+                    step="any"
+                    placeholder="Enter a new salary (optional)"
                     value={salaryValue}
-                    onChange={(e) => setSalaryValue(e.target.value)}
-                    className="h-full min-w-0 flex-1 bg-transparent text-sm font-medium text-white placeholder-white/20 outline-none"
+                    onChange={(event) => setSalaryValue(event.target.value)}
+                    className={`${inputClassName} pl-11`}
                   />
                 </div>
-              </div>
-            </div>
+              </Field>
+            </FieldGroup>
           </div>
-          <DialogFooter className="border-t border-white/[0.08] px-6 py-4 sm:px-8" data-action-dialog-section>
-            <DialogClose asChild>
-              <Button
-                variant="ghost"
-                className="rounded-xl border border-white/[0.08] bg-white/[0.04] text-white/70 hover:bg-white/[0.08] hover:text-white"
-              >
-                Cancel
-              </Button>
-            </DialogClose>
-            <Button
-              type="button"
-              onClick={handleSaveEdit}
-              disabled={isSaving}
-              className="rounded-xl bg-[#5271ff] text-white shadow-[0_0_18px_rgba(82,113,255,0.24)] hover:bg-[#6380ff] disabled:opacity-50 cursor-pointer"
-            >
+          <DialogFooter data-employee-dialog-section className="border-v2-neutral-200">
+            <DialogClose asChild><Button type="button" variant="outline">Cancel</Button></DialogClose>
+            <Button type="button" onClick={handleSaveEdit} disabled={isSaving}>
+              {isSaving ? <LoaderCircle className="animate-spin" aria-hidden="true" /> : <Pencil aria-hidden="true" />}
               {isSaving ? "Saving..." : "Save changes"}
             </Button>
           </DialogFooter>

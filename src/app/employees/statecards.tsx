@@ -1,81 +1,76 @@
 "use client";
-import React, { useEffect, useRef } from "react";
+
+import { useLayoutEffect, useRef } from "react";
+import { FolderKanban, UserCheck, UserPlus, UsersRound } from "lucide-react";
 import { gsap } from "gsap";
-import { Users, FolderOpen, UserCheck, Sparkles } from "lucide-react";
-import { StatsCardProps } from "./schemas/stateCard";
 
-const icons = [Users, UserCheck, FolderOpen, Sparkles];
-const accentColors = ["#5271ff", "#22d3ee", "#a78bfa", "#f59e0b"];
+import { Card, CardContent } from "@/components/ui/card";
 
-function StatsCard({ title, value, change, index }: StatsCardProps & { index: number }) {
-  const numRef = useRef<HTMLParagraphElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
-  const Icon = icons[index % icons.length];
-  const accent = accentColors[index % accentColors.length];
-  const numericValue = typeof value === "number" ? value : parseInt(String(value ?? "0"));
+import type { StatsCardProps } from "./schemas/stateCard";
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      if (numRef.current && !isNaN(numericValue)) {
-        const obj = { val: 0 };
-        gsap.to(obj, {
-          val: numericValue,
-          duration: 1.3,
-          ease: "power2.out",
-          delay: 0.1 + index * 0.08,
-          onUpdate: () => {
-            if (numRef.current) {
-              numRef.current.textContent = Math.round(obj.val).toLocaleString();
-            }
-          },
-        });
-      }
+const ICONS = [UsersRound, UserCheck, FolderKanban, UserPlus];
+
+function StatsCard({
+  title,
+  value,
+  change,
+  index,
+}: StatsCardProps & { index: number }) {
+  const valueRef = useRef<HTMLParagraphElement>(null);
+  const Icon = ICONS[index % ICONS.length];
+  const numericValue =
+    typeof value === "number" ? value : Number.parseInt(String(value ?? "0"), 10);
+
+  useLayoutEffect(() => {
+    const element = valueRef.current;
+
+    if (
+      !element ||
+      Number.isNaN(numericValue) ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const counter = { value: 0 };
+    const animation = gsap.to(counter, {
+      value: numericValue,
+      duration: 0.9,
+      delay: index * 0.055,
+      ease: "power2.out",
+      onUpdate: () => {
+        element.textContent = Math.round(counter.value).toLocaleString();
+      },
     });
-    return () => ctx.revert();
-  }, [numericValue, index]);
+
+    return () => {
+      animation.revert();
+    };
+  }, [index, numericValue]);
 
   return (
-    <div
-      ref={cardRef}
-      className="group relative overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0a0826]/60 p-5 backdrop-blur-md transition-all duration-300 hover:border-[#5271ff]/25 hover:shadow-[0_0_20px_rgba(82,113,255,0.06)]"
-    >
-      {/* Corner accent line */}
-      <div
-        className="absolute left-0 top-0 h-[2px] w-16 transition-all duration-500 group-hover:w-28"
-        style={{ background: `linear-gradient(90deg, ${accent}, transparent)` }}
-      />
-
-      <div className="mb-3 flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-widest text-white/40">
-          {title}
-        </span>
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-xl border transition-all duration-300 group-hover:scale-110"
-          style={{
-            borderColor: `${accent}30`,
-            background: `${accent}12`,
-          }}
-        >
-          <Icon size={16} style={{ color: accent }} />
+    <Card size="sm" className="min-w-0">
+      <CardContent className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-v2-neutral-400">{title}</p>
+          <p ref={valueRef} className="mt-2 text-3xl font-semibold tracking-[-0.045em] text-v2-neutral-600">
+            {Number.isNaN(numericValue) ? value ?? "—" : numericValue.toLocaleString()}
+          </p>
+          {change && <p className="mt-1.5 truncate text-xs text-v2-neutral-400">{change}</p>}
         </div>
-      </div>
-
-      <p ref={numRef} className="text-3xl font-bold tracking-tight text-white">
-        {isNaN(numericValue) ? (value ?? "—") : "0"}
-      </p>
-
-      {change && (
-        <p className="mt-1.5 text-xs text-white/35">{change}</p>
-      )}
-    </div>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-500">
+          <Icon className="size-[18px]" aria-hidden="true" />
+        </span>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function StatsCards({ stats }: { stats: StatsCardProps[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {stats.map((stat, i) => (
-        <StatsCard key={stat.title} {...stat} index={i} />
+      {stats.map((stat, index) => (
+        <StatsCard key={stat.title} {...stat} index={index} />
       ))}
     </div>
   );

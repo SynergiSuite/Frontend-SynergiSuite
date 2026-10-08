@@ -8,8 +8,6 @@ import {
   Stats,
 } from "../schemas/apiResponse";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface FetchEmployeesParams {
   page?: number;
   limit?: number;
@@ -37,7 +35,7 @@ export async function fetchEmployeesData(
 
   const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
 
-  const res = await fetch(`${requestBaseUrl}/business/get-employees${queryString}`, {
+  const res = await fetch(`/api/employees${queryString}`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

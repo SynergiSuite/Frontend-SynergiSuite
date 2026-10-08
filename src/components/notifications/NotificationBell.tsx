@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -282,11 +283,11 @@ export default function NotificationBell() {
         <button
           type="button"
           aria-label="Open notifications"
-          className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-[#0c0a2f]/60 text-white/80 transition hover:border-[#5271ff]/50 hover:bg-[#5271ff]/15 hover:text-white cursor-pointer backdrop-blur-md shadow-sm"
+          className="relative inline-flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-v2-neutral-400/70 bg-v2-neutral-600/15 text-v2-neutral-200 outline-none transition-colors hover:bg-v2-neutral-600/25 hover:text-v2-neutral-100 focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-1 text-[9px] font-extrabold leading-none text-white shadow-[0_0_8px_#5271ff]">
+            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full border border-v2-neutral-600 bg-v2-neutral-100 px-1 text-[9px] font-bold leading-none text-v2-neutral-600 shadow-sm">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -301,16 +302,18 @@ export default function NotificationBell() {
           <DropdownMenuLabel className="p-0 text-v2-neutral-600">
             Notifications
           </DropdownMenuLabel>
-          <button
+          <Button
             type="button"
+            variant="outline"
+            size="icon"
             title="Mark all as read"
             aria-label="Mark all notifications as read"
             disabled={unreadCount === 0}
             onClick={() => void markAllRead()}
-            className="inline-flex size-8 cursor-pointer items-center justify-center rounded-lg border border-v2-neutral-300 text-v2-neutral-400 transition hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 disabled:cursor-not-allowed disabled:opacity-30"
+            className="size-8 rounded-lg border-v2-neutral-300 text-v2-neutral-400 hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600"
           >
             <CheckCheck className="h-3.5 w-3.5" />
-          </button>
+          </Button>
         </div>
         <DropdownMenuSeparator className="m-0" />
         <div className="max-h-[min(65vh,440px)] overflow-y-auto p-1.5 custom-scrollbar">
@@ -374,17 +377,19 @@ export default function NotificationBell() {
             ))
           )}
           {nextCursor && !isLoading && (
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               disabled={isLoadingMore}
               onClick={() => void loadNotifications(nextCursor)}
-              className="flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-v2-neutral-200 text-xs font-medium text-v2-neutral-500 transition hover:border-v2-neutral-300 hover:bg-v2-neutral-200/60 hover:text-v2-neutral-600 disabled:opacity-50"
+              className="h-10 w-full rounded-xl border-v2-neutral-200 text-xs font-medium text-v2-neutral-500 hover:border-v2-neutral-300 hover:bg-v2-neutral-200/60 hover:text-v2-neutral-600"
             >
               {isLoadingMore && (
                 <Loader2 className="h-3.5 w-3.5 animate-spin text-v2-neutral-600" />
               )}
               Load earlier
-            </button>
+            </Button>
           )}
         </div>
       </DropdownMenuContent>

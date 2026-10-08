@@ -10,13 +10,15 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import { Teams } from "./schemas/types";
+import { Activity } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import type { Teams } from "./schemas/types";
 
 interface TeamActivitiesChartProps {
   teams?: Teams[];
 }
 
-// Fallback dataset if teams array is empty
 const defaultData = [
   { name: "Design", Completed: 40, Ongoing: 10 },
   { name: "Development", Completed: 70, Ongoing: 15 },
@@ -24,20 +26,32 @@ const defaultData = [
   { name: "Sales", Completed: 50, Ongoing: 18 },
 ];
 
-export function ChartContainer({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-[#0a0826]/60 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 w-full h-[320px] flex flex-col shadow-lg">
-      <h2 className="text-lg font-bold text-white mb-4">{title}</h2>
-      <div className="flex-1 min-h-0">{children}</div>
-    </div>
-  );
-}
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 p-3 text-xs shadow-lg">
+        <p className="font-semibold text-v2-neutral-600 mb-1.5">{label}</p>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between gap-4 text-v2-neutral-500">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-v2-neutral-500" />
+              Completed:
+            </span>
+            <span className="font-semibold text-v2-neutral-600">{payload[0]?.value ?? 0}</span>
+          </div>
+          <div className="flex items-center justify-between gap-4 text-v2-neutral-500">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-v2-neutral-300" />
+              Ongoing:
+            </span>
+            <span className="font-semibold text-v2-neutral-600">{payload[1]?.value ?? 0}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function TeamActivitiesChart({ teams }: TeamActivitiesChartProps) {
   const chartData =
@@ -51,30 +65,57 @@ export default function TeamActivitiesChart({ teams }: TeamActivitiesChartProps)
       : defaultData;
 
   return (
-    <ChartContainer title="Team Activities">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={chartData}
-          margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-          barGap={6}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.05)" />
-          <XAxis dataKey="name" tick={{ fill: "rgba(255, 255, 255, 0.4)", fontSize: 11 }} stroke="rgba(255,255,255,0.08)" />
-          <YAxis tick={{ fill: "rgba(255, 255, 255, 0.4)", fontSize: 11 }} stroke="rgba(255,255,255,0.08)" />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#0a0826",
-              borderRadius: "12px",
-              border: "1px solid rgba(255, 255, 255, 0.08)",
-              fontSize: "12px",
-            }}
-            itemStyle={{ color: "#fff" }}
-            labelStyle={{ color: "rgba(255, 255, 255, 0.5)", fontWeight: "semibold", marginBottom: "4px" }}
-          />
-          <Bar dataKey="Completed" fill="#5271ff" radius={[4, 4, 0, 0]} barSize={18} />
-          <Bar dataKey="Ongoing" fill="rgba(82, 113, 255, 0.35)" radius={[4, 4, 0, 0]} barSize={18} />
-        </BarChart>
-      </ResponsiveContainer>
-    </ChartContainer>
+    <Card className="flex h-full flex-col min-h-[340px]">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-500">
+              <Activity className="size-4" />
+            </span>
+            <div>
+              <CardTitle className="text-base">Team Activities</CardTitle>
+              <CardDescription className="text-xs">
+                Completed vs ongoing tasks per squad
+              </CardDescription>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-v2-neutral-400">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-v2-neutral-500" />
+              Completed
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2.5 rounded-full bg-v2-neutral-300" />
+              Ongoing
+            </span>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-1 min-h-[220px] pt-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={chartData}
+            margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            barGap={6}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#ebedf1" vertical={false} />
+            <XAxis
+              dataKey="name"
+              tick={{ fill: "#706f70", fontSize: 11 }}
+              axisLine={{ stroke: "#d4d8df" }}
+              tickLine={false}
+            />
+            <YAxis
+              tick={{ fill: "#706f70", fontSize: 11 }}
+              axisLine={{ stroke: "#d4d8df" }}
+              tickLine={false}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="Completed" fill="#353536" radius={[4, 4, 0, 0]} barSize={16} />
+            <Bar dataKey="Ongoing" fill="#acadb1" radius={[4, 4, 0, 0]} barSize={16} />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
   );
 }

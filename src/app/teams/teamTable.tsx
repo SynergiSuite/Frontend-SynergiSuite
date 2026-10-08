@@ -1,24 +1,45 @@
-import React, { useState } from "react";
-import { AnimatePresence } from "framer-motion";
-import { Trash, PencilRuler, ChevronLeft, ChevronRight } from "lucide-react";
-import { AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger
-} from "@/components/ui/alert-dialog";
+"use client";
+
+import React, { useState, useLayoutEffect, useRef } from "react";
+import { gsap } from "gsap";
+import {
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight,
+  Crown,
+  Eye,
+  LoaderCircle,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
-import { CookieManager } from "@/lib/cookieManager";
-import EditTeamModal from "./editTeamModal";
-import { Employee, Teams } from "./schemas/types";
-import TeamDetailModal from "./teamDetail";
-import { PaginationMeta } from "./apis/getTeamsWithTasksApi";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { deleteTeamApi } from "./apis/deleteTeamApi";
 import { editTeamApi, EditTeamPayload } from "./apis/editTeamApi";
+import type { PaginationMeta } from "./apis/getTeamsWithTasksApi";
+import EditTeamModal from "./editTeamModal";
+import type { Employee, Teams } from "./schemas/types";
+import TeamDetailModal from "./teamDetail";
 
 type TeamProps = {
   teams: Teams[];
@@ -29,6 +50,9 @@ type TeamProps = {
   onPageChange?: (newPage: number) => void;
 };
 
+const resolveMemberName = (member: any) =>
+  member?.user?.name ?? member?.name ?? "Unnamed";
+
 export default function TeamTable({
   teams,
   employees,
@@ -37,15 +61,33 @@ export default function TeamTable({
   paginationMeta,
   onPageChange,
 }: TeamProps) {
-  const [isEdit, setIsEdit] = useState<boolean>(false);
-  const [selectedTeam, setSelectedTeam] = useState<Teams | null>(null);
-  const [team, setTeam] = useState<Teams>({} as Teams);
-  const [isDelete, setIsDelete] = useState(false);
-  const [teamId, setTeamId] = useState<string>("");
-  const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+  const deleteModalRef = useRef<HTMLDivElement>(null);
+  const [selectedDetailTeam, setSelectedDetailTeam] = useState<Teams | null>(null);
+  const [editingTeam, setEditingTeam] = useState<Teams | null>(null);
+  const [teamToDelete, setTeamToDelete] = useState<Teams | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const resolveMemberName = (member: any) =>
-    member?.user?.name ?? member?.name ?? "Unnamed";
+  useLayoutEffect(() => {
+    if (
+      !teamToDelete ||
+      !deleteModalRef.current ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const context = gsap.context(() => {
+      gsap.from("[data-delete-modal-section]", {
+        autoAlpha: 0,
+        y: 8,
+        duration: 0.3,
+        stagger: 0.05,
+        ease: "power3.out",
+      });
+    }, deleteModalRef.current);
+
+    return () => context.revert();
+  }, [teamToDelete]);
 
   const handleUpdate = async (updatedTeams: Teams) => {
     if (!canManageTeams) {
@@ -57,7 +99,9 @@ export default function TeamTable({
       const memberIds = Array.isArray(updatedTeams.members)
         ? updatedTeams.members
             .map((m: any) =>
-              typeof m === "number" ? m : m.user_id || m.id || m.user?.user_id || m.user?.id
+              typeof m === "number"
+                ? m
+                : m.user_id || m.id || m.user?.user_id || m.user?.id
             )
             .filter(Boolean)
         : [];
@@ -66,15 +110,18 @@ export default function TeamTable({
         name: updatedTeams.name,
         description: updatedTeams.description,
         members: memberIds,
-        leader_id: Number(updatedTeams.leader_id || updatedTeams.leader?.user_id || 0),
+        leader_id: Number(
+          updatedTeams.leader_id || updatedTeams.leader?.user_id || 0
+        ),
       };
 
       await editTeamApi(updatedTeams.id, payload);
-      setIsEdit(false);
+      setEditingTeam(null);
       onRefresh?.();
       toast.success("Team updated successfully");
     } catch (error: any) {
       toast.error(error.message || "Failed to update team");
+      throw error;
     }
   };
 
@@ -84,298 +131,416 @@ export default function TeamTable({
       return;
     }
 
-    if (!teamId) return;
+    if (!teamToDelete?.id) return;
 
+    setIsDeleting(true);
     try {
-      await deleteTeamApi(teamId);
-      setIsDelete(false);
-      setTeamId("");
+      await deleteTeamApi(teamToDelete.id);
+      setTeamToDelete(null);
       onRefresh?.();
-      toast.success("Team deleted successfully");
+      toast.success(`Squad "${teamToDelete.name}" deleted successfully.`);
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete team");
+      toast.error(error.message || "Failed to delete team.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
+  const deleteMembersList = teamToDelete?.members || teamToDelete?.teamMembers || [];
+
   return (
     <>
+      {/* Desktop Table */}
       <div className="hidden overflow-x-auto md:block">
-        <table className="w-full border-collapse text-left text-sm text-white">
-          <thead className="bg-white/[0.04] text-white/50 border-b border-white/[0.06] text-xs font-semibold uppercase tracking-wider">
+        <table className="w-full border-collapse text-left text-sm text-v2-neutral-600">
+          <thead className="border-b border-v2-neutral-200 bg-v2-neutral-200/40 text-xs font-semibold uppercase tracking-[0.08em] text-v2-neutral-400">
             <tr>
-              <th className="px-4 py-3">Team Name</th>
-              <th className="px-4 py-3">Members</th>
-              <th className="px-4 py-3">Tasks Breakdown</th>
-              {canManageTeams ? (
-                <th className="px-4 py-3 text-right">Action</th>
-              ) : null}
+              <th className="px-5 py-3.5">Team Name</th>
+              <th className="px-5 py-3.5">Squad Members</th>
+              <th className="px-5 py-3.5">Task Velocity</th>
+              <th className="px-5 py-3.5 text-right">Actions</th>
             </tr>
           </thead>
 
-          <tbody>
-            {teams.map((teamItem, index) => {
-              const membersList = teamItem.members || teamItem.teamMembers || [];
-              return (
-                <tr
-                  key={teamItem.id || index}
-                  className="cursor-pointer border-t border-white/[0.05] transition hover:bg-white/[0.03]"
-                  onClick={() => setSelectedTeam(teamItem)}
-                >
-                  <td className="px-4 py-4 font-semibold text-white/95">{teamItem.name}</td>
-                  <td className="px-4 py-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      {membersList.slice(0, 2).map((member: any, memberIndex: number) => (
-                        <span
-                          key={member?.id ?? member?.user_id ?? memberIndex}
-                          className="inline-flex rounded-full bg-[#5271ff]/15 text-[#5271ff] border border-[#5271ff]/25 px-3 py-1 text-xs font-medium"
-                        >
-                          {resolveMemberName(member)}
+          <tbody className="divide-y divide-v2-neutral-200/70">
+            {teams.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-12 text-center text-xs text-v2-neutral-400">
+                  No teams found. Create a new team to get started.
+                </td>
+              </tr>
+            ) : (
+              teams.map((teamItem, index) => {
+                const membersList = teamItem.members || teamItem.teamMembers || [];
+                const total = teamItem.totalTasks ?? 0;
+                const completed = teamItem.completedTasks ?? 0;
+                const ongoing = teamItem.ongoingTasks ?? 0;
+
+                return (
+                  <tr
+                    key={teamItem.id || index}
+                    className="group transition-colors hover:bg-v2-neutral-200/40 cursor-pointer"
+                    onClick={() => setSelectedDetailTeam(teamItem)}
+                  >
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-600 font-semibold text-xs">
+                          {teamItem.name.charAt(0).toUpperCase()}
                         </span>
-                      ))}
-                      {membersList.length > 2 ? (
-                        <span className="inline-flex rounded-full bg-white/[0.08] text-white px-3 py-1 text-xs font-semibold">
-                          +{membersList.length - 2}
-                        </span>
-                      ) : null}
-                      {membersList.length === 0 ? (
-                        <span className="text-xs text-white/35">No members</span>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4">
-                    {teamItem.totalTasks !== undefined ? (
-                      <div className="flex items-center gap-2 text-xs">
-                        <span className="inline-flex rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 font-semibold text-emerald-400">
-                          {teamItem.completedTasks ?? 0} Done
-                        </span>
-                        <span className="inline-flex rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 font-semibold text-amber-300">
-                          {teamItem.ongoingTasks ?? 0} Ongoing
-                        </span>
-                        <span className="text-white/40 text-[11px]">
-                          ({teamItem.totalTasks} Total)
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-white/35">--</span>
-                    )}
-                  </td>
-                  {canManageTeams ? (
-                    <td className="px-4 py-4 text-right">
-                      <div className="inline-flex items-center space-x-3" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          className="cursor-pointer text-white/40 hover:text-[#5271ff] transition-colors"
-                          onClick={() => {
-                            setTeam(teamItem);
-                            setIsEdit(true);
-                          }}
-                          aria-label="Edit team"
-                        >
-                          <PencilRuler size={15}/>
-                        </button>
-                        <button
-                          className="cursor-pointer text-white/40 hover:text-red-400 transition-colors"
-                          onClick={() => {
-                            setTeamId(teamItem.id);
-                            setIsDelete(true);
-                          }}
-                          aria-label="Delete team"
-                        >
-                          <Trash size={15} />
-                        </button>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-v2-neutral-600 truncate">
+                            {teamItem.name}
+                          </p>
+                          {teamItem.description && (
+                            <p className="text-xs text-v2-neutral-400 truncate max-w-xs">
+                              {teamItem.description}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </td>
-                  ) : null}
-                </tr>
-              );
-            })}
+
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {membersList.slice(0, 3).map((member: any, mIdx: number) => (
+                          <span
+                            key={member?.id ?? member?.user_id ?? mIdx}
+                            className="inline-flex items-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 px-2.5 py-1 text-xs font-medium text-v2-neutral-600 shadow-xs"
+                          >
+                            {resolveMemberName(member)}
+                          </span>
+                        ))}
+                        {membersList.length > 3 && (
+                          <span className="inline-flex rounded-lg bg-v2-neutral-200 px-2 py-1 text-xs font-semibold text-v2-neutral-500">
+                            +{membersList.length - 3}
+                          </span>
+                        )}
+                        {membersList.length === 0 && (
+                          <span className="text-xs text-v2-neutral-400 italic">
+                            No members assigned
+                          </span>
+                        )}
+                      </div>
+                    </td>
+
+                    <td className="px-5 py-4">
+                      {teamItem.totalTasks !== undefined ? (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2 py-0.5 font-semibold text-emerald-700">
+                            {completed} Done
+                          </span>
+                          <span className="inline-flex items-center rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 font-semibold text-amber-700">
+                            {ongoing} Ongoing
+                          </span>
+                          <span className="text-v2-neutral-400 font-medium">
+                            ({total} Total)
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-v2-neutral-400">—</span>
+                      )}
+                    </td>
+
+                    <td className="px-5 py-4 text-right">
+                      <div
+                        className="inline-flex items-center justify-end gap-1"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedDetailTeam(teamItem)}
+                          className="size-8 p-0 text-v2-neutral-400 hover:text-v2-neutral-600"
+                          title="View Details"
+                        >
+                          <Eye className="size-4" />
+                        </Button>
+
+                        {canManageTeams && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="size-8 p-0 text-v2-neutral-400 hover:text-v2-neutral-600"
+                              >
+                                <MoreHorizontal className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => setEditingTeam(teamItem)}
+                                className="cursor-pointer gap-2"
+                              >
+                                <Pencil className="size-4" />
+                                Edit Team
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setTeamToDelete(teamItem)}
+                                className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="size-4 text-destructive" />
+                                Delete Team
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
 
+      {/* Mobile Card Layout */}
       <div className="space-y-3 md:hidden">
-        {teams.map((teamItem, index) => {
-          const membersList = teamItem.members || teamItem.teamMembers || [];
-          return (
-            <div
-              key={teamItem.id || index}
-              role="button"
-              tabIndex={0}
-              onClick={() => setSelectedTeam(teamItem)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  setSelectedTeam(teamItem);
-                }
-              }}
-              className="w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 p-4 text-left shadow-sm transition hover:bg-white/[0.04] cursor-pointer"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
-                    Team Name
-                  </p>
-                  <h3 className="mt-1 break-words font-semibold text-white text-base">
-                    {teamItem.name}
-                  </h3>
+        {teams.length === 0 ? (
+          <div className="py-8 text-center text-xs text-v2-neutral-400">
+            No teams found. Create a new team to get started.
+          </div>
+        ) : (
+          teams.map((teamItem, index) => {
+            const membersList = teamItem.members || teamItem.teamMembers || [];
+
+            return (
+              <div
+                key={teamItem.id || index}
+                onClick={() => setSelectedDetailTeam(teamItem)}
+                className="cursor-pointer rounded-2xl border border-v2-neutral-200 bg-v2-neutral-100 p-4 transition-colors hover:border-v2-neutral-300"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-v2-neutral-200 font-semibold text-xs text-v2-neutral-600">
+                      {teamItem.name.charAt(0).toUpperCase()}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-v2-neutral-600 truncate">
+                        {teamItem.name}
+                      </h3>
+                      {teamItem.description && (
+                        <p className="text-xs text-v2-neutral-400 truncate">
+                          {teamItem.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  {canManageTeams && (
+                    <div
+                      className="flex items-center gap-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingTeam(teamItem)}
+                        className="size-8 p-0 text-v2-neutral-400 hover:text-v2-neutral-600"
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTeamToDelete(teamItem)}
+                        className="size-8 p-0 text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
-                {canManageTeams ? (
-                  <div className="flex shrink-0 items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/50 hover:text-[#5271ff] hover:bg-white/[0.08] transition-all"
-                      onClick={() => {
-                        setTeam(teamItem);
-                        setIsEdit(true);
-                      }}
-                    >
-                      <PencilRuler size={14} />
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-white/50 hover:text-red-400 hover:bg-white/[0.08] transition-all"
-                      onClick={() => {
-                        setTeamId(teamItem.id);
-                        setIsDelete(true);
-                      }}
-                    >
-                      <Trash size={14} />
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="mt-4">
-                <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
-                  Members
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  {membersList.slice(0, 3).map((member: any, memberIndex: number) => (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {membersList.slice(0, 3).map((member: any, mIdx: number) => (
                     <span
-                      key={member?.id ?? member?.user_id ?? memberIndex}
-                      className="inline-flex rounded-full bg-[#5271ff]/15 text-[#5271ff] border border-[#5271ff]/25 px-3 py-1 text-xs font-medium"
+                      key={member?.id ?? member?.user_id ?? mIdx}
+                      className="inline-flex rounded-lg border border-v2-neutral-300 bg-v2-neutral-200/50 px-2 py-0.5 text-xs font-medium text-v2-neutral-600"
                     >
                       {resolveMemberName(member)}
                     </span>
                   ))}
-                  {membersList.length > 3 ? (
-                    <span className="inline-flex rounded-full bg-white/[0.08] text-white px-3 py-1 text-xs font-semibold">
+                  {membersList.length > 3 && (
+                    <span className="inline-flex rounded-lg bg-v2-neutral-200 px-2 py-0.5 text-xs font-semibold text-v2-neutral-500">
                       +{membersList.length - 3}
                     </span>
-                  ) : null}
-                  {membersList.length === 0 ? (
-                    <span className="text-xs text-white/35">No members</span>
-                  ) : null}
+                  )}
                 </div>
-              </div>
 
-              {teamItem.totalTasks !== undefined && (
-                <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-white/50">
-                  <span>Task Velocity</span>
-                  <span className="font-semibold text-white">
-                    {teamItem.completedTasks ?? 0} / {teamItem.totalTasks} Tasks Completed
-                  </span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                {teamItem.totalTasks !== undefined && (
+                  <div className="mt-3 pt-3 border-t border-v2-neutral-200 flex items-center justify-between text-xs text-v2-neutral-400">
+                    <span>Tasks</span>
+                    <span className="font-medium text-v2-neutral-600">
+                      {teamItem.completedTasks ?? 0} Done / {teamItem.ongoingTasks ?? 0} Ongoing
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* Backend Pagination Bar */}
+      {/* Pagination Footer */}
       {paginationMeta && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-white/[0.08] text-xs text-white/50">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-v2-neutral-200 text-xs text-v2-neutral-400">
           <div>
             Showing{" "}
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-v2-neutral-600">
               {paginationMeta.totalItems > 0
                 ? (paginationMeta.currentPage - 1) * paginationMeta.itemsPerPage + 1
                 : 0}
             </span>{" "}
             to{" "}
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-v2-neutral-600">
               {Math.min(
                 paginationMeta.currentPage * paginationMeta.itemsPerPage,
                 paginationMeta.totalItems
               )}
             </span>{" "}
-            of <span className="font-semibold text-white">{paginationMeta.totalItems}</span> teams
+            of{" "}
+            <span className="font-semibold text-v2-neutral-600">
+              {paginationMeta.totalItems}
+            </span>{" "}
+            teams
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={paginationMeta.currentPage <= 1}
               onClick={() => onPageChange?.(paginationMeta.currentPage - 1)}
-              className="inline-flex h-8 items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 font-semibold text-white transition hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="h-8 gap-1 px-3 text-xs"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="size-3.5" />
               Previous
-            </button>
-            <span className="px-2 font-medium text-white/70">
+            </Button>
+            <span className="px-2 font-medium text-v2-neutral-500">
               Page {paginationMeta.currentPage} of {paginationMeta.totalPages || 1}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               disabled={paginationMeta.currentPage >= paginationMeta.totalPages}
               onClick={() => onPageChange?.(paginationMeta.currentPage + 1)}
-              className="inline-flex h-8 items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 font-semibold text-white transition hover:bg-white/[0.08] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="h-8 gap-1 px-3 text-xs"
             >
               Next
-              <ChevronRight className="h-4 w-4" />
-            </button>
+              <ChevronRight className="size-3.5" />
+            </Button>
           </div>
         </div>
       )}
 
-      <AnimatePresence>
-        {isEdit && canManageTeams ? (
-          <EditTeamModal
-            onClose={() => setIsEdit(false)}
-            onUpdate={handleUpdate}
-            employees={employees}
-            team={team}
-          />
-        ) : null}
-      </AnimatePresence>
+      {/* Edit Team Modal */}
+      {editingTeam && canManageTeams && (
+        <EditTeamModal
+          isOpen={editingTeam !== null}
+          onClose={() => setEditingTeam(null)}
+          onUpdate={handleUpdate}
+          employees={employees}
+          team={editingTeam}
+        />
+      )}
 
+      {/* Team Detail Modal */}
       <TeamDetailModal
-        team={selectedTeam}
-        open={selectedTeam !== null}
-        onClose={() => setSelectedTeam(null)}
+        team={selectedDetailTeam}
+        open={selectedDetailTeam !== null}
+        onClose={() => setSelectedDetailTeam(null)}
       />
 
-      <AlertDialog open={canManageTeams ? isDelete : false} onOpenChange={setIsDelete}>
-        <AlertDialogContent className="bg-[#0a0826]/95 border border-white/[0.08] backdrop-blur-md rounded-2xl shadow-2xl shadow-rose-500/5 text-white max-w-md p-6 overflow-hidden">
-          {/* Top Danger Line Accent */}
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-rose-500" />
+      {/* Redesigned V2 Delete Confirmation Dialog */}
+      <Dialog
+        open={teamToDelete !== null}
+        onOpenChange={(open) => !open && !isDeleting && setTeamToDelete(null)}
+      >
+        <DialogContent
+          ref={deleteModalRef}
+          className="border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-[0_24px_80px_rgba(53,53,54,0.22)] sm:max-w-lg"
+        >
+          <DialogHeader data-delete-modal-section className="border-v2-neutral-200 pb-5">
+            <div className="flex items-start gap-3.5 pr-12">
+              <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-destructive/10 text-destructive shadow-sm">
+                <Trash2 className="size-5" aria-hidden="true" />
+              </span>
+              <div>
+                <DialogTitle className="text-xl tracking-[-0.03em] text-v2-neutral-600">
+                  Delete squad
+                </DialogTitle>
+                <DialogDescription className="mt-1 text-xs leading-5 text-v2-neutral-400">
+                  This permanently removes the team unit from this workspace.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
 
-          <AlertDialogHeader className="border-b-0 p-0 text-left sm:text-left flex flex-col gap-1.5">
-            <AlertDialogTitle className="text-lg font-bold text-white tracking-tight">
-              Delete this team?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-white/50 leading-relaxed font-medium">
-              This action cannot be undone. This will permanently delete the team and remove all associated squad data.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
+          <div data-delete-modal-section className="space-y-4 px-6 py-4 sm:px-8">
+            <Card variant="subtle" size="sm" className="border-destructive/20 bg-destructive/5">
+              <CardContent className="flex items-start gap-3 text-xs leading-relaxed text-v2-neutral-600 p-4">
+                <AlertTriangle className="size-4 shrink-0 text-destructive mt-0.5" />
+                <div>
+                  Are you sure you want to delete{" "}
+                  <span className="font-semibold text-v2-neutral-600">
+                    "{teamToDelete?.name}"
+                  </span>
+                  ? Squad member allocations will be cleared and task associations will be unlinked.
+                </div>
+              </CardContent>
+            </Card>
 
-          <AlertDialogFooter className="border-t-0 p-0 mt-6 gap-2 flex flex-row justify-end items-center">
-            <AlertDialogCancel
-              onClick={() => {
-                setTeamId("");
-              }}
-              className="cursor-pointer px-4 py-2 text-xs font-semibold text-white/70 hover:text-white bg-white/[0.02] border border-white/[0.08] rounded-xl hover:bg-white/[0.05] transition-all duration-200 h-auto"
+            {teamToDelete && (
+              <div className="rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 p-3.5">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-v2-neutral-400">Squad members:</span>
+                  <span className="font-semibold text-v2-neutral-600">
+                    {deleteMembersList.length} members
+                  </span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs border-t border-v2-neutral-200/70 pt-2">
+                  <span className="text-v2-neutral-400">Active tasks:</span>
+                  <span className="font-semibold text-v2-neutral-600">
+                    {teamToDelete.ongoingTasks ?? 0} ongoing / {teamToDelete.totalTasks ?? 0} total
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter data-delete-modal-section className="border-v2-neutral-200">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setTeamToDelete(null)}
+              disabled={isDeleting}
             >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
               onClick={handleDelete}
-              className="cursor-pointer px-4 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 border border-rose-500/30 rounded-xl hover:shadow-[0_0_15px_rgba(225,29,72,0.3)] hover:scale-[1.02] transition-all duration-200 h-auto"
+              disabled={isDeleting}
             >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              {isDeleting ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                  Deleting squad...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="size-4" aria-hidden="true" />
+                  Delete squad
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

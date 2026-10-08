@@ -186,7 +186,7 @@ export default function Sidebar({
       <div className="border-b border-v2-neutral-500 px-3 pb-4 pt-1">
         <div
           data-sidebar-workspace
-          className="flex items-center gap-3 rounded-2xl border border-v2-neutral-500 bg-v2-neutral-500/35 p-3"
+          className="mt-2 flex items-center gap-3 rounded-2xl border border-v2-neutral-500 bg-v2-neutral-500/55 p-3"
         >
           <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-v2-neutral-100 text-v2-neutral-600 shadow-sm">
             <Building2 className="size-[18px]" aria-hidden="true" />
@@ -240,7 +240,7 @@ export default function Sidebar({
                         "focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25",
                         isActive
                           ? "bg-v2-neutral-100 text-v2-neutral-600 shadow-[0_8px_24px_rgba(0,0,0,0.18)]"
-                          : "text-v2-neutral-300 hover:bg-v2-neutral-500/60 hover:text-v2-neutral-100",
+                          : "text-v2-neutral-300 hover:bg-v2-neutral-500/65 hover:text-v2-neutral-100",
                       )}
                     >
                       <span

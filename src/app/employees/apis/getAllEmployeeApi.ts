@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface AllEmployeeRecord {
   user_id: number;
   name?: string;
@@ -25,7 +23,7 @@ export async function getAllEmployeesApi(): Promise<AllEmployeeRecord[]> {
     throw new Error("Authentication token not found");
   }
 
-  const response = await fetch(`${requestBaseUrl}/business/get-employees-all`, {
+  const response = await fetch("/api/employees/all", {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

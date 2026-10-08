@@ -1,8 +1,15 @@
 "use client";
-import React from "react";
-import { Actions } from "./actions";
-import { UIEmployee } from "./schemas/employee";
+
+import { useEffect, useState } from "react";
+import { UsersRound } from "lucide-react";
 import { toast } from "sonner";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Card, CardContent } from "@/components/ui/card";
+import { CookieManager } from "@/lib/cookieManager";
+
+import { Actions } from "./actions";
+import type { UIEmployee } from "./schemas/employee";
 
 type EmployeeListProps = {
   employees: UIEmployee[];
@@ -11,24 +18,35 @@ type EmployeeListProps = {
   onRefresh?: () => void;
 };
 
-// Initials avatar helper
-function Avatar({ name, color }: { name: string; color: string }) {
-  const initial = (name ?? "?").charAt(0).toUpperCase();
+function EmployeeAvatar({ name }: { name: string }) {
+  const initials = (name || "Employee")
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+
   return (
-    <div
-      className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-      style={{
-        background: `${color}25`,
-        border: `1px solid ${color}50`,
-        boxShadow: `0 0 8px ${color}20`,
-      }}
-    >
-      {initial}
-    </div>
+    <Avatar className="size-9 rounded-xl">
+      <AvatarFallback className="rounded-xl bg-v2-neutral-500 text-xs font-semibold text-v2-neutral-100">
+        {initials}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
-const AVATAR_COLORS = ["#5271ff", "#22d3ee", "#a78bfa", "#f59e0b", "#34d399"];
+function StatusBadge({ status }: { status: UIEmployee["status"] }) {
+  const active = status === "Active";
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-lg border border-v2-neutral-200 bg-v2-neutral-200/45 px-2.5 py-1 text-[11px] font-medium text-v2-neutral-500">
+      <span
+        className={`size-1.5 rounded-full ${active ? "bg-v2-neutral-500" : "bg-v2-neutral-300"}`}
+        aria-hidden="true"
+      />
+      {status}
+    </span>
+  );
+}
 
 export default function EmployeeList({
   employees,
@@ -36,180 +54,169 @@ export default function EmployeeList({
   onSelectEmployee,
   onRefresh,
 }: EmployeeListProps) {
-  const currentUserRole = (currentUserIsFounder ?? "").trim();
-  const isFounderUser = currentUserRole === "Founder";
-  const isManagerUser = currentUserRole === "Manager";
-  const canPerformAnyAction = isFounderUser || isManagerUser;
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
-  // Determine if the logged in user can manage a specific target employee
-  const canManageTarget = (targetRole: string) => {
-    if (isFounderUser) return true; // Founders can manage everyone including themselves
-    if (isManagerUser) {
-      const target = (targetRole ?? "").trim().toLowerCase();
-      return target !== "founder"; // Managers CANNOT manage Founder accounts
+  useEffect(() => {
+    const id = CookieManager("get", "user-id");
+    if (id) {
+      setCurrentUserId(String(id));
     }
-    return false; // Other roles cannot perform actions on anyone
+  }, []);
+
+  const currentUserRole = currentUserIsFounder.trim().toLowerCase();
+  const isFounder = currentUserRole.includes("founder");
+  const isManager =
+    currentUserRole.includes("manager") || currentUserRole.includes("admin");
+  const canPerformActions = isFounder || isManager;
+
+  const canManageTarget = (targetRole: string, targetId: number) => {
+    // No user can edit or remove themselves
+    if (currentUserId && String(targetId) === String(currentUserId)) {
+      return false;
+    }
+
+    if (isFounder) {
+      return true;
+    }
+
+    if (isManager) {
+      return targetRole.trim().toLowerCase() !== "founder";
+    }
+
+    return false;
   };
 
-  // Rule: Managers and founders can see everyone's detail; other than fellow founders no one can see founder details
   const canViewDetail = (targetRole: string) => {
-    const target = (targetRole ?? "").trim().toLowerCase();
-    if (target === "founder") {
-      return isFounderUser;
+    if (targetRole.trim().toLowerCase() === "founder") {
+      return isFounder;
     }
-    return isFounderUser || isManagerUser;
+
+    return isFounder || isManager;
   };
 
-  const handleRowClick = (emp: UIEmployee) => {
-    if (canViewDetail(emp.role)) {
-      onSelectEmployee(emp);
-    } else {
-      toast.error("Only fellow founders can view founder account details.");
+  const openEmployee = (employee: UIEmployee) => {
+    if (canViewDetail(employee.role)) {
+      onSelectEmployee(employee);
+      return;
     }
+
+    toast.error("You do not have permission to view this employee profile.");
   };
 
   if (employees.length === 0) {
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 py-16 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.03]">
-          <span className="text-2xl">👥</span>
-        </div>
-        <p className="text-sm font-medium text-white/40">No employees found</p>
-        <p className="text-xs text-white/20">Try adjusting your search query</p>
+      <div className="flex min-h-72 flex-1 flex-col items-center justify-center text-center">
+        <span className="grid size-12 place-items-center rounded-2xl bg-v2-neutral-200 text-v2-neutral-400">
+          <UsersRound className="size-5" aria-hidden="true" />
+        </span>
+        <p className="mt-4 text-sm font-medium text-v2-neutral-500">No employees found</p>
+        <p className="mt-1 text-xs text-v2-neutral-400">Try a different name or clear your search.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      {/* Desktop table */}
-      <div className="hidden md:block">
+    <div className="flex-1 overflow-x-auto">
+      <div className="hidden min-w-[620px] md:block">
         <table className="w-full border-collapse">
           <thead>
-            <tr className="border-b border-white/[0.06]">
-              <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-white/40">Name</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-white/40">Role</th>
-              <th className="px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-widest text-white/40">Status</th>
-              <th className="px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-white/40"></th>
-              {canPerformAnyAction && (
-                <th className="px-4 py-2.5 text-center text-xs font-semibold uppercase tracking-widest text-white/40">Actions</th>
+            <tr className="border-b border-v2-neutral-200">
+              <th scope="col" className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-v2-neutral-400">Employee</th>
+              <th scope="col" className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-v2-neutral-400">Role</th>
+              <th scope="col" className="px-3 py-3 text-left text-[10px] font-semibold uppercase tracking-[0.14em] text-v2-neutral-400">Status</th>
+              {canPerformActions && (
+                <th scope="col" className="px-3 py-3 text-right text-[10px] font-semibold uppercase tracking-[0.14em] text-v2-neutral-400">
+                  <span className="sr-only">Actions</span>
+                </th>
               )}
             </tr>
           </thead>
           <tbody>
-            {employees.map((emp, i) => {
-              const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
-              return (
-                <tr
-                  key={emp.id}
-                  className="group cursor-pointer border-b border-white/[0.04] transition-colors duration-150 hover:bg-white/[0.03]"
-                  onClick={() => handleRowClick(emp)}
-                >
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <Avatar name={emp.name} color={color} />
-                      <span className="text-sm font-medium text-white/80">{emp.name}</span>
-                    </div>
+            {employees.map((employee) => (
+              <tr
+                key={employee.id}
+                tabIndex={0}
+                className="group cursor-pointer border-b border-v2-neutral-200/70 outline-none transition-colors last:border-b-0 hover:bg-v2-neutral-200/25 focus-visible:bg-v2-neutral-200/40"
+                onClick={() => openEmployee(employee)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    openEmployee(employee);
+                  }
+                }}
+              >
+                <td className="px-3 py-3.5">
+                  <div className="flex items-center gap-3">
+                    <EmployeeAvatar name={employee.name} />
+                    <span className="text-sm font-medium text-v2-neutral-600">{employee.name}</span>
+                  </div>
+                </td>
+                <td className="px-3 py-3.5 text-sm text-v2-neutral-400">{employee.role}</td>
+                <td className="px-3 py-3.5"><StatusBadge status={employee.status} /></td>
+                {canPerformActions && (
+                  <td className="px-3 py-3.5 text-right" onClick={(event) => event.stopPropagation()}>
+                    {canManageTarget(employee.role, employee.id) && (
+                      <Actions
+                        id={employee.id}
+                        role={employee.role}
+                        name={employee.name}
+                        isFounderUser={isFounder}
+                        onRefresh={onRefresh}
+                      />
+                    )}
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-white/50">{emp.role}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${
-                        emp.status === "Active"
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-white/[0.05] text-white/40 border border-white/[0.06]"
-                      }`}
-                    >
-                      {emp.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3"></td>
-                  {canPerformAnyAction && (
-                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      {canManageTarget(emp.role) ? (
-                        <Actions
-                          id={emp.id}
-                          role={emp.role}
-                          name={emp.name}
-                          isFounderUser={isFounderUser}
-                          onRefresh={onRefresh}
-                        />
-                      ) : null}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
+                )}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* Mobile card view */}
       <div className="space-y-3 md:hidden">
-        {employees.map((emp, i) => {
-          const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
-          return (
-            <div
-              key={emp.id}
-              role="button"
-              tabIndex={0}
-              className="w-full cursor-pointer rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 text-left transition-all duration-200 hover:border-[#5271ff]/25 hover:bg-white/[0.04] focus:outline-none focus:ring-1 focus:ring-[#5271ff]/40"
-              onClick={() => handleRowClick(emp)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  handleRowClick(emp);
-                }
-              }}
-            >
+        {employees.map((employee) => (
+          <Card
+            key={employee.id}
+            size="sm"
+            variant="subtle"
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer outline-none focus-visible:ring-[3px] focus-visible:ring-v2-neutral-400/25"
+            onClick={() => openEmployee(employee)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                openEmployee(employee);
+              }
+            }}
+          >
+            <CardContent>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
-                  <Avatar name={emp.name} color={color} />
+                  <EmployeeAvatar name={employee.name} />
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-white/35">Name</p>
-                    <h3 className="mt-0.5 truncate text-sm font-semibold text-white/90">{emp.name}</h3>
+                    <h3 className="truncate text-sm font-semibold text-v2-neutral-600">{employee.name}</h3>
+                    <p className="mt-0.5 truncate text-xs text-v2-neutral-400">{employee.role}</p>
                   </div>
                 </div>
-
-                {canPerformAnyAction && (
-                  <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {canManageTarget(emp.role) ? (
-                      <Actions
-                        id={emp.id}
-                        role={emp.role}
-                        name={emp.name}
-                        isFounderUser={isFounderUser}
-                        onRefresh={onRefresh}
-                      />
-                    ) : null}
+                {canPerformActions && canManageTarget(employee.role, employee.id) && (
+                  <div className="shrink-0" onClick={(event) => event.stopPropagation()}>
+                    <Actions
+                      id={employee.id}
+                      role={employee.role}
+                      name={employee.name}
+                      isFounderUser={isFounder}
+                      onRefresh={onRefresh}
+                    />
                   </div>
                 )}
               </div>
-
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-white/35">Role</p>
-                  <p className="mt-0.5 text-sm text-white/70">{emp.role}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-white/35">Status</p>
-                  <div className="mt-1">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                        emp.status === "Active"
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                          : "bg-white/[0.05] text-white/40 border border-white/[0.06]"
-                      }`}
-                    >
-                      {emp.status}
-                    </span>
-                  </div>
-                </div>
+              <div className="mt-4 flex items-center justify-between border-t border-v2-neutral-300/60 pt-3">
+                <span className="text-xs text-v2-neutral-400">Account status</span>
+                <StatusBadge status={employee.status} />
               </div>
-            </div>
-          );
-        })}
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

@@ -1,349 +1,453 @@
-import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+"use client";
+
+import React, { useState, useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
-import { 
+import {
+  Crown,
+  FileText,
+  Info,
+  LoaderCircle,
+  Plus,
+  UserPlus,
+  Users,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
+import {
   Select,
+  SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
-  SelectContent,
-  SelectItem 
 } from "@/components/ui/select";
-import { X } from "lucide-react";
-import { Employee, Team } from "./schemas/types";
-import { toast } from "sonner";
-import { createTeamApi, CreateTeamPayload } from "./apis/createTeamApi";
+import type { Employee, Team } from "./schemas/types";
+import { createTeamApi } from "./apis/createTeamApi";
 
 type CreateTeamModalProps = {
+  isOpen: boolean;
   onClose: () => void;
   onCreate: (team?: any) => void;
   employees: Employee[];
 };
 
+const inputClassName =
+  "h-12 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-300 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20 aria-invalid:border-destructive aria-invalid:ring-[3px] aria-invalid:ring-destructive/15";
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export default function CreateTeamModal({
+  isOpen,
   onClose,
   onCreate,
   employees,
 }: CreateTeamModalProps) {
-  
-  // ====== States ======
+  const contentRef = useRef<HTMLDivElement>(null);
   const [formData, setFormData] = useState<Team>({
     name: "",
     description: "",
     members: [],
     leader_id: 0,
-  });  
+  });
   const [members, setMembers] = useState<Employee[]>([]);
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  const shellRef = useRef<HTMLDivElement>(null);
 
-  // ====== Animations ======
-  useEffect(() => {
-    if (shellRef.current) {
-      gsap.fromTo(
-        shellRef.current,
-        { opacity: 0, scale: 0.96, y: 12 },
-        { opacity: 1, scale: 1, y: 0, duration: 0.35, ease: "power2.out" }
-      );
+  useLayoutEffect(() => {
+    if (
+      !isOpen ||
+      !contentRef.current ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
     }
-  }, []);
 
-  // ======= Helper Functions =======
-  const stringToInt = (str: string) => {
-    return parseInt(str, 10);
+    const context = gsap.context(() => {
+      gsap.from("[data-form-section]", {
+        autoAlpha: 0,
+        y: 10,
+        duration: 0.35,
+        stagger: 0.055,
+        ease: "power3.out",
+      });
+    }, contentRef.current);
+
+    return () => context.revert();
+  }, [isOpen]);
+
+  const closeDialog = () => {
+    setError(null);
+    setFormData({ name: "", description: "", members: [], leader_id: 0 });
+    setMembers([]);
+    setSelectedMemberId("");
+    onClose();
   };
 
-  // ====== Handlers ======
   const handleAddMember = () => {
-    const selectedEmployee = employees.find((e) => Number(e.user_id) === stringToInt(selectedMemberId));
+    if (!selectedMemberId) return;
+    const empId = Number(selectedMemberId);
+    const selectedEmployee = employees.find((e) => Number(e.user_id) === empId);
+
     if (selectedEmployee) {
-      if (!members.some((m) => Number(m.user_id) === Number(selectedEmployee.user_id))) {
-        setMembers((prev) => [...prev, selectedEmployee]);
+      if (!members.some((m) => Number(m.user_id) === empId)) {
+        const nextMembers = [...members, selectedEmployee];
+        setMembers(nextMembers);
+        // Automatically select as leader if it's the first member added and no leader set
+        if (!formData.leader_id || formData.leader_id === 0) {
+          setFormData((prev) => ({ ...prev, leader_id: empId }));
+        }
       }
       setSelectedMemberId("");
+      setError(null);
     }
   };
 
-  const handleRemoveMember = (idToRemove: string) => {
-    const removeIdNum = stringToInt(idToRemove);
-    setMembers((prev) => prev.filter((member) => Number(member.user_id) !== removeIdNum));
-    if (Number(formData.leader_id) === removeIdNum) {
-      setFormData((prev) => ({ ...prev, leader_id: 0 }));
+  const handleRemoveMember = (idToRemove: number) => {
+    const nextMembers = members.filter((m) => Number(m.user_id) !== idToRemove);
+    setMembers(nextMembers);
+    if (Number(formData.leader_id) === idToRemove) {
+      setFormData((prev) => ({
+        ...prev,
+        leader_id: nextMembers.length > 0 ? Number(nextMembers[0].user_id) : 0,
+      }));
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value, 
-    }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    setError(null);
 
-    // 1. Name validation: letters and spaces only
     const trimmedName = formData.name.trim();
     if (!trimmedName) {
-      toast.error("Team name is required.");
-      return;
-    }
-    if (!/^[A-Za-z\s]+$/.test(trimmedName)) {
-      toast.error("Team name must contain letters and spaces only.");
+      setError("Team name is required.");
       return;
     }
 
-    // 2. Description validation: omit if empty, or 5-255 characters
+    if (!/^[A-Za-z0-9\s-_]+$/.test(trimmedName)) {
+      setError("Team name must contain letters, numbers, hyphens, and spaces only.");
+      return;
+    }
+
     const trimmedDesc = (formData.description || "").trim();
-    if (trimmedDesc.length > 0 && (trimmedDesc.length < 5 || trimmedDesc.length > 255)) {
-      toast.error("Description must be between 5 and 255 characters.");
+    if (trimmedDesc.length > 0 && trimmedDesc.length < 3) {
+      setError("Description must be at least 3 characters if provided.");
       return;
     }
 
-    // 3. Leader ID validation: primitive number
-    const leaderIdNum = Number(formData.leader_id);
-    if (!leaderIdNum || isNaN(leaderIdNum) || leaderIdNum <= 0) {
-      toast.error("Please select a team leader.");
+    if (members.length === 0) {
+      setError("Please add at least one squad member before creating the team.");
       return;
     }
 
-    // 4. Members validation: array of numeric user IDs
-    const memberIdsNum = members
-      .map((m) => Number(m.user_id))
-      .filter((id) => !isNaN(id) && id > 0);
-
-    if (memberIdsNum.length === 0) {
-      toast.error("Please add at least one team member.");
+    if (!formData.leader_id || formData.leader_id === 0) {
+      setError("Please designate a team leader.");
       return;
     }
 
-    // Ensure leader is included in members array if not already present
-    const numericMembers = Array.from(new Set([...memberIdsNum, leaderIdNum]));
-
-    // Construct Payload according to spec
-    const payload: CreateTeamPayload = {
-      name: trimmedName,
-      leader_id: leaderIdNum,
-      members: numericMembers,
-    };
-
-    if (trimmedDesc.length >= 5 && trimmedDesc.length <= 255) {
-      payload.description = trimmedDesc;
-    }
-
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
+      const payload = {
+        name: trimmedName,
+        description: trimmedDesc,
+        leader_id: Number(formData.leader_id),
+        members: members.map((m) => Number(m.user_id)),
+      };
+
       await createTeamApi(payload);
-      toast.success("Team created successfully");
-      onCreate(payload);
-      onClose();
-    } catch (err) {
-      console.error("Create team failed:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to create team");
+      toast.success("Squad team created successfully.");
+      onCreate?.();
+      closeDialog();
+    } catch (err: any) {
+      const message = err?.message || "Failed to create team.";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const availableEmployees = employees.filter(
-    (emp) => !members.some((member) => Number(member.user_id) === Number(emp.user_id))
+    (emp) => !members.some((m) => Number(m.user_id) === Number(emp.user_id))
   );
 
-  // ====== Render ======
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="absolute inset-0 bg-[#030114]/60 backdrop-blur-md"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      />
-      <motion.div
-        ref={shellRef}
-        className="relative flex flex-col max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)]"
-      >
-        {/* Top radial glow element */}
-        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.12),transparent_50%)] pointer-events-none" />
-
-        {/* Header */}
-        <div className="relative z-10 px-6 py-6 sm:px-8 border-b border-white/[0.08] flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-white">
-              Create New Team
-            </h2>
-            <p className="mt-1 text-sm text-white/50">
-              Set up a new team and invite your colleagues
-            </p>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && closeDialog()}>
+      <DialogContent className="border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-[0_24px_80px_rgba(53,53,54,0.22)] sm:max-w-xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader data-form-section className="border-v2-neutral-200 pb-5">
+          <div className="flex items-start gap-3.5 pr-12">
+            <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-v2-neutral-500 text-v2-neutral-100 shadow-sm">
+              <Users className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <DialogTitle className="text-xl tracking-[-0.03em] text-v2-neutral-600">
+                Create new team
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-xs leading-5 text-v2-neutral-400">
+                Organize workspace personnel into functional squads, designate leadership, and assign tasks.
+              </DialogDescription>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 transition hover:bg-white/[0.08] hover:text-white"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+        </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="relative z-10 flex flex-col flex-1 overflow-hidden">
-          {/* Body */}
-          <div className="px-6 py-6 sm:px-8 space-y-6 overflow-y-auto max-h-[calc(100vh-14rem)] custom-scrollbar">
-            {/* Team Info */}
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-semibold text-white/70 mb-1.5">
-                  Team Name
-                </label>
-                <input
-                  name="name"
-                  id="name"
-                  type="text"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Enter team name (letters and spaces only)"
-                  className="w-full h-11 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all"
-                  required
-                />
-              </div>
+        <form onSubmit={handleSubmit} noValidate>
+          <div ref={contentRef} className="px-6 py-5 sm:px-8 space-y-5">
+            {error && (
+              <FieldError className="rounded-xl border border-destructive/20 bg-destructive/5 px-4 py-3">
+                {error}
+              </FieldError>
+            )}
 
-              <div>
-                <label htmlFor="description" className="block text-sm font-semibold text-white/70 mb-1.5">
-                  Description <span className="text-xs text-white/40 font-normal">(Optional, 5-255 chars)</span>
-                </label>
+            <Card data-form-section variant="subtle" size="sm">
+              <CardContent className="flex items-start gap-2.5 text-xs leading-relaxed text-v2-neutral-400">
+                <Info className="size-4 shrink-0 text-v2-neutral-500 mt-0.5" />
+                <span>
+                  Squads allow streamlined task assignment and aggregate velocity metrics on project dashboards.
+                </span>
+              </CardContent>
+            </Card>
+
+            <FieldGroup className="gap-5">
+              {/* Team Name */}
+              <Field data-form-section data-invalid={Boolean(error && !formData.name.trim())}>
+                <FieldLabel htmlFor="team-name">Team name</FieldLabel>
+                <div className="relative">
+                  <input
+                    id="team-name"
+                    name="name"
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData((prev) => ({ ...prev, name: e.target.value }));
+                      setError(null);
+                    }}
+                    placeholder="e.g. Design Systems, Platform Engineering"
+                    className={inputClassName}
+                  />
+                </div>
+                <FieldDescription>
+                  A distinct name to identify this unit across workspace projects.
+                </FieldDescription>
+              </Field>
+
+              {/* Description */}
+              <Field data-form-section>
+                <FieldLabel htmlFor="team-desc">Description (Optional)</FieldLabel>
                 <textarea
+                  id="team-desc"
                   name="description"
-                  id="description"
+                  rows={2}
                   value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Enter description"
-                  className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 py-2 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]/50 focus:bg-white/[0.05] transition-all resize-none"
-                  rows={3}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, description: e.target.value }))
+                  }
+                  placeholder="Outline key objectives or core squad scope..."
+                  className="w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 p-3 text-sm text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-300 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20"
                 />
-              </div>
-            </div>
+              </Field>
 
-            {/* Add Members */}
-            <div className="space-y-3 pt-2">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-white/60">
-                  Team Members
-                </h3>
-                <button
-                  className="relative overflow-hidden bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-xs font-semibold h-9 px-4 rounded-lg transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 disabled:opacity-40 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                  type="button"
-                  onClick={handleAddMember}
-                  disabled={!selectedMemberId}
-                >
-                  Add Member
-                </button>
-              </div>
-
-              <Select
-                value={selectedMemberId}
-                onValueChange={(value) => setSelectedMemberId(value)}
-              >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left cursor-pointer">
-                  <SelectValue placeholder="Select a Member" />
-                </SelectTrigger>
-
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                  {availableEmployees.map((o) => (
-                    <SelectItem key={o.user_id} value={String(o.user_id)} className="cursor-pointer text-white focus:bg-white/5 focus:text-white">
-                      {o.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {members.length === 0 ? (
-                  <span className="text-sm text-white/30 italic">
-                    No members added yet.
+              {/* Add Squad Members */}
+              <Field data-form-section>
+                <div className="flex items-center justify-between">
+                  <FieldLabel>Squad members</FieldLabel>
+                  <span className="text-xs font-semibold text-v2-neutral-500">
+                    {members.length} added
                   </span>
-                ) : (
-                  members.map((member) => {
-                    return (
-                      <span
-                        key={member.user_id}
-                        className="flex max-w-full items-center gap-2 rounded-full bg-white/[0.03] border border-white/[0.08] pl-2.5 pr-3.5 py-1.5 text-sm text-white"
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 min-w-0">
+                    <Select
+                      value={selectedMemberId}
+                      onValueChange={(val) => {
+                        setSelectedMemberId(val);
+                        setError(null);
+                      }}
+                    >
+                      <SelectTrigger className="h-12 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20 text-v2-neutral-600">
+                        <SelectValue placeholder="Select an employee to add..." />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56 rounded-xl border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                        {availableEmployees.map((emp) => (
+                          <SelectItem
+                            key={emp.user_id}
+                            value={String(emp.user_id)}
+                            className="rounded-lg focus:bg-v2-neutral-200/70 focus:text-v2-neutral-600"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">{emp.name}</span>
+                              <span className="text-xs text-v2-neutral-400">
+                                ({emp.email || "No email"})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                        {availableEmployees.length === 0 && (
+                          <div className="py-2.5 px-3 text-xs text-v2-neutral-400 text-center">
+                            All employees added to squad
+                          </div>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleAddMember}
+                    disabled={!selectedMemberId}
+                    className="h-12 px-4 shrink-0 font-medium"
+                  >
+                    <Plus className="size-4" />
+                    Add
+                  </Button>
+                </div>
+
+                {/* Member Roster Chips */}
+                <div className="mt-2 min-h-16 rounded-xl border border-dashed border-v2-neutral-300 bg-v2-neutral-200/40 p-3">
+                  {members.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {members.map((m) => {
+                        const isLeader = Number(formData.leader_id) === Number(m.user_id);
+                        return (
+                          <div
+                            key={m.user_id}
+                            className="inline-flex items-center gap-2 rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 py-1.5 pl-2 pr-1.5 text-xs font-medium text-v2-neutral-600 shadow-xs"
+                          >
+                            <Avatar className="size-5 rounded-md">
+                              <AvatarFallback className="rounded-md bg-v2-neutral-200 text-[10px] font-bold text-v2-neutral-600">
+                                {getInitials(m.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="max-w-32 truncate">{m.name}</span>
+                            {isLeader && (
+                              <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-100 border border-amber-200 px-1.5 py-0.2 text-[10px] font-bold text-amber-800">
+                                <Crown className="size-2.5" /> Lead
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMember(Number(m.user_id))}
+                              className="inline-flex size-4 items-center justify-center rounded-md hover:bg-v2-neutral-200 text-v2-neutral-400 hover:text-v2-neutral-600 transition-colors"
+                              title="Remove member"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-center text-xs text-v2-neutral-400 py-3">
+                      No members added yet. Select and click Add above.
+                    </p>
+                  )}
+                </div>
+              </Field>
+
+              {/* Select Team Leader */}
+              <Field data-form-section data-invalid={Boolean(error && !formData.leader_id)}>
+                <FieldLabel htmlFor="team-leader">
+                  <span className="flex items-center gap-1.5">
+                    <Crown className="size-4 text-amber-500" />
+                    Team leader
+                  </span>
+                </FieldLabel>
+                <Select
+                  value={formData.leader_id ? String(formData.leader_id) : ""}
+                  onValueChange={(val) => {
+                    setFormData((prev) => ({ ...prev, leader_id: Number(val) }));
+                    setError(null);
+                  }}
+                  disabled={members.length === 0}
+                >
+                  <SelectTrigger
+                    id="team-leader"
+                    className="h-12 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-4 text-sm shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20 text-v2-neutral-600"
+                  >
+                    <SelectValue
+                      placeholder={
+                        members.length === 0
+                          ? "Add members first to assign leader..."
+                          : "Choose a team lead from members..."
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-56 rounded-xl border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                    {members.map((m) => (
+                      <SelectItem
+                        key={m.user_id}
+                        value={String(m.user_id)}
+                        className="rounded-lg focus:bg-v2-neutral-200/70 focus:text-v2-neutral-600"
                       >
-                        <span className="w-6 h-6 bg-gradient-to-br from-[#5271ff] to-[#3a4ec4] text-white font-bold rounded-full flex items-center justify-center text-xs">
-                          {member.name[0]?.toUpperCase()}
-                        </span>
-                        <span className="break-words font-medium">{member.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveMember(String(member.user_id))}
-                          className="text-white/40 hover:text-white ml-1 cursor-pointer transition-colors"
-                        >
-                          ✕
-                        </button>
-                      </span>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Leader Selection */}
-            <div className="pt-2">
-              <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-white/60 mb-3">
-                Team Leader
-              </h3>
-              <Select
-                value={String(formData.leader_id || "")}
-                onValueChange={(value) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    leader_id: stringToInt(value),
-                  }))
-                }
-              >
-                <SelectTrigger className="h-11 w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-3.5 text-sm text-white transition-all hover:bg-white/[0.05] hover:border-white/[0.12] focus:border-[#5271ff]/50 outline-none text-left cursor-pointer">
-                  <SelectValue placeholder="Select a Lead" />
-                </SelectTrigger>
-
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                  {members.map((o) => (
-                    <SelectItem key={o.user_id} value={String(o.user_id)} className="cursor-pointer text-white focus:bg-white/5 focus:text-white">
-                      {o.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                        <div className="flex items-center gap-2">
+                          <Crown className="size-3.5 text-amber-500" />
+                          <span className="font-semibold">{m.name}</span>
+                          <span className="text-xs text-v2-neutral-400">
+                            ({m.email || "Member"})
+                          </span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FieldDescription>
+                  The squad lead oversees assignments and reviews task deliverable status.
+                </FieldDescription>
+              </Field>
+            </FieldGroup>
           </div>
 
-          {/* Footer */}
-          <div className="relative z-10 px-6 py-6 sm:px-8 border-t border-white/[0.08] bg-white/[0.01] flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button
+          <DialogFooter data-form-section className="border-v2-neutral-200">
+            <Button
               type="button"
-              onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-white/[0.08] bg-white/[0.03] text-sm font-medium text-white/70 hover:bg-white/[0.08] hover:text-white transition-all cursor-pointer"
+              variant="outline"
+              onClick={closeDialog}
+              disabled={isSubmitting}
             >
               Cancel
-            </button>
-            <button
-              disabled={isSubmitting}
-              className="px-6 py-2.5 bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] hover:from-[#6380ff] hover:to-[#475cd6] text-white text-sm font-medium rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(82,113,255,0.2)] focus:ring-2 focus:ring-[#5271ff]/50 hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-40"
-              type="submit"
-            >
-              {isSubmitting ? "Creating..." : "Create Team"}
-            </button>
-          </div>
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+                  Creating team...
+                </>
+              ) : (
+                <>
+                  <Users className="size-4" aria-hidden="true" />
+                  Create team
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </form>
-      </motion.div>
-    </motion.div>
+      </DialogContent>
+    </Dialog>
   );
 }

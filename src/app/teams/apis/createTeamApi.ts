@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface CreateTeamPayload {
   name: string;
   description?: string;
@@ -10,12 +8,12 @@ export interface CreateTeamPayload {
 }
 
 export async function createTeamApi(payload: CreateTeamPayload) {
-  const token = await CookieManager("get", "access-token");
+  const token = CookieManager("get", "access-token");
   if (!token) {
     throw new Error("Authentication token not found");
   }
 
-  const response = await fetch(`${requestBaseUrl}/teams/create`, {
+  const response = await fetch("/api/teams/create", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

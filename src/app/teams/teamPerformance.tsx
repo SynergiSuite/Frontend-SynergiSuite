@@ -1,7 +1,11 @@
 "use client";
+
 import React from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
-import { Teams } from "./schemas/types";
+import { Target } from "lucide-react";
+
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import type { Teams } from "./schemas/types";
 
 interface TeamPerformanceProps {
   teams?: Teams[];
@@ -14,7 +18,7 @@ const defaultData = [
   { name: "Sales", value: 78, completed: 78, total: 100 },
 ];
 
-const COLORS = ["#22d3ee", "#5271ff", "#a78bfa", "#3a4ec4", "#10b981", "#f59e0b"];
+const COLORS = ["#353536", "#706f70", "#acadb1", "#4f46e5", "#0ea5e9", "#10b981"];
 
 export default function TeamPerformance({ teams }: TeamPerformanceProps) {
   const chartData =
@@ -36,12 +40,12 @@ export default function TeamPerformance({ teams }: TeamPerformanceProps) {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="rounded-xl border border-white/[0.08] bg-[#0a0826]/95 p-3 shadow-xl backdrop-blur-md text-xs text-white">
-          <p className="font-bold text-white mb-1">{data.name}</p>
-          <p className="text-[#5271ff] font-semibold">
-            Performance: {data.value}%
+        <div className="rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 p-3 text-xs shadow-lg">
+          <p className="font-semibold text-v2-neutral-600 mb-1">{data.name}</p>
+          <p className="text-v2-neutral-500 font-medium">
+            Completion Rate: <span className="font-semibold text-v2-neutral-600">{data.value}%</span>
           </p>
-          <p className="text-white/50 text-[11px] mt-0.5">
+          <p className="text-v2-neutral-400 text-[11px] mt-0.5">
             {data.completed} of {data.total} tasks completed
           </p>
         </div>
@@ -51,45 +55,63 @@ export default function TeamPerformance({ teams }: TeamPerformanceProps) {
   };
 
   return (
-    <div className="bg-[#0a0826]/60 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 shadow-lg flex flex-col h-[320px]">
-      <h2 className="text-lg font-bold text-white mb-2">Team Performance</h2>
-
-      {/* Donut Chart */}
-      <div className="flex-1 min-h-0">
-        <ResponsiveContainer width="100%" height={170}>
-          <PieChart>
-            <Pie
-              data={chartData}
-              dataKey="value"
-              cx="50%"
-              cy="50%"
-              innerRadius={52}
-              outerRadius={78}
-              paddingAngle={4}
-            >
-              {chartData.map((entry, index) => (
-                <Cell
-                  key={`cell-${index}`}
-                  fill={COLORS[index % COLORS.length]}
-                />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-
-      <div className="mt-2 flex flex-wrap justify-center gap-x-4 gap-y-2 text-xs text-white/60">
-        {chartData.map((item, index) => (
-          <div key={item.name} className="flex items-center space-x-1.5">
-            <span
-              className="inline-block w-2.5 h-2.5 rounded-full shadow-[0_0_8px_rgba(255,255,255,0.15)]"
-              style={{ backgroundColor: COLORS[index % COLORS.length] }}
-            ></span>
-            <span>{item.name} ({item.value}%)</span>
+    <Card className="flex h-full flex-col min-h-[340px]">
+      <CardHeader className="pb-2">
+        <div className="flex items-center gap-2">
+          <span className="grid size-8 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-500">
+            <Target className="size-4" />
+          </span>
+          <div>
+            <CardTitle className="text-base">Team Performance</CardTitle>
+            <CardDescription className="text-xs">
+              Task completion efficiency across teams
+            </CardDescription>
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+      </CardHeader>
+
+      <CardContent className="flex flex-1 flex-col items-center justify-between pt-2">
+        <div className="h-[170px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={chartData}
+                dataKey="value"
+                cx="50%"
+                cy="50%"
+                innerRadius={50}
+                outerRadius={74}
+                paddingAngle={4}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell
+                    key={`cell-${index}`}
+                    fill={COLORS[index % COLORS.length]}
+                    stroke="#ebedf1"
+                    strokeWidth={2}
+                  />
+                ))}
+              </Pie>
+              <Tooltip content={<CustomTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="mt-2 flex w-full flex-wrap justify-center gap-x-4 gap-y-2 border-t border-v2-neutral-200/70 pt-3 text-xs text-v2-neutral-500">
+          {chartData.map((item, index) => (
+            <div key={item.name} className="flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+              />
+              <span className="font-medium text-v2-neutral-600 truncate max-w-28">
+                {item.name}
+              </span>
+              <span className="text-v2-neutral-400">({item.value}%)</span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }

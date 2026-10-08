@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface EditEmployeePayload {
   salary?: number | string;
   roleId?: number;
@@ -35,7 +33,7 @@ export async function editEmployeeApi(
   }
 
   const response = await fetch(
-    `${requestBaseUrl}/business/employees/${employeeId}`,
+    `/api/employees/${employeeId}`,
     {
       method: "POST",
       headers: {

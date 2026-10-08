@@ -1,93 +1,90 @@
 "use client";
-import React, { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { Users, Layout, CheckSquare, BarChart } from "lucide-react";
 
-type StateCardProps = {
+import { useLayoutEffect, useRef } from "react";
+import { CheckSquare, Clock, FolderKanban, Users } from "lucide-react";
+import { gsap } from "gsap";
+
+import { Card, CardContent } from "@/components/ui/card";
+
+export type StateCardProps = {
   title: string;
-  value?: number | string; 
+  value?: number | string;
   change?: string;
 };
 
-const getIcon = (title: string) => {
-  switch (title) {
-    case "Total Teams":
-      return <Users className="h-5 w-5 text-[#5271ff]" />;
-    case "Active Projects":
-      return <Layout className="h-5 w-5 text-cyan-400" />;
-    case "Pending Tasks":
-      return <CheckSquare className="h-5 w-5 text-amber-400" />;
-    case "Reports":
-      return <BarChart className="h-5 w-5 text-violet-400" />;
-    default:
-      return <Users className="h-5 w-5 text-[#5271ff]" />;
-  }
-};
+const ICONS = [Users, FolderKanban, Clock, CheckSquare];
 
-function StateCard({ title, value, change }: StateCardProps) {
-  const numberRef = useRef<HTMLParagraphElement>(null);
+function StateCardItem({
+  title,
+  value,
+  change,
+  index,
+}: StateCardProps & { index: number }) {
+  const valueRef = useRef<HTMLParagraphElement>(null);
+  const Icon = ICONS[index % ICONS.length];
+  const numericValue =
+    typeof value === "number" ? value : Number.parseInt(String(value ?? "0"), 10);
 
-  useEffect(() => {
-    if (value !== undefined && typeof value === "number" && numberRef.current) {
-      const obj = { val: 0 };
-      gsap.to(obj, {
-        val: value,
-        duration: 1.2,
-        ease: "power2.out",
-        onUpdate: () => {
-          if (numberRef.current) {
-            numberRef.current.innerText = String(Math.floor(obj.val));
-          }
-        },
-      });
+  useLayoutEffect(() => {
+    const element = valueRef.current;
+
+    if (
+      !element ||
+      Number.isNaN(numericValue) ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
     }
-  }, [value]);
+
+    const counter = { value: 0 };
+    const animation = gsap.to(counter, {
+      value: numericValue,
+      duration: 0.9,
+      delay: index * 0.055,
+      ease: "power2.out",
+      onUpdate: () => {
+        element.textContent = Math.round(counter.value).toLocaleString();
+      },
+    });
+
+    return () => {
+      animation.revert();
+    };
+  }, [index, numericValue]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/60 p-5 backdrop-blur-md shadow-lg transition-all duration-300 hover:border-[#5271ff]/30 hover:shadow-[0_0_20px_rgba(82,113,255,0.1)]">
-      {/* Top blue corner line highlight */}
-      <div className="absolute left-0 top-0 h-[2px] w-8 bg-[#5271ff]" />
-
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-xs font-semibold uppercase tracking-[0.08em] text-white/40">
-            {title}
-          </h3>
-          {value !== undefined ? (
-            <p
-              ref={numberRef}
-              className="text-3xl font-extrabold text-white mt-2 tracking-tight"
-            >
-              {typeof value === "number" ? 0 : value}
-            </p>
-          ) : (
-            <p className="text-3xl font-extrabold text-white mt-2 tracking-tight">
-              --
-            </p>
+    <Card size="sm" className="min-w-0">
+      <CardContent className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-v2-neutral-400">{title}</p>
+          <p
+            ref={valueRef}
+            className="mt-2 text-3xl font-semibold tracking-[-0.045em] text-v2-neutral-600"
+          >
+            {Number.isNaN(numericValue) ? value ?? "—" : numericValue.toLocaleString()}
+          </p>
+          {change && (
+            <p className="mt-1.5 truncate text-xs text-v2-neutral-400">{change}</p>
           )}
         </div>
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/[0.03] border border-white/[0.06] shadow-inner">
-          {getIcon(title)}
-        </div>
-      </div>
-      {change && (
-        <p className="text-xs text-white/30 mt-3 font-medium flex items-center gap-1">
-          {change}
-        </p>
-      )}
-    </div>
+        <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-500">
+          <Icon className="size-[18px]" aria-hidden="true" />
+        </span>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function StateCards({ states }: { states: StateCardProps[] }) {
   return (
-    <div className="my-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {states.map((state) => (
-        <StateCard
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      {states.map((state, index) => (
+        <StateCardItem
           key={state.title}
           title={state.title}
           value={state.value}
           change={state.change}
+          index={index}
         />
       ))}
     </div>

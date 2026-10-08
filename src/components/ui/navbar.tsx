@@ -1,17 +1,32 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
-import Image from "next/image";
-import { usePathname, useRouter } from "next/navigation";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { AnimatePresence, motion } from "framer-motion";
-import { CookieManager } from "@/lib/cookieManager";
-import { useParams } from "next/navigation";
-import { toast } from "sonner";
-import { LogOut, Settings } from "lucide-react";
-import Logo from "@/assets/Logo.png";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import Link from "next/link";
+import { useParams, usePathname, useRouter } from "next/navigation";
+import {
+  Building2,
+  LogOut,
+  Settings,
+  ShieldCheck,
+  UserRound,
+  X,
+  Zap,
+} from "lucide-react";
 import { gsap } from "gsap";
+import { toast } from "sonner";
+
 import NotificationBell from "@/components/notifications/NotificationBell";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { CookieManager } from "@/lib/cookieManager";
+import { cn } from "@/lib/utils";
 import { socket } from "@/lib/socket";
 
 type NavItem = {
@@ -20,44 +35,252 @@ type NavItem = {
   route: string;
 };
 
+type UserDetails = {
+  name: string;
+  email: string;
+  business: string;
+  role: string;
+};
+
+const EMPTY_USER: UserDetails = {
+  name: "",
+  email: "",
+  business: "",
+  role: "",
+};
+
+const PEOPLE_NAVIGATION: NavItem[] = [
+  { name: "Employees", param: "employees", route: "/employees" },
+  { name: "Teams", param: "teams", route: "/teams" },
+  { name: "Projects", param: "projects", route: "/projects" },
+];
+
+function formatRole(role: string) {
+  if (!role) {
+    return "Workspace member";
+  }
+
+  return role
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function getInitials(name: string, email: string) {
+  const source = name.trim() || email.split("@")[0] || "User";
+  const parts = source.split(/\s+/).filter(Boolean);
+
+  return parts
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export default function Navbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const params = useParams<{ projectName?: string | string[] }>();
+  const navbarRef = useRef<HTMLElement>(null);
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const backdropRef = useRef<HTMLButtonElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [business, setBusiness] = useState("");
-  const [role, setRole] = useState("");
-  const { projectName: rawProjectName } = useParams() as { projectName: string };
-  const projectName = decodeURIComponent(rawProjectName || "");
+  const [user, setUser] = useState<UserDetails>(EMPTY_USER);
 
-  const avatarRef = useRef<HTMLDivElement | null>(null);
-  const infoRef = useRef<HTMLDivElement | null>(null);
-  const buttonsRef = useRef<HTMLDivElement | null>(null);
+  const rawProjectName = Array.isArray(params.projectName)
+    ? params.projectName[0]
+    : params.projectName ?? "";
+  const projectName = decodeURIComponent(rawProjectName);
+  const isClient = user.role.toLowerCase() === "client";
+  const initials = getInitials(user.name, user.email);
 
-  const logout = async () => {
+  useEffect(() => {
+    setUser({
+      name: String(CookieManager("get", "user") || ""),
+      email: String(CookieManager("get", "user-email") || ""),
+      business: String(CookieManager("get", "business-name") || ""),
+      role: String(
+        CookieManager("get", "primary_role") ||
+          CookieManager("get", "role") ||
+          "",
+      ),
+    });
+  }, []);
+
+  useLayoutEffect(() => {
+    const navbar = navbarRef.current;
+
+    if (
+      !navbar ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const context = gsap.context(() => {
+      gsap.from("[data-navbar-item]", {
+        autoAlpha: 0,
+        y: -6,
+        duration: 0.4,
+        stagger: 0.055,
+        ease: "power3.out",
+      });
+    }, navbar);
+
+    return () => context.revert();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!isProfileOpen || !drawerRef.current || !backdropRef.current) {
+      return;
+    }
+
+    closeButtonRef.current?.focus();
+
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
+    const drawer = drawerRef.current;
+    const backdrop = backdropRef.current;
+    const isDesktop = window.matchMedia("(min-width: 640px)").matches;
+    const context = gsap.context(() => {
+      gsap.fromTo(backdrop, { autoAlpha: 0 }, { autoAlpha: 1, duration: 0.22 });
+      gsap.fromTo(
+        drawer,
+        isDesktop ? { xPercent: 100 } : { yPercent: 100 },
+        {
+          xPercent: 0,
+          yPercent: 0,
+          duration: 0.48,
+          ease: "power3.out",
+        },
+      );
+      gsap.from("[data-profile-item]", {
+        autoAlpha: 0,
+        y: 10,
+        duration: 0.35,
+        stagger: 0.055,
+        delay: 0.16,
+        ease: "power2.out",
+      });
+    }, drawer);
+
+    return () => context.revert();
+  }, [isProfileOpen]);
+
+  const closeProfile = useCallback(() => {
+    const drawer = drawerRef.current;
+    const backdrop = backdropRef.current;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    if (!drawer || !backdrop || reduceMotion) {
+      setIsProfileOpen(false);
+      return;
+    }
+
+    const isDesktop = window.matchMedia("(min-width: 640px)").matches;
+    gsap.to(backdrop, { autoAlpha: 0, duration: 0.18 });
+    gsap.to(drawer, {
+      xPercent: isDesktop ? 100 : 0,
+      yPercent: isDesktop ? 0 : 100,
+      duration: 0.35,
+      ease: "power2.in",
+      onComplete: () => setIsProfileOpen(false),
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!isProfileOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeProfile();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [closeProfile, isProfileOpen]);
+
+  const links = useMemo<NavItem[]>(() => {
+    if (pathname.startsWith("/projects/")) {
+      if (!rawProjectName) {
+        return [];
+      }
+
+      if (isClient) {
+        return [
+          {
+            name: "Tasks",
+            param: "task",
+            route: `/projects/${rawProjectName}/task`,
+          },
+        ];
+      }
+
+      return [
+        {
+          name: projectName ? `${projectName} overview` : "Overview",
+          param: "overview",
+          route: `/projects/${rawProjectName}/overview`,
+        },
+        {
+          name: "Tasks",
+          param: "task",
+          route: `/projects/${rawProjectName}/task`,
+        },
+      ];
+    }
+
+    if (isClient) {
+      return [];
+    }
+
+    if (
+      pathname === "/employees" ||
+      pathname === "/teams" ||
+      pathname === "/projects"
+    ) {
+      return PEOPLE_NAVIGATION;
+    }
+
+    return [];
+  }, [isClient, pathname, projectName, rawProjectName]);
+
+  const activeTab = [...links]
+    .sort((first, second) => second.route.length - first.route.length)
+    .find((link) => pathname.startsWith(link.route))?.param;
+
+  const logout = () => {
     const token = CookieManager("get", "access-token");
     const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
-    // Immediately clear all auth cookies
-    CookieManager("delete", "access-token");
-    CookieManager("delete", "user-email");
-    CookieManager("delete", "user");
-    CookieManager("delete", "business-name");
-    CookieManager("delete", "business-id");
-    CookieManager("delete", "user-id");
-    CookieManager("delete", "user_id");
-    CookieManager("delete", "role");
-    CookieManager("delete", "primary_role");
-    CookieManager("delete", "verify-token");
-    CookieManager("delete", "register-token");
+    [
+      "access-token",
+      "user-email",
+      "user",
+      "business-name",
+      "business-id",
+      "user-id",
+      "user_id",
+      "role",
+      "primary_role",
+      "verify-token",
+      "register-token",
+    ].forEach((cookie) => CookieManager("delete", cookie));
 
-    // Immediately disconnect socket & redirect to session login form
     socket.disconnect();
-    router.replace("/session");
+    router.replace("/sessions?form=signin");
     toast.success("Logged out successfully");
 
-    // Fire backend logout API asynchronously in background
     if (token && requestBaseUrl) {
       fetch(`${requestBaseUrl}/auth/logout`, {
         method: "POST",
@@ -66,250 +289,197 @@ export default function Navbar() {
           Authorization: `Bearer ${token}`,
           "ngrok-skip-browser-warning": "1",
         },
-      }).catch((err) => console.warn("Background logout notify error:", err));
+      }).catch(() => undefined);
     }
   };
 
-  useEffect(() => {
-    const getUserData = async () => {
-      const name = CookieManager("get", "user");
-      setName(name as string);
-      const email = CookieManager("get", "user-email");
-      setEmail(email as string);
-      const business = CookieManager("get", "business-name");
-      setBusiness(business as string);
-      const role = CookieManager("get", "role");
-      setRole(role as string);
-    };
-    getUserData();
-  }, []);
-
-  useEffect(() => {
-    if (isProfileOpen) {
-      const timer = setTimeout(() => {
-        if (avatarRef.current && infoRef.current && buttonsRef.current) {
-          gsap.killTweensOf([avatarRef.current, infoRef.current.children, buttonsRef.current.children]);
-          
-          gsap.fromTo(avatarRef.current, 
-            { scale: 0.7, opacity: 0 }, 
-            { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(1.5)" }
-          );
-          
-          gsap.fromTo(infoRef.current.children, 
-            { y: 15, opacity: 0 }, 
-            { y: 0, opacity: 1, duration: 0.35, stagger: 0.08, ease: "power2.out", delay: 0.1 }
-          );
-
-          gsap.fromTo(buttonsRef.current.children, 
-            { y: 12, opacity: 0 }, 
-            { y: 0, opacity: 1, duration: 0.35, stagger: 0.08, ease: "power2.out", delay: 0.25 }
-          );
-        }
-      }, 30);
-      return () => clearTimeout(timer);
-    }
-  }, [isProfileOpen]);
-
-  // Define nav items per route
-  const routeNavs: Record<string, NavItem[]> = {
-    "/dashboard": [],
-    "/employees": [
-      { name: "Employees", param: "employees", route: "/employees" },
-      { name: "Teams", param: "teams", route: "/teams" },
-      { name: "Projects", param: "projects", route: "/projects" },
-    ],
-    "/teams": [
-      { name: "Employees", param: "employees", route: "/employees" },
-      { name: "Teams", param: "teams", route: "/teams" },
-      { name: "Projects", param: "projects", route: "/projects" },
-    ],
-    "/projects": [
-      { name: "Employees", param: "employees", route: "/employees" },
-      { name: "Teams", param: "teams", route: "/teams" },
-      { name: "Projects", param: "projects", route: "/projects" },
-    ],
-    "/settings": [
-      { name: "Profile", param: "profile", route: "/settings/profile" },
-      { name: "Security", param: "security", route: "/settings/security" },
-      { name: "Billing", param: "billing", route: "/settings/billing" },
-    ],
-    "/details": [
-      { name: `${projectName}'s Overview`, param: "overview", route: `/projects/${projectName}/overview` },
-      { name: "Tasks", param: "task", route: `/projects/${projectName}/task` },
-    ],
-  };
-
-  const isClientRole = role.toLowerCase() === "client";
-
-  const getRouteNavs = (path: string) => {
-    if (path.startsWith("/projects/")) {
-      const routeParam = rawProjectName || projectName;
-      if (isClientRole) {
-        return [
-          { name: "Tasks", param: "task", route: `/projects/${routeParam}/task` },
-        ];
-      }
-      return [
-        { name: `${projectName}'s Overview`, param: "overview", route: `/projects/${routeParam}/overview` },
-        { name: "Tasks", param: "task", route: `/projects/${routeParam}/task` },
-      ];
-    }
-    if (isClientRole) {
-      return [];
-    }
-    return routeNavs[path] || [];
-  };
-
-  // pick navs based on current route (fallback: empty)
-  const links = getRouteNavs(pathname);
-
-  // which tab is active (via ?tab=)
-  const activeTab =
-    [...links]
-    .sort((a, b) => b.route.length - a.route.length)
-    .find((link) => pathname.startsWith(link.route))?.param ??
-    links[0]?.param;
-
-  const handleClick = (route: string) => {
-    router.push(route);
+  const openSettings = () => {
+    setIsProfileOpen(false);
+    router.push("/settings");
   };
 
   return (
     <>
-      <div className="w-full relative bg-[#030114]/90 backdrop-blur-md">
-        <div className="px-4 py-3 sm:px-6">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <div className="inline-flex max-w-full rounded-full border border-[#5271ff]/30 bg-[#5271ff]/5 px-1 py-1 hover:border-[#5271ff]/70 hover:shadow-[0_0_15px_rgba(82,113,255,0.25)] transition-all duration-300 group">
-                <button
-                  type="button"
-                  className="flex min-w-0 cursor-pointer items-center gap-2 sm:gap-3"
-                  onClick={() => router.push(isClientRole ? "/projects" : "/dashboard")}
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-[#5271ff] to-[#3a4ec4] shadow-[0_0_10px_rgba(82,113,255,0.4)] transition-transform duration-300 group-hover:scale-105">
-                    <Image
-                      src={Logo}
-                      alt="SynergiSuite"
-                      width={36}
-                      height={36}
-                      className="h-7 w-7 object-contain"
-                      priority
-                    />
-                  </div>
-                  <span className="truncate pr-2 text-base font-extrabold sm:pr-1 sm:text-lg text-white group-hover:text-[#5271ff] transition-colors duration-300 tracking-wide font-sans">
-                    SynergiSuite
-                  </span>
-                </button>
-              </div>
-            </div>
+      <header ref={navbarRef} className="relative w-full bg-v2-neutral-500 text-v2-neutral-100">
+        <div className="flex min-h-16 items-center justify-between gap-4 px-4 py-2.5 sm:px-6 lg:px-8">
+          <Link
+            data-navbar-item
+            href={isClient ? "/projects" : "/dashboard"}
+            aria-label="Go to SynergiSuite home"
+            className="group flex min-w-0 items-center gap-3 rounded-xl outline-none focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25"
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-v2-neutral-100 text-v2-neutral-600 shadow-sm transition-transform duration-200 group-hover:-translate-y-0.5">
+              <Zap className="size-4" aria-hidden="true" />
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate text-sm font-semibold tracking-[-0.02em] sm:text-base">
+                SynergiSuite
+              </span>
+              <span className="hidden truncate text-[11px] text-v2-neutral-400 sm:block">
+                {user.business || "Business workspace"}
+              </span>
+            </span>
+          </Link>
 
-            <div className="flex items-center gap-2">
-              <NotificationBell />
-              <button
-                type="button"
-                className="h-9 w-9 shrink-0 cursor-pointer rounded-full border-2 border-[#5271ff]/30 hover:border-[#5271ff] hover:shadow-[0_0_12px_rgba(82,113,255,0.5)] transition-all duration-300 overflow-hidden"
-                onClick={() => setIsProfileOpen(true)}
-                aria-label="Open profile drawer"
-              >
-                <Avatar className="h-full w-full">
-                  <AvatarImage src="https://github.com/shadcn.png" />
-                  <AvatarFallback>CN</AvatarFallback>
-                </Avatar>
-              </button>
-            </div>
+          <div data-navbar-item className="flex shrink-0 items-center gap-2 sm:gap-3">
+            <NotificationBell />
+            <button
+              type="button"
+              className="group flex h-10 items-center gap-2.5 rounded-xl border border-v2-neutral-400/70 bg-v2-neutral-600/15 p-1 pr-1 text-left outline-none transition-colors hover:bg-v2-neutral-600/25 focus-visible:ring-[3px] focus-visible:ring-v2-neutral-300/25 sm:pr-3"
+              onClick={() => setIsProfileOpen(true)}
+              aria-label="Open account menu"
+              aria-haspopup="dialog"
+              aria-expanded={isProfileOpen}
+            >
+              <Avatar className="size-8 rounded-lg">
+                <AvatarFallback className="rounded-lg bg-v2-neutral-100 text-xs font-semibold text-v2-neutral-600">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden min-w-0 sm:block">
+                <span className="block max-w-32 truncate text-xs font-medium text-v2-neutral-100">
+                  {user.name || "Your account"}
+                </span>
+                <span className="mt-0.5 block max-w-32 truncate text-[10px] text-v2-neutral-400">
+                  {formatRole(user.role)}
+                </span>
+              </span>
+            </button>
           </div>
         </div>
 
         {links.length > 0 && (
-          <div className="border-t border-[#5271ff]/15 bg-[#030114]/50 px-4 py-2.5 sm:px-6">
-            <nav className="-mx-1 flex gap-3 overflow-x-auto px-1 text-sm whitespace-nowrap scrollbar-none">
-              {links.map((item) => (
-                <button
-                  key={item.param}
-                  onClick={() => handleClick(item.route)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide transition-all cursor-pointer ${
-                    activeTab === item.param
-                      ? "text-white bg-[#5271ff]/20 border border-[#5271ff]/40 shadow-[0_0_10px_rgba(82,113,255,0.2)]"
-                      : "text-gray-400 hover:text-white hover:bg-white/5 border border-transparent"
-                  }`}
-                >
-                  {item.name}
-                </button>
-              ))}
+          <div data-navbar-item className="border-t border-v2-neutral-400/70 px-4 sm:px-6 lg:px-8">
+            <nav
+              aria-label="Section navigation"
+              className="flex gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              {links.map((item) => {
+                const isActive = activeTab === item.param;
+
+                return (
+                  <Link
+                    key={item.param}
+                    href={item.route}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "relative shrink-0 py-3 text-xs font-medium outline-none transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors focus-visible:text-v2-neutral-100",
+                      isActive
+                        ? "text-v2-neutral-100 after:bg-v2-neutral-100"
+                        : "text-v2-neutral-400 after:bg-transparent hover:text-v2-neutral-200",
+                    )}
+                  >
+                    {item.name}
+                  </Link>
+                );
+              })}
             </nav>
           </div>
         )}
+      </header>
 
-      </div>
-      <AnimatePresence>
-        {isProfileOpen && (
-          <motion.div
-            className="fixed inset-0 z-[55] flex items-end justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+      {isProfileOpen && (
+        <div className="fixed inset-0 z-[110]" role="presentation">
+          <button
+            ref={backdropRef}
+            type="button"
+            className="absolute inset-0 h-full w-full bg-v2-neutral-500/65 backdrop-blur-sm"
+            aria-label="Close account menu"
+            onClick={closeProfile}
+          />
+
+          <div
+            ref={drawerRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="account-panel-title"
+            className="absolute inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-3xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-[0_-20px_70px_rgba(8,8,8,0.24)] sm:inset-y-0 sm:left-auto sm:w-[min(100%,420px)] sm:max-h-none sm:rounded-l-3xl sm:rounded-tr-none sm:shadow-[-20px_0_70px_rgba(8,8,8,0.24)]"
           >
-            <motion.button
-              type="button"
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              aria-label="Close profile drawer"
-              onClick={() => setIsProfileOpen(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            />
-            <motion.div
-              className="fixed inset-x-0 bottom-0 z-10 rounded-t-3xl border-t border-[#5271ff]/20 bg-[#0a0826]/95 backdrop-blur-xl shadow-[0_-10px_45px_rgba(82,113,255,0.2)]"
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            >
-              <div className="mx-auto w-full max-w-xl px-6 py-8">
-                <div ref={avatarRef} className="flex justify-center">
-                  <Avatar className="h-24 w-24 border-2 border-[#5271ff]/40 shadow-[0_0_15px_rgba(82,113,255,0.3)]">
-                    <AvatarImage src="https://github.com/shadcn.png" />
-                    <AvatarFallback className="bg-[#030114] text-white">CN</AvatarFallback>
-                  </Avatar>
+            <div className="flex min-h-full flex-col p-5 sm:p-7">
+              <div data-profile-item className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-[0.14em] text-v2-neutral-400">
+                    Account
+                  </p>
+                  <h2 id="account-panel-title" className="mt-1 text-lg font-semibold tracking-[-0.025em]">
+                    Your profile
+                  </h2>
                 </div>
-                <div ref={infoRef} className="mt-5 text-center">
-                  <h3 className="text-xl font-bold tracking-wide text-white">{name}</h3>
-                  <p className="mt-1 text-sm text-[#5271ff] font-semibold">{email}</p>
-                  <p className="mt-2 text-xs text-gray-400 font-medium bg-white/5 inline-block px-3 py-1 rounded-full border border-white/5">{role} @ {business}</p>
-                </div>
-                <div ref={buttonsRef} className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-                  <button
-                    type="button"
-                    className="rounded-xl border border-white/10 bg-white/5 px-6 py-2.5 text-sm font-semibold text-gray-300 transition hover:bg-white/10 hover:text-white hover:border-white/20 sm:w-28 cursor-pointer"
-                    onClick={() => setIsProfileOpen(false)}
-                  >
-                    Close
-                  </button>
+                <Button
+                  ref={closeButtonRef}
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Close account menu"
+                  onClick={closeProfile}
+                >
+                  <X aria-hidden="true" />
+                </Button>
+              </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsProfileOpen(false);
-                      router.push("/settings");
-                    }}
-                    className="flex items-center justify-center gap-2 rounded-xl border border-[#5271ff]/40 bg-[#5271ff]/15 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_12px_rgba(82,113,255,0.25)] transition hover:bg-[#5271ff] hover:shadow-[0_0_20px_rgba(82,113,255,0.45)] cursor-pointer"
-                  >
-                    <Settings size={16} /> <span>Settings</span>
-                  </button>
-
-                  <button
-                    onClick={() => logout()}
-                    className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-500/80 to-pink-600/85 px-6 py-2.5 text-sm font-bold text-white shadow-[0_0_15px_rgba(239,68,68,0.25)] transition hover:from-red-500 hover:to-pink-600 hover:shadow-[0_0_20px_rgba(239,68,68,0.45)] sm:w-32 cursor-pointer"
-                  >
-                    <LogOut size={16} /> <span>Logout</span>
-                  </button>
+              <div data-profile-item className="mt-8 flex items-center gap-4">
+                <Avatar className="size-16 rounded-2xl shadow-sm">
+                  <AvatarFallback className="rounded-2xl bg-v2-neutral-500 text-lg font-semibold text-v2-neutral-100">
+                    {initials}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <h3 className="truncate text-xl font-semibold tracking-[-0.03em]">
+                    {user.name || "SynergiSuite user"}
+                  </h3>
+                  <p className="mt-1 truncate text-sm text-v2-neutral-400">
+                    {user.email || "No email available"}
+                  </p>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              <div data-profile-item className="mt-8 grid gap-3">
+                <div className="flex items-center gap-3 rounded-2xl border border-v2-neutral-200 bg-v2-neutral-200/35 p-4">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-v2-neutral-100 text-v2-neutral-500">
+                    <Building2 className="size-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs text-v2-neutral-400">Workspace</span>
+                    <span className="mt-0.5 block truncate text-sm font-medium">
+                      {user.business || "No workspace selected"}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-3 rounded-2xl border border-v2-neutral-200 bg-v2-neutral-200/35 p-4">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-v2-neutral-100 text-v2-neutral-500">
+                    <UserRound className="size-4" aria-hidden="true" />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-xs text-v2-neutral-400">Access level</span>
+                    <span className="mt-0.5 block truncate text-sm font-medium">
+                      {formatRole(user.role)}
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <div data-profile-item className="mt-auto pt-10">
+                <div className="mb-5 flex items-start gap-2.5 rounded-xl bg-v2-neutral-200/45 px-3.5 py-3 text-xs leading-5 text-v2-neutral-400">
+                  <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-v2-neutral-500" aria-hidden="true" />
+                  Your profile and workspace access are protected by your authenticated session.
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Button type="button" variant="outline" size="lg" onClick={openSettings}>
+                    <Settings aria-hidden="true" />
+                    Settings
+                  </Button>
+                  <Button type="button" variant="destructive" size="lg" onClick={logout}>
+                    <LogOut aria-hidden="true" />
+                    Sign out
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
