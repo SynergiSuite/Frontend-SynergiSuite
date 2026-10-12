@@ -1,69 +1,121 @@
 "use client";
+
 import React from "react";
-import { CheckCircle2, PlayCircle, AlertCircle, ListTodo, Layers } from "lucide-react";
+import {
+  AlertCircle,
+  BarChart3,
+  CheckCircle2,
+  Layers,
+  ListTodo,
+  PlayCircle,
+} from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
-const QuickStats = ({ stats }: any) => {
+interface QuickStatsProps {
+  stats: {
+    total: number;
+    completed: number;
+    inProgress: number;
+    blocked: number;
+    todo: number;
+  };
+}
+
+export default function QuickStats({ stats }: QuickStatsProps) {
   return (
-    <>
-      <div className="bg-[#0a0826]/40 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden transition-all duration-300 hover:border-[#5271ff]/30">
-        {/* Left Glowing Accent */}
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[#5271ff] to-cyan-400" />
-        
-        <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-4">
-          Quick Stats
-        </h3>
+    <Card className="overflow-hidden border border-v2-neutral-300 bg-v2-neutral-100 shadow-sm">
+      <CardHeader className="pb-3 border-b border-v2-neutral-200/80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-7 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-600">
+              <BarChart3 className="size-3.5" />
+            </span>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-v2-neutral-400">
+              Task Breakdown
+            </h3>
+          </div>
+          <span className="rounded-full bg-v2-neutral-200 px-2.5 py-1 text-[11px] font-semibold text-v2-neutral-600">
+            {stats.total} Total
+          </span>
+        </div>
+      </CardHeader>
 
-        <div className="grid grid-cols-2 gap-3 mb-4">
+      <CardContent className="pt-4 space-y-4 text-xs">
+        <div className="grid grid-cols-2 gap-3">
           {/* In Progress */}
-          <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-3 flex flex-col justify-between hover:bg-white/[0.04] transition-colors duration-200">
-            <div className="flex items-center justify-between text-[11px] text-white/50 mb-1 font-medium">
+          <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-3.5 text-sky-900 transition-colors">
+            <div className="flex items-center justify-between text-[11px] text-sky-700 mb-1.5 font-medium">
               <span>In Progress</span>
-              <PlayCircle className="w-3.5 h-3.5 text-[#5271ff]" />
+              <PlayCircle className="size-3.5 text-sky-600 shrink-0" />
             </div>
-            <span className="text-xl font-extrabold text-white tracking-tight">{stats.inProgress}</span>
+            <span className="text-xl font-bold tracking-tight text-sky-950">
+              {stats.inProgress}
+            </span>
           </div>
 
           {/* Completed */}
-          <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-3 flex flex-col justify-between hover:bg-white/[0.04] transition-colors duration-200">
-            <div className="flex items-center justify-between text-[11px] text-white/50 mb-1 font-medium">
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-emerald-900 transition-colors">
+            <div className="flex items-center justify-between text-[11px] text-emerald-700 mb-1.5 font-medium">
               <span>Completed</span>
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <CheckCircle2 className="size-3.5 text-emerald-600 shrink-0" />
             </div>
-            <span className="text-xl font-extrabold text-white tracking-tight">{stats.completed}</span>
+            <span className="text-xl font-bold tracking-tight text-emerald-950">
+              {stats.completed}
+            </span>
           </div>
 
           {/* Todo */}
-          <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-3 flex flex-col justify-between hover:bg-white/[0.04] transition-colors duration-200">
-            <div className="flex items-center justify-between text-[11px] text-white/50 mb-1 font-medium">
-              <span>Todo</span>
-              <ListTodo className="w-3.5 h-3.5 text-purple-400" />
+          <div className="rounded-xl border border-v2-neutral-300 bg-v2-neutral-200/50 p-3.5 text-v2-neutral-600 transition-colors">
+            <div className="flex items-center justify-between text-[11px] text-v2-neutral-400 mb-1.5 font-medium">
+              <span>To Do</span>
+              <ListTodo className="size-3.5 text-v2-neutral-500 shrink-0" />
             </div>
-            <span className="text-xl font-extrabold text-white tracking-tight">{stats.todo}</span>
+            <span className="text-xl font-bold tracking-tight text-v2-neutral-600">
+              {stats.todo}
+            </span>
           </div>
 
           {/* Blocked */}
-          <div className="bg-white/[0.02] border border-white/[0.04] rounded-xl p-3 flex flex-col justify-between hover:bg-white/[0.04] transition-colors duration-200">
-            <div className="flex items-center justify-between text-[11px] text-white/50 mb-1 font-medium">
+          <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 text-rose-900 transition-colors">
+            <div className="flex items-center justify-between text-[11px] text-rose-700 mb-1.5 font-medium">
               <span>Blocked</span>
-              <AlertCircle className="w-3.5 h-3.5 text-rose-500" />
+              <AlertCircle className="size-3.5 text-rose-600 shrink-0" />
             </div>
-            <span className="text-xl font-extrabold text-white tracking-tight">{stats.blocked}</span>
+            <span className="text-xl font-bold tracking-tight text-rose-950">
+              {stats.blocked}
+            </span>
           </div>
         </div>
 
-        {/* Total Footer Row */}
-        <div className="border-t border-white/[0.06] pt-3.5 flex items-center justify-between text-xs font-medium">
-          <span className="text-white/40 flex items-center gap-1.5">
-            <Layers className="w-3.5 h-3.5 text-[#5271ff]/80" /> Total Tasks
-          </span>
-          <span className="text-white font-bold text-xs bg-white/[0.06] px-2 py-0.5 rounded-md border border-white/[0.04]">
-            {stats.total}
-          </span>
+        {/* Completion Progress Bar */}
+        <div className="pt-3 border-t border-v2-neutral-200/80">
+          <div className="flex items-center justify-between text-[11px] text-v2-neutral-400 mb-1.5 font-medium">
+            <span className="flex items-center gap-1.5">
+              <Layers className="size-3.5 text-v2-neutral-400" />
+              Delivery Velocity
+            </span>
+            <span className="font-semibold text-v2-neutral-600">
+              {stats.total > 0
+                ? Math.round((stats.completed / stats.total) * 100)
+                : 0}
+              %
+            </span>
+          </div>
+          <div className="h-1.5 w-full overflow-hidden rounded-full bg-v2-neutral-200">
+            <div
+              className="h-full rounded-full bg-v2-neutral-600 transition-all duration-500"
+              style={{
+                width: `${
+                  stats.total > 0
+                    ? Math.round((stats.completed / stats.total) * 100)
+                    : 0
+                }%`,
+              }}
+            />
+          </div>
         </div>
-      </div>
-    </>
+      </CardContent>
+    </Card>
   );
-};
-
-export default QuickStats;
+}
 

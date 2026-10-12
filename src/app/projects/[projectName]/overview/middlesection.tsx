@@ -13,13 +13,13 @@ type MiddleSectionProps = {
   onLoadingChange?: (loading: boolean) => void;
 };
 
-const MiddleSection = ({
+export default function MiddleSection({
   projectId,
   availableTasks = [],
   canManageMilestones = false,
   refreshKey = 0,
   onLoadingChange,
-}: MiddleSectionProps) => {
+}: MiddleSectionProps) {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
 
   const normalizeMilestones = (response: unknown): Milestone[] => {
@@ -48,7 +48,7 @@ const MiddleSection = ({
     return [];
   };
 
-  const fetchMilestones = async () => {
+  const fetchMilestones = React.useCallback(async () => {
     if (!projectId) {
       setMilestones([]);
       return;
@@ -60,24 +60,20 @@ const MiddleSection = ({
     } finally {
       onLoadingChange?.(false);
     }
-  };
+  }, [projectId, onLoadingChange]);
 
   useEffect(() => {
     fetchMilestones();
-  }, [projectId, refreshKey]);
+  }, [fetchMilestones, refreshKey]);
 
   return (
-    <>
-      <div className="w-full min-w-0">
-        <Milestones
-          milestones={milestones}
-          availableTasks={availableTasks}
-          canManageMilestones={canManageMilestones}
-          onRefresh={fetchMilestones}
-        />
-      </div>
-    </>
+    <div className="w-full min-w-0">
+      <Milestones
+        milestones={milestones}
+        availableTasks={availableTasks}
+        canManageMilestones={canManageMilestones}
+        onRefresh={fetchMilestones}
+      />
+    </div>
   );
-};
-
-export default MiddleSection;
+}

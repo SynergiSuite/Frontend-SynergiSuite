@@ -1,10 +1,18 @@
 "use client";
 
-import React, { useMemo, useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
+import React, { useMemo, useState } from "react";
+import { Check, Search, UsersRound } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Team } from "../../schemas/team";
-import { Check, Users } from "lucide-react";
 
 type EditTeamsModalProps = {
   onCancel: () => void;
@@ -19,16 +27,12 @@ export default function EditTeamsModal({
   onSubmit,
   teams,
   initialSelectedTeamIds = [],
-  title = "Edit Teams",
+  title = "Manage Assigned Squads",
 }: EditTeamsModalProps) {
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>(
     initialSelectedTeamIds
   );
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const [filterQuery, setFilterQuery] = useState("");
 
   const toggleTeamId = (teamId: string) => {
     setSelectedTeamIds((prev) =>
@@ -38,127 +42,137 @@ export default function EditTeamsModal({
     );
   };
 
-  const selectedLabel = useMemo(
-    () =>
-      `${selectedTeamIds.length} team${
-        selectedTeamIds.length === 1 ? "" : "s"
-      } selected`,
-    [selectedTeamIds.length]
-  );
+  const filteredTeams = useMemo(() => {
+    if (!filterQuery.trim()) return teams;
+    return teams.filter((t) =>
+      t.name.toLowerCase().includes(filterQuery.toLowerCase())
+    );
+  }, [teams, filterQuery]);
 
-  if (!mounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-      {/* Background Overlay */}
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="absolute inset-0 bg-[#030114]/80 backdrop-blur-md cursor-pointer"
-        onClick={onCancel}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      />
-
-      {/* Modal Container Shell */}
-      <motion.div
-        className="relative z-10 my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.7)]"
-        initial={{ opacity: 0, y: 20, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 15, scale: 0.96 }}
-        transition={{ type: "spring", stiffness: 280, damping: 25 }}
+  return (
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent
+        showCloseButton
+        className="max-w-xl border border-v2-neutral-300 bg-v2-neutral-100 p-0 shadow-2xl rounded-2xl overflow-hidden"
       >
-        {/* Top Accent Neon Stripe */}
-        <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#5271ff] via-cyan-400 to-[#3a4ec4] z-10" />
+        <DialogHeader className="border-b border-v2-neutral-200 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-600">
+              <UsersRound className="size-5" />
+            </span>
+            <div>
+              <DialogTitle className="text-lg font-bold text-v2-neutral-600">
+                {title}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-v2-neutral-400 mt-0.5">
+                Assign and adjust executing squads deployed to this project.
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
 
-        {/* Ambient interior glow */}
-        <div className="absolute -left-20 -top-20 h-[250px] w-[250px] bg-[radial-gradient(circle,rgba(82,113,255,0.1),transparent_65%)] pointer-events-none" />
+        <div className="p-6 space-y-4">
+          {/* Filter Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-v2-neutral-400" />
+            <input
+              type="text"
+              value={filterQuery}
+              onChange={(e) => setFilterQuery(e.target.value)}
+              placeholder="Search squads by name..."
+              className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 pl-9 pr-4 text-xs text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-400 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20"
+            />
+          </div>
 
-        {/* Header */}
-        <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01]">
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            {title}
-          </h2>
-          <p className="text-xs text-white/40 mt-1 font-medium">
-            Select and associate teams with this project
-          </p>
-        </div>
-
-        {/* Body */}
-        <div className="relative z-10 flex-1 px-6 py-6 sm:px-8 text-white overflow-y-auto custom-scrollbar">
-          <div className="mb-6">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-white/50 mb-3">
-              Select Teams
-            </label>
-            <div className="rounded-xl border border-white/[0.08] bg-[#030114]/40 p-4">
-              <div className="flex flex-wrap gap-2.5">
-                {teams.map((team) => {
-                  const isSelected = selectedTeamIds.includes(team.id);
-                  return (
-                    <label
-                      key={team.id}
-                      className={`group relative flex items-center gap-2.5 rounded-xl border px-4 py-2.5 text-sm cursor-pointer transition-all duration-300 ${
-                        isSelected
-                          ? "border-[#5271ff]/60 bg-[#5271ff]/20 text-white shadow-[0_0_16px_rgba(82,113,255,0.25)]"
-                          : "border-white/[0.08] bg-[#0a0826]/40 text-white/60 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.04]"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        className="sr-only"
-                        checked={isSelected}
-                        onChange={() => toggleTeamId(team.id)}
-                      />
+          {/* Squad Grid */}
+          <div className="max-h-64 overflow-y-auto space-y-2 pr-1 v2-scrollbar">
+            {filteredTeams.length === 0 ? (
+              <div className="py-8 text-center text-xs text-v2-neutral-400">
+                No squads found matching your search.
+              </div>
+            ) : (
+              filteredTeams.map((team) => {
+                const isSelected = selectedTeamIds.includes(team.id);
+                return (
+                  <button
+                    key={team.id}
+                    type="button"
+                    onClick={() => toggleTeamId(team.id)}
+                    className={`flex w-full items-center justify-between rounded-xl border p-3.5 text-left transition-all cursor-pointer ${
+                      isSelected
+                        ? "border-v2-neutral-600 bg-v2-neutral-200/60 text-v2-neutral-600 shadow-sm"
+                        : "border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:border-v2-neutral-400 hover:bg-v2-neutral-200/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`flex h-4 w-4 items-center justify-center rounded border transition-all ${
+                        className={`grid size-5 place-items-center rounded border transition-colors ${
                           isSelected
-                            ? "border-[#5271ff] bg-[#5271ff] text-white"
-                            : "border-white/30 bg-transparent group-hover:border-white/60"
+                            ? "border-v2-neutral-600 bg-v2-neutral-600 text-v2-neutral-100"
+                            : "border-v2-neutral-300 bg-v2-neutral-100"
                         }`}
                       >
-                        {isSelected && <Check className="h-3 w-3" strokeWidth={3} />}
+                        {isSelected && (
+                          <Check className="size-3.5 stroke-[3]" />
+                        )}
                       </div>
-                      <Users className={`h-4 w-4 ${isSelected ? "text-[#5271ff]" : "text-white/40"}`} />
-                      <span className="font-medium">{team.name}</span>
-                    </label>
-                  );
-                })}
-              </div>
-              {teams.length === 0 ? (
-                <p className="mt-2 text-xs text-white/30 italic pl-1">
-                  No teams available.
-                </p>
-              ) : (
-                <div className="mt-3.5 text-xs text-white/40 font-medium pl-1">
-                  {selectedLabel}
-                </div>
-              )}
-            </div>
+                      <div>
+                        <p className="text-xs font-semibold text-v2-neutral-600">
+                          {team.name}
+                        </p>
+                        <p className="text-[11px] text-v2-neutral-400">
+                          {team.members?.length || team.employees?.length || 0} members deployed
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="rounded-md bg-v2-neutral-200 px-2 py-0.5 text-[10px] font-semibold text-v2-neutral-500">
+                      Squad
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-2 text-xs text-v2-neutral-400 border-t border-v2-neutral-200">
+            <span>
+              <strong className="text-v2-neutral-600">
+                {selectedTeamIds.length}
+              </strong>{" "}
+              of {teams.length} squads selected
+            </span>
+            {selectedTeamIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedTeamIds([])}
+                className="text-xs text-destructive hover:underline font-medium cursor-pointer"
+              >
+                Clear all
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="relative z-10 border-t border-white/[0.08] bg-[#0a0826]/40 px-6 py-5 sm:px-8 flex justify-end space-x-3">
-          <button
+        <DialogFooter className="border-t border-v2-neutral-200 bg-v2-neutral-200/30 px-6 py-4">
+          <Button
             type="button"
+            variant="outline"
             onClick={onCancel}
-            className="rounded-xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-white/60 hover:text-white hover:bg-[#0a0826]/75 hover:border-white/[0.15] transition-all duration-300 cursor-pointer"
+            className="border-v2-neutral-300 text-v2-neutral-600 hover:bg-v2-neutral-200"
           >
             Cancel
-          </button>
-
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="default"
             onClick={() => onSubmit(selectedTeamIds)}
-            className="rounded-xl px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 cursor-pointer"
+            className="bg-v2-neutral-600 text-v2-neutral-100 hover:bg-v2-neutral-500 font-semibold shadow-sm"
           >
-            Save Changes
-          </button>
-        </div>
-      </motion.div>
-    </div>,
-    document.body
+            Save Squad Assignments
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

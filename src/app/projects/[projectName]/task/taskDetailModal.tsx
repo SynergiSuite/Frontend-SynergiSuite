@@ -1,17 +1,31 @@
 "use client";
 
 import React from "react";
-import { motion } from "framer-motion";
 import {
-  CalendarDays,
-  CheckCircle2,
+  Calendar,
+  Edit3,
   Flag,
-  Pencil,
+  User,
+  UserX,
   Users,
-  X,
 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Task } from "./schemas/task";
-import { formatTaskLabel } from "./task-utils";
+import {
+  formatDueDate,
+  getPriorityConfig,
+  getStatusConfig,
+  isDueToday,
+  isOverdue,
+} from "./task-utils";
 
 type TaskDetailModalProps = {
   task: Task;
@@ -20,200 +34,157 @@ type TaskDetailModalProps = {
   onEdit: () => void;
 };
 
-const priorityStyles: Record<string, string> = {
-  low: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-  medium: "bg-amber-500/10 text-amber-400 border border-amber-500/20",
-  high: "bg-rose-500/10 text-rose-400 border border-rose-500/20",
-};
-
-const statusStyles: Record<string, string> = {
-  completed: "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
-  blocked: "bg-rose-500/10 text-rose-400 border border-rose-500/20",
-  in_progress: "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20",
-};
-
-const DetailTile = ({
-  icon,
-  label,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) => (
-  <div className="rounded-2xl border border-white/[0.08] bg-[#030114]/40 p-4 shadow-sm">
-    <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/40">
-      <span className="text-[#5271ff]/80">{icon}</span>
-      <span>{label}</span>
-    </div>
-    {children}
-  </div>
-);
-
 export default function TaskDetailModal({
   task,
   canEdit,
   onClose,
   onEdit,
 }: TaskDetailModalProps) {
-  const normalizedStatus = task.status?.trim().toLowerCase();
-  const normalizedPriority = task.priority?.trim().toLowerCase();
-  const statusClass =
-    statusStyles[normalizedStatus ?? ""] ??
-    "bg-white/[0.04] text-white/60 border border-white/[0.08]";
-  const priorityClass =
-    priorityStyles[normalizedPriority ?? ""] ??
-    "bg-white/[0.04] text-white/60 border border-white/[0.08]";
+  const statusCfg = getStatusConfig(task.status);
+  const priorityCfg = getPriorityConfig(task.priority);
+  const overdue = isOverdue(task.due_date, task.status);
+  const dueToday = isDueToday(task.due_date);
+  const primaryTeam = task.teams && task.teams.length > 0 ? task.teams[0] : null;
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-    >
-      <motion.button
-        type="button"
-        aria-label="Close task details"
-        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md z-45"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.25 }}
-      />
-
-      <motion.div
-        className="relative max-h-[calc(100vh-4rem)] w-full max-w-3xl overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0a0826]/90 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] z-50 flex flex-col"
-        initial={{ opacity: 0, y: 30, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        transition={{ type: "spring", stiffness: 260, damping: 25 }}
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent
+        showCloseButton
+        className="max-h-[90vh] max-w-2xl overflow-y-auto border border-v2-neutral-300 bg-v2-neutral-100 p-0 text-v2-neutral-600 shadow-2xl rounded-2xl custom-scrollbar"
       >
-        {/* Top Accent Neon Stripe */}
-        <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#5271ff] via-cyan-400 to-[#3a4ec4] z-10" />
+        {/* Header */}
+        <DialogHeader className="border-b border-v2-neutral-200 px-6 py-5">
+          <div className="flex flex-wrap items-center gap-2 pr-6">
+            {/* Priority flag pill */}
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold border ${priorityCfg.badgeClass}`}
+            >
+              <Flag className="size-3.5" style={{ color: priorityCfg.flagColor }} />
+              <span>{priorityCfg.label}</span>
+            </span>
 
-        <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.1),transparent_58%)] pointer-events-none" />
-
-        <div className="relative overflow-y-auto flex-1 custom-scrollbar">
-          {/* Header */}
-          <div className="border-b border-white/[0.08] px-6 py-6 sm:px-8 bg-white/[0.01]">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#5271ff]">
-                  Task Detail
-                </p>
-                <h2 className="mt-2 break-words text-2xl font-bold text-white tracking-tight">
-                  {task.title || "Untitled task"}
-                </h2>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${statusClass}`}
-                  >
-                    {formatTaskLabel(task.status)}
-                  </span>
-                  <span
-                    className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold capitalize ${priorityClass}`}
-                  >
-                    {formatTaskLabel(task.priority)}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex shrink-0 items-center gap-2.5">
-                {canEdit ? (
-                  <button
-                    type="button"
-                    aria-label="Edit task"
-                    onClick={onEdit}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.02] text-white/60 transition hover:text-white hover:bg-white/[0.06] hover:border-white/[0.15] hover:scale-[1.02] active:scale-[0.98] duration-300 shadow-md"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  aria-label="Close task details"
-                  onClick={onClose}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-[#030114]/45 text-white/40 hover:text-white hover:border-white/[0.15] hover:bg-white/[0.04] transition-all duration-300 shadow-md"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
+            {/* Status pill */}
+            <span
+              className={`inline-flex items-center gap-2 rounded-lg px-2.5 py-1 text-xs font-semibold border ${statusCfg.badgeClass}`}
+            >
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: statusCfg.dotColor }}
+              />
+              <span>{statusCfg.label}</span>
+            </span>
           </div>
 
-          {/* Grid Tiles */}
-          <div className="grid gap-4 px-6 py-6 sm:grid-cols-2 sm:px-8">
-            <DetailTile
-              icon={<CalendarDays className="h-4 w-4" />}
-              label="Due Date"
-            >
-              <p className="text-sm font-bold text-white/80">
-                {task.due_date || "No due date"}
-              </p>
-            </DetailTile>
+          <DialogTitle className="mt-3 text-xl font-bold tracking-tight text-v2-neutral-600">
+            {task.title}
+          </DialogTitle>
+        </DialogHeader>
 
-            <DetailTile icon={<CheckCircle2 className="h-4 w-4" />} label="Status">
-              <p className="text-sm font-bold text-white/80">
-                {formatTaskLabel(task.status)}
-              </p>
-            </DetailTile>
+        {/* Content Body */}
+        <div className="space-y-6 px-6 py-5">
+          {/* Metadata Grid (ClickUp style) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 rounded-xl border border-v2-neutral-300 bg-v2-neutral-200/40 p-4 text-xs">
+            {/* Due Date */}
+            <div className="flex items-center gap-3">
+              <span className="grid size-8 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-500 shrink-0">
+                <Calendar className="size-4" />
+              </span>
+              <div>
+                <span className="block text-[11px] text-v2-neutral-400 font-medium">
+                  Due Date
+                </span>
+                <span
+                  className={`font-semibold ${
+                    overdue
+                      ? "text-rose-600"
+                      : dueToday
+                      ? "text-amber-600"
+                      : "text-v2-neutral-600"
+                  }`}
+                >
+                  {formatDueDate(task.due_date)}
+                  {overdue && " (Overdue)"}
+                  {dueToday && " (Due Today)"}
+                </span>
+              </div>
+            </div>
 
-            <DetailTile icon={<Flag className="h-4 w-4" />} label="Priority">
-              <p className="text-sm font-bold text-white/80">
-                {formatTaskLabel(task.priority)}
-              </p>
-            </DetailTile>
-
-            <DetailTile icon={<Users className="h-4 w-4" />} label="Teams">
-              <p className="text-sm font-bold text-white/80">
-                {task.teams?.length ? `${task.teams.length}` : "No team assigned"}
-              </p>
-            </DetailTile>
+            {/* Assignment Display */}
+            <div className="flex items-center gap-3">
+              <span className="grid size-8 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-500 shrink-0">
+                {task.assignee ? (
+                  <User className="size-4" />
+                ) : primaryTeam ? (
+                  <Users className="size-4" />
+                ) : (
+                  <UserX className="size-4" />
+                )}
+              </span>
+              <div className="min-w-0">
+                <span className="block text-[11px] text-v2-neutral-400 font-medium">
+                  {task.assignee ? "Assigned Employee" : "Assigned Squad"}
+                </span>
+                {task.assignee ? (
+                  <div>
+                    <span className="font-semibold text-v2-neutral-600 truncate block">
+                      {task.assignee.name}
+                    </span>
+                    <span className="text-[11px] text-v2-neutral-400 truncate block">
+                      {task.assignee.email} {primaryTeam ? `• ${primaryTeam.name}` : ""}
+                    </span>
+                  </div>
+                ) : primaryTeam ? (
+                  <span className="font-semibold text-v2-neutral-600 truncate block">
+                    {primaryTeam.name} (Entire Team)
+                  </span>
+                ) : (
+                  <span className="font-medium text-v2-neutral-400">
+                    Unassigned
+                  </span>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* Description Section */}
-          <div className="border-t border-white/[0.08] px-6 py-6 sm:px-8">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#5271ff]">
+          <div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-v2-neutral-400 mb-2">
               Description
-            </h3>
-            <div className="rounded-2xl border border-white/[0.08] bg-[#030114]/40 p-4 text-sm leading-6 text-white/70 shadow-sm whitespace-pre-wrap">
-              {task.description?.trim() || "No description added."}
+            </h4>
+            <div className="rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 p-4 text-xs leading-relaxed text-v2-neutral-600 min-h-[100px]">
+              {task.description ? (
+                <p className="whitespace-pre-wrap">{task.description}</p>
+              ) : (
+                <span className="text-v2-neutral-400 italic">
+                  No description provided for this task.
+                </span>
+              )}
             </div>
           </div>
-
-          {/* Assigned Teams Section */}
-          <div className="border-t border-white/[0.08] px-6 py-6 sm:px-8">
-            <h3 className="mb-3 text-xs font-bold uppercase tracking-[0.18em] text-[#5271ff]">
-              Assigned Teams
-            </h3>
-            {task.teams?.length ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {task.teams.map((team) => (
-                  <div
-                    key={team.id}
-                    className="rounded-2xl border border-white/[0.08] bg-[#030114]/40 px-4 py-3.5 shadow-sm"
-                  >
-                    <p className="text-sm font-semibold text-white/80">
-                      {team.name}
-                    </p>
-                    <p className="mt-1 text-xs text-white/40 font-medium">
-                      {team.members?.length ?? 0} member
-                      {(team.members?.length ?? 0) === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-white/[0.08] bg-[#030114]/20 px-4 py-6 text-sm text-white/30 text-center font-medium">
-                No teams assigned yet.
-              </div>
-            )}
-          </div>
         </div>
-      </motion.div>
-    </motion.div>
+
+        {/* Footer Actions */}
+        <DialogFooter className="border-t border-v2-neutral-200 bg-v2-neutral-200/30 px-6 py-4 flex items-center justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            className="border-v2-neutral-300 text-v2-neutral-600 hover:bg-v2-neutral-200"
+          >
+            Close
+          </Button>
+          {canEdit && (
+            <Button
+              type="button"
+              onClick={onEdit}
+              className="gap-2 font-semibold shadow-sm"
+            >
+              <Edit3 className="size-4" />
+              Edit Task
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

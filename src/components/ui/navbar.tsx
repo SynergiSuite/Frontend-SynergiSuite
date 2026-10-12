@@ -4,12 +4,11 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
 } from "react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   LogOut,
@@ -26,14 +25,7 @@ import NotificationBell from "@/components/notifications/NotificationBell";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { CookieManager } from "@/lib/cookieManager";
-import { cn } from "@/lib/utils";
 import { socket } from "@/lib/socket";
-
-type NavItem = {
-  name: string;
-  param: string;
-  route: string;
-};
 
 type UserDetails = {
   name: string;
@@ -48,12 +40,6 @@ const EMPTY_USER: UserDetails = {
   business: "",
   role: "",
 };
-
-const PEOPLE_NAVIGATION: NavItem[] = [
-  { name: "Employees", param: "employees", route: "/employees" },
-  { name: "Teams", param: "teams", route: "/teams" },
-  { name: "Projects", param: "projects", route: "/projects" },
-];
 
 function formatRole(role: string) {
   if (!role) {
@@ -77,8 +63,6 @@ function getInitials(name: string, email: string) {
 
 export default function Navbar() {
   const router = useRouter();
-  const pathname = usePathname();
-  const params = useParams<{ projectName?: string | string[] }>();
   const navbarRef = useRef<HTMLElement>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
   const backdropRef = useRef<HTMLButtonElement>(null);
@@ -86,10 +70,6 @@ export default function Navbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [user, setUser] = useState<UserDetails>(EMPTY_USER);
 
-  const rawProjectName = Array.isArray(params.projectName)
-    ? params.projectName[0]
-    : params.projectName ?? "";
-  const projectName = decodeURIComponent(rawProjectName);
   const isClient = user.role.toLowerCase() === "client";
   const initials = getInitials(user.name, user.email);
 
@@ -210,55 +190,6 @@ export default function Navbar() {
     };
   }, [closeProfile, isProfileOpen]);
 
-  const links = useMemo<NavItem[]>(() => {
-    if (pathname.startsWith("/projects/")) {
-      if (!rawProjectName) {
-        return [];
-      }
-
-      if (isClient) {
-        return [
-          {
-            name: "Tasks",
-            param: "task",
-            route: `/projects/${rawProjectName}/task`,
-          },
-        ];
-      }
-
-      return [
-        {
-          name: projectName ? `${projectName} overview` : "Overview",
-          param: "overview",
-          route: `/projects/${rawProjectName}/overview`,
-        },
-        {
-          name: "Tasks",
-          param: "task",
-          route: `/projects/${rawProjectName}/task`,
-        },
-      ];
-    }
-
-    if (isClient) {
-      return [];
-    }
-
-    if (
-      pathname === "/employees" ||
-      pathname === "/teams" ||
-      pathname === "/projects"
-    ) {
-      return PEOPLE_NAVIGATION;
-    }
-
-    return [];
-  }, [isClient, pathname, projectName, rawProjectName]);
-
-  const activeTab = [...links]
-    .sort((first, second) => second.route.length - first.route.length)
-    .find((link) => pathname.startsWith(link.route))?.param;
-
   const logout = () => {
     const token = CookieManager("get", "access-token");
     const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
@@ -347,35 +278,6 @@ export default function Navbar() {
             </button>
           </div>
         </div>
-
-        {links.length > 0 && (
-          <div data-navbar-item className="border-t border-v2-neutral-400/70 px-4 sm:px-6 lg:px-8">
-            <nav
-              aria-label="Section navigation"
-              className="flex gap-6 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {links.map((item) => {
-                const isActive = activeTab === item.param;
-
-                return (
-                  <Link
-                    key={item.param}
-                    href={item.route}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "relative shrink-0 py-3 text-xs font-medium outline-none transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:transition-colors focus-visible:text-v2-neutral-100",
-                      isActive
-                        ? "text-v2-neutral-100 after:bg-v2-neutral-100"
-                        : "text-v2-neutral-400 after:bg-transparent hover:text-v2-neutral-200",
-                    )}
-                  >
-                    {item.name}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
-        )}
       </header>
 
       {isProfileOpen && (

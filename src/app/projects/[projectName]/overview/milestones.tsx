@@ -1,13 +1,23 @@
+"use client";
+
 import React, { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Pencil, Trash, CheckCircle2, Circle, Calendar, Trophy } from "lucide-react";
-import { Milestone, MilestoneUpdate } from "../schemas/milestone";
-import MilestoneEditModal from "./milestoneEditModal";
-import { UpdateMilestone } from "../apis/updateMilestone";
-import { DeleteMilestone } from "../apis/deleteMilestone";
-import DeleteMilestoneModal from "./deleteModal";
-import { Task } from "../task/schemas/task";
+import {
+  Calendar,
+  CheckCircle2,
+  Clock,
+  Flag,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
+
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { DeleteMilestone } from "../apis/deleteMilestone";
+import { UpdateMilestone } from "../apis/updateMilestone";
+import { Milestone, MilestoneUpdate } from "../schemas/milestone";
+import { Task } from "../task/schemas/task";
+import DeleteMilestoneModal from "./deleteModal";
+import MilestoneEditModal from "./milestoneEditModal";
 
 type MilestonesProps = {
   milestones: Milestone[];
@@ -34,12 +44,12 @@ const getMonthsRemaining = (dateValue: string) => {
   return Math.max(0, months);
 };
 
-const Milestones = ({
+export default function Milestones({
   milestones,
   availableTasks,
   canManageMilestones,
   onRefresh,
-}: MilestonesProps) => {
+}: MilestonesProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [activeMilestone, setActiveMilestone] = useState<Milestone | null>(
     null
@@ -48,12 +58,9 @@ const Milestones = ({
   const [deleteMilestoneId, setDeleteMilestoneId] = useState<string | null>(
     null
   );
-  const listKey = milestones.map((milestone) => milestone.id).join("-");
 
   const openEditModal = (milestone: Milestone) => {
-    if (!canManageMilestones) {
-      return;
-    }
+    if (!canManageMilestones) return;
     setActiveMilestone(milestone);
     setIsEditOpen(true);
   };
@@ -103,159 +110,223 @@ const Milestones = ({
   };
 
   return (
-    <>
-      <AnimatePresence mode="sync">
-        <motion.div
-          key={listKey}
-          className="space-y-4"
-          initial="hidden"
-          animate="show"
-          exit="hidden"
-          variants={{
-            hidden: { opacity: 0 },
-            show: {
-              opacity: 1,
-              transition: { staggerChildren: 0.06, delayChildren: 0.05 },
-            },
-          }}
-        >
-          {milestones.length === 0 ? (
-            <p className="text-sm text-white/40 font-medium bg-[#0a0826]/30 border border-white/[0.04] p-4 rounded-xl text-center w-full">
-              No milestones yet.
-            </p>
-          ) : (
-            milestones.map((milestone, index) => (
-              <motion.div
-                key={milestone.id ?? index}
-                className="bg-[#0a0826]/40 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden transition-all duration-300 hover:border-[#5271ff]/30 space-y-4"
-                variants={{
-                  hidden: { opacity: 0, y: 12 },
-                  show: {
-                    opacity: 1,
-                    y: 0,
-                    transition: { duration: 0.25, ease: "easeOut" },
-                  },
-                }}
-              >
-                {/* Left Glowing Accent */}
-                <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[#5271ff] to-cyan-500" />
+    <div className="space-y-4">
+      <Card className="overflow-hidden border border-v2-neutral-300 bg-v2-neutral-100 shadow-sm">
+        <CardHeader className="pb-3 border-b border-v2-neutral-200/80">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-7 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-600">
+                <Flag className="size-3.5" />
+              </span>
+              <div>
+                <h3 className="text-sm font-semibold text-v2-neutral-600">
+                  Roadmap & Milestones
+                </h3>
+              </div>
+            </div>
+            <span className="rounded-full bg-v2-neutral-200 px-2.5 py-0.5 text-xs font-semibold text-v2-neutral-600">
+              {milestones.length}{" "}
+              {milestones.length === 1 ? "Target" : "Targets"}
+            </span>
+          </div>
+        </CardHeader>
 
-                <div className="flex flex-wrap items-center justify-between gap-3 relative z-10">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-lg bg-[#5271ff]/10 border border-[#5271ff]/20 flex items-center justify-center text-[#5271ff] shadow-[0_0_10px_rgba(82,113,255,0.15)]">
-                      <Trophy className="w-4 h-4" />
-                    </div>
-                    <div className="flex items-center gap-2 text-white font-bold text-sm sm:text-base tracking-tight">
-                      {milestone.name}
-                      {canManageMilestones ? (
-                        <div className="flex items-center gap-1.5 ml-2">
+        <CardContent className="pt-4 space-y-4">
+          {milestones.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center rounded-xl border border-dashed border-v2-neutral-300 bg-v2-neutral-200/30">
+              <span className="grid size-11 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-500 mb-3">
+                <Flag className="size-5" />
+              </span>
+              <h4 className="text-sm font-semibold text-v2-neutral-600">
+                No roadmap milestones yet
+              </h4>
+              <p className="text-xs text-v2-neutral-400 max-w-sm mt-1">
+                Establish milestones to group deliverables, track release targets, and measure execution progress.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {milestones.map((milestone) => {
+                const totalTasks = milestone.tasks?.length || 0;
+                const completedTasks =
+                  milestone.tasks?.filter((t) => t.status === "completed")
+                    .length || 0;
+                const progress =
+                  totalTasks > 0
+                    ? Math.round((completedTasks / totalTasks) * 100)
+                    : 0;
+                const monthsRemaining = getMonthsRemaining(
+                  milestone.end_date
+                );
+
+                return (
+                  <div
+                    key={milestone.id}
+                    className="group relative flex flex-col justify-between rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 p-4.5 shadow-sm transition-all hover:border-v2-neutral-400 space-y-4"
+                  >
+                    {/* Header */}
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-600 mt-0.5">
+                          <Flag className="size-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2.5">
+                            <h4 className="text-base font-semibold text-v2-neutral-600 line-clamp-1">
+                              {milestone.name}
+                            </h4>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-v2-neutral-400">
+                            <span className="inline-flex items-center gap-1.5 rounded-md bg-v2-neutral-200 px-2.5 py-0.5 text-[11px] font-medium text-v2-neutral-600">
+                              <Calendar className="size-3 text-v2-neutral-500" />
+                              {milestone.end_date
+                                ? new Date(
+                                    milestone.end_date
+                                  ).toLocaleDateString("en-US", {
+                                    year: "numeric",
+                                    month: "short",
+                                    day: "numeric",
+                                  })
+                                : "No target date"}
+                            </span>
+
+                            {monthsRemaining !== null && (
+                              <span className="text-[11px] text-v2-neutral-400">
+                                • {monthsRemaining} month
+                                {monthsRemaining === 1 ? "" : "s"} remaining
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      {canManageMilestones && (
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             type="button"
                             aria-label="Edit milestone"
                             onClick={() => openEditModal(milestone)}
-                            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-[#5271ff]/25 hover:border-[#5271ff]/40 transition-all duration-200"
+                            className="inline-flex size-7 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 transition-colors"
                           >
-                            <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+                            <Pencil className="size-3.5" />
                           </button>
                           <button
                             type="button"
                             aria-label="Delete milestone"
-                            onClick={() => setDeleteMilestoneId(milestone.id)}
-                            className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-full border border-white/10 bg-white/5 text-white/60 hover:text-white hover:bg-rose-500/25 hover:border-rose-500/40 transition-all duration-200"
+                            onClick={() =>
+                              setDeleteMilestoneId(milestone.id)
+                            }
+                            className="inline-flex size-7 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
                           >
-                            <Trash className="h-3.5 w-3.5" aria-hidden="true" />
+                            <Trash2 className="size-3.5" />
                           </button>
                         </div>
-                      ) : null}
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.06] rounded-full px-3 py-1 text-xs text-white/50 font-medium">
-                    <Calendar className="w-3.5 h-3.5 text-cyan-400" />
-                    {(() => {
-                      const monthsRemaining = getMonthsRemaining(milestone.end_date);
-                      if (monthsRemaining === null) {
-                        return "No due date";
-                      }
-                      return `${monthsRemaining} month${monthsRemaining === 1 ? "" : "s"} remaining`;
-                    })()}
-                  </div>
-                </div>
 
-                <div className="space-y-2.5 relative z-10">
-                  {milestone.tasks.map((task, taskIndex) => {
-                    const isCompleted = task.status === "completed";
-                    return (
-                      <div
-                        key={taskIndex}
-                        className={`rounded-xl border p-3.5 transition-all duration-300 ${
-                          isCompleted
-                            ? "border-emerald-500/20 bg-emerald-500/5 hover:border-emerald-500/35"
-                            : "border-white/[0.06] bg-[#030114]/40 hover:border-[#5271ff]/20"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="space-y-1">
-                            <p className={`text-sm font-semibold tracking-tight ${isCompleted ? "text-emerald-400" : "text-white/90"}`}>
-                              {task.title}
-                            </p>
-                            {task.description && (
-                              <p className="text-xs text-white/40 font-medium leading-relaxed">
-                                {task.description}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {isCompleted ? (
-                              <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] px-2 py-0.5 rounded-full font-bold shadow-[0_0_8px_rgba(16,185,129,0.1)]">
-                                <CheckCircle2 className="w-3 h-3" /> Completed
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 bg-[#5271ff]/10 text-[#5271ff] border border-[#5271ff]/20 text-[10px] px-2 py-0.5 rounded-full font-bold shadow-[0_0_8px_rgba(82,113,255,0.15)]">
-                                <Circle className="w-3 h-3" /> Active
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {task.due_date && (
-                          <div className="mt-2.5 pt-2.5 border-t border-white/[0.04] flex items-center justify-between text-[10px] text-white/30 font-semibold">
-                            <span>DUE DATE</span>
-                            <span className={isCompleted ? "text-emerald-500/80" : "text-[#5271ff]"}>
-                              {new Date(task.due_date).toLocaleDateString("en-US", {
-                                year: "numeric",
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
-                          </div>
-                        )}
+                    {/* Progress */}
+                    <div>
+                      <div className="flex items-center justify-between text-xs font-medium text-v2-neutral-500 mb-1.5">
+                        <span className="text-[11px] text-v2-neutral-400">
+                          {completedTasks} of {totalTasks} linked tasks completed
+                        </span>
+                        <span className="font-semibold text-v2-neutral-600">
+                          {progress}%
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            ))
-          )}
-        </motion.div>
-      </AnimatePresence>
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-v2-neutral-200">
+                        <div
+                          className="h-full rounded-full bg-v2-neutral-600 transition-all duration-500"
+                          style={{ width: `${progress}%` }}
+                        />
+                      </div>
+                    </div>
 
-      {isEditOpen && activeMilestone ? (
+                    {/* Associated Tasks List */}
+                    {milestone.tasks && milestone.tasks.length > 0 && (
+                      <div className="space-y-2 pt-2 border-t border-v2-neutral-200">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-v2-neutral-400">
+                          Linked Deliverables
+                        </p>
+                        <div className="space-y-2">
+                          {milestone.tasks.map((task, taskIndex) => {
+                            const isCompleted =
+                              task.status?.toLowerCase() === "completed";
+                            return (
+                              <div
+                                key={task.id || taskIndex}
+                                className="flex items-center justify-between rounded-lg border border-v2-neutral-200 bg-v2-neutral-200/40 px-3 py-2.5 text-xs transition-colors hover:border-v2-neutral-300"
+                              >
+                                <div className="min-w-0 flex-1 pr-3">
+                                  <p className="font-medium text-v2-neutral-600 truncate">
+                                    {task.title}
+                                  </p>
+                                  {task.description && (
+                                    <p className="text-[11px] text-v2-neutral-400 line-clamp-1 mt-0.5">
+                                      {task.description}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-3 shrink-0">
+                                  {task.due_date && (
+                                    <span className="text-[10px] text-v2-neutral-400 hidden sm:inline-block">
+                                      Due{" "}
+                                      {new Date(
+                                        task.due_date
+                                      ).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                      })}
+                                    </span>
+                                  )}
+
+                                  {isCompleted ? (
+                                    <span className="inline-flex items-center gap-1.5 rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-semibold text-emerald-700">
+                                      <CheckCircle2 className="size-3" />
+                                      Done
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-[10px] font-semibold text-sky-700">
+                                      <Clock className="size-3" />
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {isEditOpen && activeMilestone && (
         <MilestoneEditModal
           onCancel={handleClose}
           onSubmit={handleSubmit}
           milestoneId={activeMilestone.id}
           initialName={activeMilestone.name}
           initialEndDate={activeMilestone.end_date}
-          initialTaskIds={activeMilestone.tasks.map((task) => task.id)}
+          initialTaskIds={activeMilestone.tasks?.map((task) => task.id) || []}
           availableTasks={availableTasks}
           isSubmitting={isSubmittingEdit}
         />
-      ) : null}
+      )}
 
-      {canManageMilestones ? (
+      {canManageMilestones && (
         <DeleteMilestoneModal
           open={Boolean(deleteMilestoneId)}
           milestoneId={deleteMilestoneId}
+          milestone={milestones.find((m) => m.id === deleteMilestoneId) || null}
           onOpenChange={(open) => {
             if (!open) {
               setDeleteMilestoneId(null);
@@ -263,9 +334,7 @@ const Milestones = ({
           }}
           onConfirm={handleDeleteConfirm}
         />
-      ) : null}
-    </>
+      )}
+    </div>
   );
-};
-
-export default Milestones;
+}

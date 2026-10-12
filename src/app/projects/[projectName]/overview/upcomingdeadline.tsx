@@ -14,7 +14,7 @@ const UpcomingDeadlines = ({ deadlines }: { deadlines: Task[] }) => {
   };
 
   const sortedDeadlines = [...deadlines]
-    .filter((a) => a.due_date) // filter out empty due dates
+    .filter((a): a is Task & { due_date: string } => Boolean(a.due_date)) // filter out empty due dates
     .sort((a, b) => {
       const aTime = new Date(a.due_date).getTime();
       const bTime = new Date(b.due_date).getTime();

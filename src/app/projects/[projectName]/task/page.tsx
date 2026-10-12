@@ -1,42 +1,60 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useState, useRef, useMemo } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { gsap } from "gsap";
-import Filters, { TaskViewMode } from "./filters";
-import TaskGrid from "./taskgrid";
-import TaskKanban from "./taskkanban";
-import TaskList from "./taskList";
-import CalendarWidget from "./calendar";
-import NewTaskModal, { type NewTaskPayload } from "./createModal";
-import { getProjectTeams } from "./apis/getProjectTeamApi";
-import { Team } from "@/app/projects/schemas/team";
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  Clock3,
+  FolderKanban,
+  Plus,
+} from "lucide-react";
 import { toast } from "sonner";
-import { createTaskApi } from "./apis/createTaskApi";
+import { AnimatePresence } from "framer-motion";
+
+import { Button } from "@/components/ui/button";
+import LoaderCustom from "@/components/ui/loader-custom";
+import { CookieManager } from "@/lib/cookieManager";
+import { Team } from "@/app/projects/schemas/team";
+import { Milestone } from "../schemas/milestone";
+import { Task } from "./schemas/task";
+import { GetProjectDetails } from "../apis/getProjectDetails";
+import { getMilestone } from "../apis/getMilestones";
+import { getProjectTeams } from "./apis/getProjectTeamApi";
 import { fetchTaskApi } from "./apis/fetchTasksApi";
+import { createTaskApi } from "./apis/createTaskApi";
 import { updateTaskApi } from "./apis/updateTaskApi";
 import { deleteTaskApi } from "./apis/deleteTaskApi";
-import { Task } from "./schemas/task";
-import LoaderCustom from "@/components/ui/loader-custom";
+import Filters, { TaskViewMode } from "./filters";
+import TaskKanban from "./taskkanban";
+import TaskList from "./taskList";
+import TaskGrid from "./taskgrid";
+import CalendarWidget from "./calendar";
+import NewTaskModal, { type NewTaskPayload } from "./createModal";
 import { TaskViewEditPayload } from "./viewAndEdit";
-import { AnimatePresence } from "framer-motion";
-import { getMilestone } from "../apis/getMilestones";
-import { Milestone } from "../schemas/milestone";
-import { CookieManager } from "@/lib/cookieManager";
-import { TASK_STATUS_OPTIONS } from "./task-utils";
-import { GetProjectDetails } from "../apis/getProjectDetails";
+import {
+  isOverdue,
+  normalizeTaskStatus,
+  TASK_STATUS_OPTIONS,
+} from "./task-utils";
 
 export default function TaskPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [dueFilter, setDueFilter] = useState("all");
-  const [viewMode, setViewMode] = useState<TaskViewMode>("grid");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [assignmentFilter, setAssignmentFilter] = useState("all");
+  const [viewMode, setViewMode] = useState<TaskViewMode>("kanban");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createInitialStatus, setCreateInitialStatus] = useState("todo");
   const [teams, setTeams] = useState<Team[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [projectId, setProjectId] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [role, setRole] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -56,7 +74,13 @@ export default function TaskPage() {
   };
 
   useEffect(() => {
-    setRole(String(CookieManager("get", "primary_role") || CookieManager("get", "role") || ""));
+    setRole(
+      String(
+        CookieManager("get", "primary_role") ||
+          CookieManager("get", "role") ||
+          ""
+      )
+    );
 
     const initData = async () => {
       setIsLoading(true);
@@ -86,26 +110,32 @@ export default function TaskPage() {
     }
   }, [projectName]);
 
-  // GSAP Entrance Animation
-  useEffect(() => {
-    if (!isLoading && containerRef.current) {
-      const animElements = containerRef.current.querySelectorAll(".task-animate-item");
-      if (animElements.length > 0) {
-        gsap.killTweensOf(animElements);
-        gsap.fromTo(
-          animElements,
-          { opacity: 0, y: 16 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: 0.45,
-            stagger: 0.04,
-            ease: "power2.out",
-          }
-        );
-      }
-    }
-  }, [isLoading]);
+  // GSAP Entrance Animations
+  useLayoutEffect(() => {
+    if (isLoading || !containerRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const ctx = gsap.context(() => {
+      gsap.fromTo(
+        "[data-task-section]",
+        { autoAlpha: 0, y: 12 },
+        {
+          autoAlpha: 1,
+          y: 0,
+          duration: 0.35,
+          stagger: 0.05,
+          ease: "power2.out",
+        }
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, [isLoading, viewMode]);
+
+  const handleOpenCreateWithStatus = (status?: string) => {
+    setCreateInitialStatus(status || "todo");
+    setIsCreateOpen(true);
+  };
 
   const handleCreateTask = async (payload: NewTaskPayload) => {
     if (!canEditTasks) {
@@ -113,7 +143,17 @@ export default function TaskPage() {
       return;
     }
     try {
-      await createTaskApi(payload);
+      await createTaskApi({
+        projectId: payload.projectId || projectId,
+        title: payload.title,
+        description: payload.description,
+        status: payload.status,
+        priority: payload.priority,
+        dueDate: payload.dueDate || payload.due_date,
+        milestoneId: payload.milestoneId,
+        teamId: payload.teamId,
+        assigneeId: payload.assigneeId,
+      });
       if (projectId) {
         await getTasks(projectId);
       }
@@ -136,7 +176,7 @@ export default function TaskPage() {
 
     const previousTasks = [...tasks];
 
-    // Optimistically update task in parent state
+    // Optimistically update task in state
     setTasks((prev) =>
       prev.map((t) =>
         t.id === payload.id
@@ -146,14 +186,23 @@ export default function TaskPage() {
               description: payload.description ?? t.description,
               status: payload.status ?? t.status,
               priority: payload.priority ?? t.priority,
-              due_date: payload.due_date ?? t.due_date,
+              due_date: payload.due_date ?? payload.dueDate ?? t.due_date,
             }
           : t
       )
     );
 
     try {
-      await updateTaskApi(payload);
+      await updateTaskApi({
+        id: payload.id,
+        title: payload.title,
+        description: payload.description,
+        status: payload.status,
+        priority: payload.priority,
+        dueDate: payload.dueDate || payload.due_date,
+        teamId: payload.teamId,
+        assigneeId: payload.assigneeId,
+      });
       if (projectId) {
         await getTasks(projectId);
       }
@@ -180,6 +229,27 @@ export default function TaskPage() {
     }
   };
 
+  // KPI calculations
+  const totalTasks = tasks.length;
+  const completedTasks = useMemo(
+    () =>
+      tasks.filter((t) => normalizeTaskStatus(t.status) === "completed").length,
+    [tasks]
+  );
+  const inProgressTasks = useMemo(
+    () =>
+      tasks.filter((t) => normalizeTaskStatus(t.status) === "in_progress")
+        .length,
+    [tasks]
+  );
+  const overdueTasks = useMemo(
+    () => tasks.filter((t) => isOverdue(t.due_date, t.status)).length,
+    [tasks]
+  );
+
+  const completionPercentage =
+    totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
   return (
     <>
       {isLoading ? (
@@ -187,90 +257,231 @@ export default function TaskPage() {
       ) : (
         <div
           ref={containerRef}
-          className="relative flex h-full min-h-0 flex-col overflow-hidden text-white bg-[#030114]"
+          className="min-h-full text-v2-neutral-100 flex flex-col"
         >
-          {/* Ambient radial glows */}
-          <div className="absolute left-0 top-0 h-[500px] w-[500px] bg-[radial-gradient(circle_at_top_left,rgba(82,113,255,0.06),transparent_55%)] pointer-events-none" />
-          <div className="absolute right-0 bottom-0 h-[400px] w-[400px] bg-[radial-gradient(circle_at_bottom_right,rgba(34,211,238,0.04),transparent_50%)] pointer-events-none" />
+          <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-5 py-2 sm:py-3 min-h-0">
+            {/* Header & Breadcrumb */}
+            <header
+              data-task-section
+              className="flex flex-col gap-4 border-b border-v2-neutral-500 pb-5"
+            >
+              {/* Breadcrumbs */}
+              <div className="flex items-center gap-2 text-xs text-v2-neutral-400">
+                <Link
+                  href="/projects"
+                  className="inline-flex items-center gap-1 text-v2-neutral-300 hover:text-v2-neutral-100 transition-colors font-medium"
+                >
+                  <ChevronLeft className="size-4" />
+                  Projects
+                </Link>
+                <span>/</span>
+                <Link
+                  href={`/projects/${encodeURIComponent(projectName)}/overview`}
+                  className="truncate text-v2-neutral-300 hover:text-v2-neutral-100 transition-colors font-medium"
+                >
+                  {projectName}
+                </Link>
+                <span>/</span>
+                <span className="text-v2-neutral-100 font-semibold">
+                  Task Board
+                </span>
+              </div>
 
-          <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col p-4 sm:p-6">
-            <div className="flex min-h-0 min-w-0 flex-1">
-              <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-                <Filters
+              {/* Title & Quick Actions */}
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-bold tracking-tight text-v2-neutral-100 sm:text-3xl">
+                      Task Board
+                    </h1>
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-v2-neutral-500 bg-v2-neutral-700/60 px-2.5 py-1 text-xs font-semibold text-v2-neutral-200">
+                      <FolderKanban className="size-3.5 text-primary" />
+                      <span>{completionPercentage}% Complete</span>
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-v2-neutral-400">
+                    Track sprint deliverables, squad allocations, and roadmap execution for {projectName}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <Link
+                    href={`/projects/${encodeURIComponent(projectName)}/overview`}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/50 px-3 py-2 text-xs font-semibold text-v2-neutral-200 hover:text-v2-neutral-100 hover:bg-v2-neutral-600 transition-colors"
+                  >
+                    View Overview
+                  </Link>
+
+                  {canEditTasks && (
+                    <Button
+                      onClick={() => handleOpenCreateWithStatus("todo")}
+                      className="gap-2 font-semibold shadow-md cursor-pointer"
+                    >
+                      <Plus className="size-4" />
+                      Create Task
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* ClickUp-style Quick Metric Cards */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 pt-1">
+                <div className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-600/70 p-3 shadow-xs">
+                  <span className="text-[11px] font-medium text-v2-neutral-400">
+                    Total Tasks
+                  </span>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="text-xl font-bold text-v2-neutral-100">
+                      {totalTasks}
+                    </span>
+                    <FolderKanban className="size-4 text-v2-neutral-400" />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-600/70 p-3 shadow-xs">
+                  <span className="text-[11px] font-medium text-v2-neutral-400">
+                    In Progress
+                  </span>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="text-xl font-bold text-sky-400">
+                      {inProgressTasks}
+                    </span>
+                    <Clock3 className="size-4 text-sky-400/80" />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-600/70 p-3 shadow-xs">
+                  <span className="text-[11px] font-medium text-v2-neutral-400">
+                    Completed
+                  </span>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="text-xl font-bold text-emerald-400">
+                      {completedTasks}
+                    </span>
+                    <CheckCircle2 className="size-4 text-emerald-400/80" />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-600/70 p-3 shadow-xs">
+                  <span className="text-[11px] font-medium text-v2-neutral-400">
+                    Overdue
+                  </span>
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span
+                      className={`text-xl font-bold ${
+                        overdueTasks > 0 ? "text-rose-400" : "text-v2-neutral-300"
+                      }`}
+                    >
+                      {overdueTasks}
+                    </span>
+                    <AlertCircle
+                      className={`size-4 ${
+                        overdueTasks > 0 ? "text-rose-400" : "text-v2-neutral-400"
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+            </header>
+
+            {/* Filters Toolbar */}
+            <Filters
+              searchQuery={searchQuery}
+              statusFilter={statusFilter}
+              dueFilter={dueFilter}
+              priorityFilter={priorityFilter}
+              assignmentFilter={assignmentFilter}
+              teams={teams}
+              onSearchChange={setSearchQuery}
+              onStatusChange={setStatusFilter}
+              onDueChange={setDueFilter}
+              onPriorityChange={setPriorityFilter}
+              onAssignmentChange={setAssignmentFilter}
+              onAddTask={() => handleOpenCreateWithStatus("todo")}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
+              canManageTasks={canEditTasks}
+              statusOptions={TASK_STATUS_OPTIONS}
+              totalTasksCount={totalTasks}
+            />
+
+            {/* Main View Area */}
+            <main
+              data-task-section
+              className={`flex-1 min-h-0 ${
+                viewMode === "kanban"
+                  ? "overflow-hidden"
+                  : "overflow-y-auto custom-scrollbar"
+              }`}
+            >
+              {viewMode === "kanban" ? (
+                <TaskKanban
                   searchQuery={searchQuery}
                   statusFilter={statusFilter}
                   dueFilter={dueFilter}
-                  onSearchChange={setSearchQuery}
-                  onStatusChange={setStatusFilter}
-                  onDueChange={setDueFilter}
-                  onAddTask={() => setIsCreateOpen(true)}
+                  priorityFilter={priorityFilter}
+                  assignmentFilter={assignmentFilter}
                   teams={teams}
-                  viewMode={viewMode}
-                  onViewModeChange={setViewMode}
-                  canManageTasks={canEditTasks}
+                  tasks={tasks}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onAddTask={handleOpenCreateWithStatus}
+                  canEditTasks={canEditTasks}
+                  canDeleteTasks={canDeleteTask}
                   statusOptions={TASK_STATUS_OPTIONS}
                 />
-                <div
-                  className={`min-h-0 flex-1 ${
-                    viewMode === "kanban"
-                      ? "overflow-hidden"
-                      : "overflow-y-auto overflow-x-hidden custom-scrollbar"
-                  }`}
-                >
-                  {viewMode === "kanban" ? (
-                    <TaskKanban
-                      searchQuery={searchQuery}
-                      statusFilter={statusFilter}
-                      dueFilter={dueFilter}
-                      tasks={tasks}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      canEditTasks={canEditTasks}
-                      canDeleteTasks={canDeleteTask}
-                      statusOptions={TASK_STATUS_OPTIONS}
-                    />
-                  ) : viewMode === "list" ? (
-                    <TaskList
-                      searchQuery={searchQuery}
-                      statusFilter={statusFilter}
-                      dueFilter={dueFilter}
-                      tasks={tasks}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      canEditTasks={canEditTasks}
-                      canDeleteTasks={canDeleteTask}
-                      statusOptions={TASK_STATUS_OPTIONS}
-                    />
-                  ) : viewMode === "calendar" ? (
-                    <CalendarWidget
-                      searchQuery={searchQuery}
-                      statusFilter={statusFilter}
-                      dueFilter={dueFilter}
-                      tasks={tasks}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      canEditTasks={canEditTasks}
-                      canDeleteTasks={canDeleteTask}
-                      onAddTask={() => setIsCreateOpen(true)}
-                      statusOptions={TASK_STATUS_OPTIONS}
-                    />
-                  ) : (
-                    <TaskGrid
-                      searchQuery={searchQuery}
-                      statusFilter={statusFilter}
-                      dueFilter={dueFilter}
-                      tasks={tasks}
-                      onUpdateTask={handleUpdateTask}
-                      onDeleteTask={handleDeleteTask}
-                      canEditTasks={canEditTasks}
-                      canDeleteTasks={canDeleteTask}
-                      statusOptions={TASK_STATUS_OPTIONS}
-                    />
-                  )}
-                </div>
-              </main>
-            </div>
+              ) : viewMode === "list" ? (
+                <TaskList
+                  searchQuery={searchQuery}
+                  statusFilter={statusFilter}
+                  dueFilter={dueFilter}
+                  priorityFilter={priorityFilter}
+                  assignmentFilter={assignmentFilter}
+                  teams={teams}
+                  tasks={tasks}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onAddTask={handleOpenCreateWithStatus}
+                  canEditTasks={canEditTasks}
+                  canDeleteTasks={canDeleteTask}
+                  statusOptions={TASK_STATUS_OPTIONS}
+                />
+              ) : viewMode === "calendar" ? (
+                <CalendarWidget
+                  searchQuery={searchQuery}
+                  statusFilter={statusFilter}
+                  dueFilter={dueFilter}
+                  priorityFilter={priorityFilter}
+                  assignmentFilter={assignmentFilter}
+                  teams={teams}
+                  tasks={tasks}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  canEditTasks={canEditTasks}
+                  canDeleteTasks={canDeleteTask}
+                  statusOptions={TASK_STATUS_OPTIONS}
+                />
+              ) : (
+                <TaskGrid
+                  searchQuery={searchQuery}
+                  statusFilter={statusFilter}
+                  dueFilter={dueFilter}
+                  priorityFilter={priorityFilter}
+                  assignmentFilter={assignmentFilter}
+                  teams={teams}
+                  tasks={tasks}
+                  onUpdateTask={handleUpdateTask}
+                  onDeleteTask={handleDeleteTask}
+                  onAddTask={() => handleOpenCreateWithStatus("todo")}
+                  canEditTasks={canEditTasks}
+                  canDeleteTasks={canDeleteTask}
+                  statusOptions={TASK_STATUS_OPTIONS}
+                />
+              )}
+            </main>
           </div>
+
+          {/* Create Task Modal */}
           <AnimatePresence>
             {isCreateOpen && canEditTasks && (
               <NewTaskModal
@@ -279,6 +490,8 @@ export default function TaskPage() {
                 assignees={teams}
                 milestones={milestones}
                 projectName={projectName}
+                projectId={projectId}
+                initialStatus={createInitialStatus}
                 statusOptions={TASK_STATUS_OPTIONS}
               />
             )}

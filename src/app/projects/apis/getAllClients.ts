@@ -15,10 +15,13 @@ export async function getClientsApi(): Promise<GetAllClientsResponseDto[]> {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch clients");
+      if (response.status === 404 || response.status === 204) {
+        return [];
+      }
+      return [];
     }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
     const clientsList = Array.isArray(data)
       ? data
       : Array.isArray(data?.data)

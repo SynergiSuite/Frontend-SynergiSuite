@@ -6,4 +6,5 @@ export type Team = {
   description?: string;
   leader?: User;
   members?: User[];
+  employees?: User[];
 };

@@ -1,0 +1,11 @@
+import { proxyBackendRequest } from "../../_backend-proxy";
+
+export async function GET(request: Request) {
+  const query = new URL(request.url).search;
+
+  return proxyBackendRequest(request, {
+    backendPath: `/client-feedback/my-feedback${query}`,
+    forwardAuthorization: true,
+    method: "GET",
+  });
+}

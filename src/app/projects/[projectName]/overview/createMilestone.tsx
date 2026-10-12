@@ -1,7 +1,23 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { createPortal } from "react-dom";
-import { motion } from "framer-motion";
+
+import React, { useState } from "react";
+import { Flag, LoaderCircle, Plus, Trash2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -9,8 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import DatePicker from "@/components/ui/datePicker";
 import { Project } from "../schemas/project";
-import { Calendar, Trash2, Plus, Landmark, Briefcase } from "lucide-react";
 
 export type NewMilestonePayload = {
   name: string;
@@ -22,10 +38,13 @@ export type NewMilestonePayload = {
 
 type CreateMilestoneModalProps = {
   onCancel: () => void;
-  onSubmit: (data: NewMilestonePayload) => void;
+  onSubmit: (data: NewMilestonePayload) => Promise<void> | void;
   projectName?: string;
   projectDetail?: Project;
 };
+
+const inputClassName =
+  "h-11 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3.5 text-xs text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-400 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20 disabled:cursor-not-allowed disabled:opacity-60";
 
 export default function CreateMilestoneModal({
   onCancel,
@@ -37,16 +56,15 @@ export default function CreateMilestoneModal({
   const [endDate, setEndDate] = useState("");
   const [selectedTaskId, setSelectedTaskId] = useState("");
   const [taskIds, setTaskIds] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const projectId = projectDetail?.id;
 
   const availableTasks = projectDetail?.tasks ?? [];
-  const taskTitle = (task: any) =>
-    (task?.title as string) || (task?.name as string) || "Untitled task";
+  const taskTitle = (task: { title?: string; name?: string }) =>
+    task?.title || task?.name || "Untitled task";
 
   const addItem = () => {
-    if (!selectedTaskId) {
-      return;
-    }
+    if (!selectedTaskId) return;
     setTaskIds((prev) =>
       prev.includes(selectedTaskId) ? prev : [...prev, selectedTaskId]
     );
@@ -60,203 +78,184 @@ export default function CreateMilestoneModal({
   const isFormValid =
     name.trim().length > 0 && endDate !== "" && Boolean(projectId);
 
-  const [mounted, setMounted] = useState(false);
+  const handleSubmit = async () => {
+    if (!isFormValid || isSubmitting) return;
+    try {
+      setIsSubmitting(true);
+      await onSubmit({
+        name: name.trim(),
+        endDate,
+        taskIds,
+        projectId,
+        projectName: projectName || undefined,
+      });
+    } catch (err) {
+      console.error("Error creating milestone:", err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-      {/* Backdrop */}
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="absolute inset-0 bg-[#030114]/75 backdrop-blur-md cursor-pointer"
-        onClick={onCancel}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      />
-
-      {/* Modal Shell */}
-      <motion.div
-        className="relative z-10 my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-xl flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/95 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] p-6"
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+  return (
+    <Dialog open onOpenChange={(open) => !open && !isSubmitting && onCancel()}>
+      <DialogContent
+        showCloseButton
+        className="max-w-lg border border-v2-neutral-300 bg-v2-neutral-100 p-0 shadow-2xl rounded-2xl"
       >
-        {/* Neon Stripe Accent */}
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#5271ff] via-cyan-400 to-[#5271ff]" />
-
-        {/* Modal Header */}
-        <div className="mb-5 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#5271ff]/10 border border-[#5271ff]/20 flex items-center justify-center text-[#5271ff]">
-            <Landmark className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-white">
-              Create Milestone
-            </h2>
-            <p className="text-xs text-white/40 font-medium">Define high-level roadmap targets</p>
-          </div>
-        </div>
-
-        {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-5 scrollbar-thin">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
-              Milestone Name
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Beta Release v1"
-              className="w-full border border-white/[0.08] rounded-xl p-3 bg-white/[0.02] text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#5271ff] focus:border-[#5271ff] transition-all duration-200"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
-              Target End Date
-            </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={endDate}
-                onChange={(event) => setEndDate(event.target.value)}
-                className="w-full border border-white/[0.08] rounded-xl p-3 bg-white/[0.02] text-white focus:outline-none focus:ring-1 focus:ring-[#5271ff] focus:border-[#5271ff] transition-all duration-200 scheme-dark"
-              />
-            </div>
-            <p className="mt-1.5 text-[10px] text-white/30 font-semibold uppercase tracking-wider">Format: YYYY-MM-DD</p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
-              Link Associated Tasks
-            </label>
-            <div className="flex gap-2">
-              <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                <SelectTrigger className="flex-1 border border-white/[0.12] bg-[#030114]/60 text-white rounded-xl h-11 px-3.5 focus:ring-1 focus:ring-[#5271ff]/50 focus:border-[#5271ff] hover:bg-white/[0.04] transition-all cursor-pointer flex items-center justify-between">
-                  <SelectValue placeholder="Select a task to link" />
-                </SelectTrigger>
-                <SelectContent className="z-[10050] border border-white/15 bg-[#0c0a2d] text-white rounded-xl shadow-2xl backdrop-blur-2xl max-h-56">
-                  {availableTasks.length > 0 ? (
-                    availableTasks.map((task: any) => (
-                      <SelectItem
-                        key={String(task.id)}
-                        value={String(task.id)}
-                        className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white my-0.5 rounded-lg py-2 px-3 transition-colors text-white/90"
-                      >
-                        {taskTitle(task)}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-tasks" disabled className="text-white/40">
-                      No tasks available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <button
-                type="button"
-                onClick={addItem}
-                disabled={availableTasks.length === 0 || !selectedTaskId}
-                className="px-4 py-3 rounded-xl border border-[#5271ff]/30 text-white hover:bg-[#5271ff]/10 hover:border-[#5271ff]/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-1.5 font-semibold text-xs"
-              >
-                <Plus className="w-4 h-4" /> Add
-              </button>
-            </div>
-
-            {taskIds.length > 0 ? (
-              <div className="mt-3.5 space-y-2 max-h-44 overflow-y-auto pr-1">
-                {taskIds.map((taskId, index) => {
-                  const task = availableTasks.find((t: any) => t.id === taskId);
-                  return (
-                    <div
-                      key={`${taskId}-${index}`}
-                      className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-xs text-white/80"
-                    >
-                      <span className="font-medium">{task ? taskTitle(task) : "Unknown task"}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(index)}
-                        className="text-rose-400 hover:text-rose-300 font-semibold transition-colors duration-200 flex items-center gap-1 cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-2 text-[10px] text-white/30 font-semibold uppercase tracking-wider">
-                * Note: Linking tasks is optional.
-              </p>
-            )}
-          </div>
-
-          {projectName ? (
+        <DialogHeader className="border-b border-v2-neutral-200 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-600">
+              <Flag className="size-5" />
+            </span>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
-                Project Context
-              </label>
-              <div className="flex items-center gap-2 border border-white/[0.04] rounded-xl p-3 bg-white/[0.01] text-white/40 text-xs">
-                <Briefcase className="w-4 h-4 text-[#5271ff]" />
-                <span className="font-semibold">{projectName}</span>
-              </div>
+              <DialogTitle className="text-lg font-bold text-v2-neutral-600">
+                Create Milestone
+              </DialogTitle>
+              <DialogDescription className="text-xs text-v2-neutral-400 mt-0.5">
+                Establish a milestone target for {projectName || "this project"}.
+              </DialogDescription>
             </div>
-          ) : null}
+          </div>
+        </DialogHeader>
 
-          {!projectId ? (
-            <p className="text-xs font-medium text-rose-400">
-              A project is required to create this milestone.
-            </p>
-          ) : null}
+        <div className="p-6 space-y-4 max-h-[calc(85vh-160px)] overflow-y-auto v2-scrollbar">
+          <FieldGroup className="gap-4">
+            {/* Milestone Title */}
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Milestone Title <span className="text-destructive">*</span>
+              </FieldLabel>
+              <input
+                type="text"
+                disabled={isSubmitting}
+                placeholder="e.g., MVP Core Architecture Launch"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputClassName}
+              />
+            </Field>
+
+            {/* Target End Date */}
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Target Delivery Date <span className="text-destructive">*</span>
+              </FieldLabel>
+              <DatePicker
+                value={endDate}
+                disabled={isSubmitting}
+                onChange={setEndDate}
+                placeholder="Choose milestone target date"
+              />
+              <FieldDescription className="text-[11px] text-v2-neutral-400">
+                The target deadline when all milestone deliverables must be complete.
+              </FieldDescription>
+            </Field>
+
+            {/* Link Tasks */}
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Associated Tasks (Optional)
+              </FieldLabel>
+              <div className="flex gap-2">
+                <Select
+                  value={selectedTaskId}
+                  onValueChange={setSelectedTaskId}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger className="flex-1 h-11 border-v2-neutral-300 bg-v2-neutral-100 text-xs text-v2-neutral-600 rounded-xl">
+                    <SelectValue placeholder="Select a task to link" />
+                  </SelectTrigger>
+                  <SelectContent className="border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600">
+                    {availableTasks.length > 0 ? (
+                      availableTasks.map((task) => (
+                        <SelectItem
+                          key={String(task.id)}
+                          value={String(task.id)}
+                          className="text-xs"
+                        >
+                          {taskTitle(task)}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-tasks" disabled className="text-xs text-v2-neutral-400">
+                        No tasks in backlog
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addItem}
+                  disabled={availableTasks.length === 0 || !selectedTaskId || isSubmitting}
+                  className="h-11 px-3.5 border-v2-neutral-300 text-xs font-semibold text-v2-neutral-600 hover:bg-v2-neutral-200"
+                >
+                  <Plus className="size-3.5 mr-1" />
+                  Add
+                </Button>
+              </div>
+
+              {taskIds.length > 0 && (
+                <div className="mt-2.5 max-h-36 overflow-y-auto space-y-1.5 v2-scrollbar">
+                  {taskIds.map((taskId, idx) => {
+                    const task = availableTasks.find((t) => t.id === taskId);
+                    return (
+                      <div
+                        key={`${taskId}-${idx}`}
+                        className="flex items-center justify-between rounded-lg border border-v2-neutral-200 bg-v2-neutral-200/50 px-3 py-2 text-xs"
+                      >
+                        <span className="font-medium text-v2-neutral-600 truncate max-w-[280px]">
+                          {task ? taskTitle(task) : "Task"}
+                        </span>
+                        <button
+                          type="button"
+                          disabled={isSubmitting}
+                          onClick={() => removeItem(idx)}
+                          className="text-destructive hover:underline text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                        >
+                          <Trash2 className="size-3" />
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Field>
+          </FieldGroup>
         </div>
 
-        {/* Modal Footer */}
-        <div className="mt-6 pt-4 border-t border-white/[0.06] flex justify-end space-x-3">
-          <button
+        <DialogFooter className="border-t border-v2-neutral-200 bg-v2-neutral-200/30 px-6 py-4 flex items-center justify-end gap-3">
+          <Button
             type="button"
+            variant="outline"
+            disabled={isSubmitting}
             onClick={onCancel}
-            className="px-5 py-2.5 rounded-xl border border-white/[0.08] text-white/70 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-200 text-xs font-semibold"
+            className="border-v2-neutral-300 text-v2-neutral-600 hover:bg-v2-neutral-200"
           >
             Cancel
-          </button>
-
-          <button
+          </Button>
+          <Button
             type="button"
-            onClick={() => {
-              if (!isFormValid) {
-                return;
-              }
-
-              onSubmit({
-                name: name.trim(),
-                endDate,
-                taskIds,
-                projectId,
-                projectName: projectName || undefined,
-              });
-            }}
-            disabled={!isFormValid}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition duration-300 ${
-              isFormValid
-                ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] cursor-pointer"
-                : "bg-white/[0.04] border border-white/[0.04] text-white/30 cursor-not-allowed"
-            }`}
+            variant="default"
+            disabled={!isFormValid || isSubmitting}
+            onClick={handleSubmit}
+            className="gap-2 bg-v2-neutral-600 text-v2-neutral-100 hover:bg-v2-neutral-500 font-semibold shadow-sm min-w-[155px]"
           >
-            Create Milestone
-          </button>
-        </div>
-      </motion.div>
-    </div>,
-    document.body
+            {isSubmitting ? (
+              <>
+                <LoaderCircle className="size-4 animate-spin" />
+                Creating milestone...
+              </>
+            ) : (
+              <>
+                <Plus className="size-4" />
+                Create Milestone
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

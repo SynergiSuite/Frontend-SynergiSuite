@@ -42,16 +42,35 @@ export const getTeamsWithTasksApi = async (
   });
 
   if (!response.ok) {
+    if (response.status === 404 || response.status === 204) {
+      return {
+        data: [],
+        meta: {
+          totalItems: 0,
+          itemCount: 0,
+          itemsPerPage: limit || 5,
+          totalPages: 1,
+          currentPage: page || 1,
+        },
+      };
+    }
     const errorData = await response.json().catch(() => null);
     throw new Error(
       errorData?.message || `Failed to fetch teams with tasks: ${response.statusText}`
     );
   }
 
-  const resJson: GetTeamsWithTasksResponse = await response.json();
+  const resJson = await response.json().catch(() => null);
+  const rawList = Array.isArray(resJson?.data)
+    ? resJson.data
+    : Array.isArray(resJson)
+    ? resJson
+    : Array.isArray(resJson?.teams)
+    ? resJson.teams
+    : [];
 
   // Normalize data ensuring both members & teamMembers exist for component compatibility
-  const normalizedData = (resJson.data || []).map((team) => ({
+  const normalizedData = rawList.map((team: any) => ({
     ...team,
     members: team.members || team.teamMembers || [],
     teamMembers: team.teamMembers || team.members || [],
@@ -59,7 +78,7 @@ export const getTeamsWithTasksApi = async (
 
   return {
     data: normalizedData,
-    meta: resJson.meta || {
+    meta: resJson?.meta || {
       totalItems: normalizedData.length,
       itemCount: normalizedData.length,
       itemsPerPage: limit || 5,

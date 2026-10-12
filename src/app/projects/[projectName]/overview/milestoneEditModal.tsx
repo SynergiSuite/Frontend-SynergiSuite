@@ -1,6 +1,23 @@
 "use client";
+
 import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import { Edit3, LoaderCircle, Plus, Trash2 } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -8,9 +25,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import DatePicker from "@/components/ui/datePicker";
 import { Task } from "../task/schemas/task";
 import { MilestoneUpdate } from "../schemas/milestone";
-import { Edit3, Trash2, Plus, Calendar } from "lucide-react";
 
 type MilestoneEditModalProps = {
   onCancel: () => void;
@@ -23,6 +40,9 @@ type MilestoneEditModalProps = {
   isSubmitting?: boolean;
   title?: string;
 };
+
+const inputClassName =
+  "h-11 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3.5 text-xs text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-400 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20";
 
 export default function MilestoneEditModal({
   onCancel,
@@ -55,10 +75,7 @@ export default function MilestoneEditModal({
   const taskTitle = (task: Task) => task.title || "Untitled task";
 
   const addTask = () => {
-    if (!selectedTaskId) {
-      return;
-    }
-
+    if (!selectedTaskId) return;
     setTaskIds((prev) =>
       prev.includes(selectedTaskId) ? prev : [...prev, selectedTaskId]
     );
@@ -72,163 +89,150 @@ export default function MilestoneEditModal({
   const isFormValid = name.trim().length > 0 && endDate !== "";
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      {/* Backdrop */}
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="fixed inset-0 z-40 bg-[#030114]/80 backdrop-blur-sm cursor-default"
-        onClick={onCancel}
-        disabled={isSubmitting}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      />
-
-      {/* Modal Shell */}
-      <motion.div
-        className="relative bg-[#0a0826]/95 border border-white/[0.08] backdrop-blur-md rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl shadow-blue-500/10 z-50 p-6 flex flex-col max-h-[90vh]"
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+    <Dialog open onOpenChange={(open) => !open && !isSubmitting && onCancel()}>
+      <DialogContent
+        showCloseButton
+        className="max-w-lg border border-v2-neutral-300 bg-v2-neutral-100 p-0 shadow-2xl rounded-2xl"
       >
-        {/* Neon Stripe Accent */}
-        <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#5271ff] via-cyan-400 to-[#5271ff]" />
-
-        {/* Modal Header */}
-        <div className="mb-5 flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-[#5271ff]/10 border border-[#5271ff]/20 flex items-center justify-center text-[#5271ff]">
-            <Edit3 className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-white">{title}</h2>
-            <p className="text-xs text-white/40 font-medium">Update milestone configuration</p>
-          </div>
-        </div>
-
-        {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto pr-1 space-y-5 scrollbar-thin">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
-              Milestone Name
-            </label>
-            <input
-              type="text"
-              placeholder="Enter milestone name"
-              disabled={isSubmitting}
-              className="w-full border border-white/[0.08] rounded-xl p-3 bg-white/[0.02] text-white placeholder-white/20 focus:outline-none focus:ring-1 focus:ring-[#5271ff] focus:border-[#5271ff] transition-all duration-200 disabled:opacity-50"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
-              Target End Date
-            </label>
-            <input
-              type="date"
-              value={endDate}
-              disabled={isSubmitting}
-              onChange={(event) => setEndDate(event.target.value)}
-              className="w-full border border-white/[0.08] rounded-xl p-3 bg-white/[0.02] text-white focus:outline-none focus:ring-1 focus:ring-[#5271ff] focus:border-[#5271ff] transition-all duration-200 scheme-dark disabled:opacity-50"
-            />
-            <p className="mt-1.5 text-[10px] text-white/30 font-semibold uppercase tracking-wider">Format: YYYY-MM-DD</p>
-          </div>
-
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-white/60 mb-2">
-              Associated Tasks
-            </label>
-            <div className="flex gap-2">
-              <Select value={selectedTaskId} onValueChange={setSelectedTaskId}>
-                <SelectTrigger className="flex-1 border border-white/[0.08] bg-white/[0.02] text-white rounded-xl focus:ring-1 focus:ring-[#5271ff] hover:bg-white/[0.04] transition-colors cursor-pointer p-3 h-auto disabled:opacity-50">
-                  <SelectValue placeholder="Select a task to link" />
-                </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0c0a2d] text-white rounded-xl shadow-xl">
-                  {availableTasks.length > 0 ? (
-                    availableTasks.map((task) => (
-                      <SelectItem
-                        key={task.id}
-                        value={task.id}
-                        className="cursor-pointer focus:bg-white/10 focus:text-white"
-                      >
-                        {taskTitle(task)}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-tasks" disabled>
-                      No tasks available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <button
-                type="button"
-                onClick={addTask}
-                disabled={availableTasks.length === 0 || !selectedTaskId || isSubmitting}
-                className="px-4 py-3 rounded-xl border border-[#5271ff]/30 text-white hover:bg-[#5271ff]/10 hover:border-[#5271ff]/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 flex items-center gap-1.5 font-semibold text-xs shrink-0"
-              >
-                <Plus className="w-4 h-4" /> Add
-              </button>
+        <DialogHeader className="border-b border-v2-neutral-200 px-6 py-5">
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-v2-neutral-200 text-v2-neutral-600">
+              <Edit3 className="size-5" />
+            </span>
+            <div>
+              <DialogTitle className="text-lg font-bold text-v2-neutral-600">
+                {title}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-v2-neutral-400 mt-0.5">
+                Update milestone roadmap target and deliverable bindings.
+              </DialogDescription>
             </div>
-
-            {taskIds.length > 0 ? (
-              <div className="mt-3.5 space-y-2 max-h-40 overflow-y-auto pr-1">
-                {taskIds.map((taskId, index) => {
-                  const task = availableTasks.find((item) => item.id === taskId);
-                  return (
-                    <div
-                      key={`${taskId}-${index}`}
-                      className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2.5 text-xs text-white/80"
-                    >
-                      <span className="font-medium">{task ? taskTitle(task) : "Unknown task"}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeTask(index)}
-                        disabled={isSubmitting}
-                        className="text-rose-400 hover:text-rose-300 font-semibold transition-colors duration-200 flex items-center gap-1 cursor-pointer disabled:opacity-50"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Remove
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="mt-2 text-[10px] text-white/30 font-semibold uppercase tracking-wider">
-                * Note: Linking tasks is optional.
-              </p>
-            )}
           </div>
+        </DialogHeader>
+
+        <div className="p-6 space-y-4 max-h-[calc(85vh-160px)] overflow-y-auto v2-scrollbar">
+          <FieldGroup className="gap-4">
+            {/* Name */}
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Milestone Title <span className="text-destructive">*</span>
+              </FieldLabel>
+              <input
+                type="text"
+                placeholder="Enter milestone title"
+                disabled={isSubmitting}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputClassName}
+              />
+            </Field>
+
+            {/* End date */}
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Target End Date <span className="text-destructive">*</span>
+              </FieldLabel>
+              <DatePicker
+                value={endDate}
+                disabled={isSubmitting}
+                onChange={setEndDate}
+                placeholder="Choose milestone target date"
+              />
+              <FieldDescription className="text-[11px] text-v2-neutral-400">
+                Target delivery deadline date.
+              </FieldDescription>
+            </Field>
+
+            {/* Link Tasks */}
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Associated Tasks
+              </FieldLabel>
+              <div className="flex gap-2">
+                <Select
+                  value={selectedTaskId}
+                  onValueChange={setSelectedTaskId}
+                  disabled={isSubmitting}
+                >
+                  <SelectTrigger className="flex-1 h-11 border-v2-neutral-300 bg-v2-neutral-100 text-xs text-v2-neutral-600 rounded-xl">
+                    <SelectValue placeholder="Select a task to link" />
+                  </SelectTrigger>
+                  <SelectContent className="border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600">
+                    {availableTasks.length > 0 ? (
+                      availableTasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id} className="text-xs">
+                          {taskTitle(task)}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="no-tasks" disabled className="text-xs text-v2-neutral-400">
+                        No tasks available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addTask}
+                  disabled={
+                    availableTasks.length === 0 ||
+                    !selectedTaskId ||
+                    isSubmitting
+                  }
+                  className="h-11 px-3.5 border-v2-neutral-300 text-xs font-semibold text-v2-neutral-600 hover:bg-v2-neutral-200"
+                >
+                  <Plus className="size-3.5 mr-1" />
+                  Add
+                </Button>
+              </div>
+
+              {taskIds.length > 0 && (
+                <div className="mt-2.5 max-h-36 overflow-y-auto space-y-1.5 v2-scrollbar">
+                  {taskIds.map((taskId, index) => {
+                    const task = availableTasks.find((item) => item.id === taskId);
+                    return (
+                      <div
+                        key={`${taskId}-${index}`}
+                        className="flex items-center justify-between rounded-lg border border-v2-neutral-200 bg-v2-neutral-200/50 px-3 py-2 text-xs"
+                      >
+                        <span className="font-medium text-v2-neutral-600 truncate max-w-[280px]">
+                          {task ? taskTitle(task) : "Task"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeTask(index)}
+                          disabled={isSubmitting}
+                          className="text-destructive hover:underline text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                        >
+                          <Trash2 className="size-3" />
+                          Remove
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Field>
+          </FieldGroup>
         </div>
 
-        {/* Modal Footer */}
-        <div className="mt-6 pt-4 border-t border-white/[0.06] flex justify-end space-x-3">
-          <button
+        <DialogFooter className="border-t border-v2-neutral-200 bg-v2-neutral-200/30 px-6 py-4">
+          <Button
             type="button"
+            variant="outline"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-5 py-2.5 rounded-xl border border-white/[0.08] text-white/70 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] transition-all duration-200 text-xs font-semibold disabled:opacity-50"
+            className="border-v2-neutral-300 text-v2-neutral-600 hover:bg-v2-neutral-200"
           >
             Cancel
-          </button>
-
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="default"
+            disabled={!isFormValid || isSubmitting}
             onClick={() => {
-              if (!isFormValid || isSubmitting) {
-                return;
-              }
-
+              if (!isFormValid || isSubmitting) return;
               onSubmit({
                 id: milestoneId,
                 name: name.trim(),
@@ -236,17 +240,19 @@ export default function MilestoneEditModal({
                 taskIds,
               });
             }}
-            disabled={!isFormValid || isSubmitting}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold tracking-wide transition duration-300 ${
-              isFormValid && !isSubmitting
-                ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] cursor-pointer"
-                : "bg-white/[0.04] border border-white/[0.04] text-white/30 cursor-not-allowed"
-            }`}
+            className="gap-2 bg-v2-neutral-600 text-v2-neutral-100 hover:bg-v2-neutral-500 font-semibold shadow-sm min-w-[145px]"
           >
-            {isSubmitting ? "Saving..." : "Save Changes"}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
+            {isSubmitting ? (
+              <>
+                <LoaderCircle className="size-4 animate-spin" />
+                Saving changes...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

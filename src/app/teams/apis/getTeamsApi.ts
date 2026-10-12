@@ -15,9 +15,21 @@ export const getTeamsApi = async () => {
   });
 
   if (!response.ok) {
+    if (response.status === 404 || response.status === 204) {
+      return [];
+    }
     const errorData = await response.json().catch(() => null);
     throw new Error(errorData?.message || "Failed to fetch teams");
   }
 
-  return response.json();
+  const data = await response.json().catch(() => []);
+  const teamsList = Array.isArray(data?.data)
+    ? data.data
+    : Array.isArray(data)
+    ? data
+    : Array.isArray(data?.teams)
+    ? data.teams
+    : [];
+
+  return teamsList;
 };

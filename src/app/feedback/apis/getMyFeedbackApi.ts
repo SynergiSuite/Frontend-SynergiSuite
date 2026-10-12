@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface ClientFeedbackResponse {
   id: string | number;
   titleOfFeedback?: string;
@@ -53,14 +51,14 @@ export async function getMyFeedbackApi(
   page?: number
 ): Promise<GetFeedbackApiResponse> {
   const accessToken = await CookieManager("get", "access-token");
-  const url = `${requestBaseUrl}/client-feedback/my-feedback${
+  const url = `/api/feedback/my-feedback${
     page && page > 0 ? `?page=${page}` : ""
   }`;
   const response = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken ?? ""}`,
     },
   });
 
@@ -91,14 +89,12 @@ export async function getClientFeedbackApi(
   page?: number
 ): Promise<GetFeedbackApiResponse> {
   const accessToken = await CookieManager("get", "access-token");
-  const url = `${requestBaseUrl}/client-feedback${
-    page && page > 0 ? `?page=${page}` : ""
-  }`;
+  const url = `/api/feedback${page && page > 0 ? `?page=${page}` : ""}`;
   const response = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken ?? ""}`,
     },
   });
 

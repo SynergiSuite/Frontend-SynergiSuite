@@ -1,28 +1,52 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+export interface CreateTaskPayload {
+  projectId: string;
+  title: string;
+  description?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+  due_date?: string;
+  milestoneId?: string;
+  teamId?: string;
+  assigneeId?: number;
+}
 
-export async function createTaskApi(obj: any) {
+export async function createTaskApi(obj: CreateTaskPayload) {
   try {
-    const token = CookieManager("get", "access-token");
-    const projectId = obj?.projectId ?? CookieManager("get", "project-id");
+    const token = await CookieManager("get", "access-token");
+    const cookieProjectId = await CookieManager("get", "project-id");
+    const projectId = obj.projectId || (cookieProjectId ? String(cookieProjectId) : "");
 
     if (!projectId) {
       throw new Error("Missing project id.");
     }
 
-    const response = await fetch(`${requestBaseUrl}/projects/create-task`, {
+    const payload = {
+      projectId,
+      title: obj.title,
+      description: obj.description || undefined,
+      status: obj.status,
+      priority: obj.priority,
+      dueDate: obj.dueDate || obj.due_date || undefined,
+      milestoneId: obj.milestoneId || undefined,
+      teamId: obj.teamId || undefined,
+      assigneeId: obj.assigneeId ? Number(obj.assigneeId) : undefined,
+    };
+
+    const response = await fetch(`/api/tasks/create`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + token,
+        Authorization: "Bearer " + (token ?? ""),
       },
-      body: JSON.stringify({ ...obj, projectId }),
+      body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to create task");
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to create task");
     }
 
     const data = await response.json();

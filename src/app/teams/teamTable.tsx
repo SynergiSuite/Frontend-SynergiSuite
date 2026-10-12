@@ -202,7 +202,7 @@ export default function TeamTable({
 
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {membersList.slice(0, 3).map((member: any, mIdx: number) => (
+                        {membersList.slice(0, 2).map((member: any, mIdx: number) => (
                           <span
                             key={member?.id ?? member?.user_id ?? mIdx}
                             className="inline-flex items-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 px-2.5 py-1 text-xs font-medium text-v2-neutral-600 shadow-xs"
@@ -210,9 +210,9 @@ export default function TeamTable({
                             {resolveMemberName(member)}
                           </span>
                         ))}
-                        {membersList.length > 3 && (
+                        {membersList.length > 2 && (
                           <span className="inline-flex rounded-lg bg-v2-neutral-200 px-2 py-1 text-xs font-semibold text-v2-neutral-500">
-                            +{membersList.length - 3}
+                            +{membersList.length - 2}
                           </span>
                         )}
                         {membersList.length === 0 && (
@@ -355,7 +355,7 @@ export default function TeamTable({
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {membersList.slice(0, 3).map((member: any, mIdx: number) => (
+                  {membersList.slice(0, 2).map((member: any, mIdx: number) => (
                     <span
                       key={member?.id ?? member?.user_id ?? mIdx}
                       className="inline-flex rounded-lg border border-v2-neutral-300 bg-v2-neutral-200/50 px-2 py-0.5 text-xs font-medium text-v2-neutral-600"
@@ -363,9 +363,9 @@ export default function TeamTable({
                       {resolveMemberName(member)}
                     </span>
                   ))}
-                  {membersList.length > 3 && (
+                  {membersList.length > 2 && (
                     <span className="inline-flex rounded-lg bg-v2-neutral-200 px-2 py-0.5 text-xs font-semibold text-v2-neutral-500">
-                      +{membersList.length - 3}
+                      +{membersList.length - 2}
                     </span>
                   )}
                 </div>

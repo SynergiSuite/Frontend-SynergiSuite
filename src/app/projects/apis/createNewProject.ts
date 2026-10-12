@@ -3,27 +3,44 @@ import { CookieManager } from "@/lib/cookieManager";
 
 const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
-export async function CreateNewProject(obj: any) {
-    try {
-        const token = await CookieManager("get", "access-token");
-        const response = await fetch(`${requestBaseUrl}/projects/create-new-project`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify(obj)
-        })
+export type CreateProjectPayload = {
+  name: string;
+  description?: string;
+  client: string;
+  teams: string[];
+  status: number;
+  duration: string;
+};
 
-        if (!response.ok) {
-            throw new Error("Failed to create project");
-        }
+export async function CreateNewProject(payload: CreateProjectPayload) {
+  try {
+    const token = await CookieManager("get", "access-token");
+    const response = await fetch(`${requestBaseUrl}/projects/create-new-project`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
 
-        const data = await response.json();
-        return data;
-    } catch (error) {
-        console.error("Error creating project:", error);
-        throw error;
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => null);
+      let message = "";
+      if (Array.isArray(errorData?.message)) {
+        message = errorData.message.join(", ");
+      } else if (typeof errorData?.message === "string") {
+        message = errorData.message;
+      } else {
+        message = `Failed to create project (${response.status}: ${response.statusText})`;
+      }
+      throw new Error(message);
     }
-    
+
+    const data = await response.json().catch(() => null);
+    return data ?? true;
+  } catch (error) {
+    console.error("Error creating project:", error);
+    throw error;
+  }
 }

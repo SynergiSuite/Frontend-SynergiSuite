@@ -1,10 +1,20 @@
 "use client";
+
 import React, { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Loader2 } from "lucide-react";
-import { Projects } from "./schemas/project";
-import { deleteProjectApi } from "./apis/deleteProject";
+import { AlertTriangle, LoaderCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { deleteProjectApi } from "./apis/deleteProject";
+import type { Projects } from "./schemas/project";
 
 type DeleteProjectModalProps = {
   open: boolean;
@@ -26,91 +36,67 @@ export default function DeleteProjectModal({
     try {
       setIsDeleting(true);
       await deleteProjectApi(project.id);
-      toast.success("Project deleted successfully.");
+      toast.success(`Project "${project.name}" deleted successfully.`);
       onSuccess();
       onCancel();
     } catch (error) {
       console.error("Failed to delete project:", error);
-      const message = error instanceof Error ? error.message : "Failed to delete project";
+      const message =
+        error instanceof Error ? error.message : "Failed to delete project";
       toast.error(message);
     } finally {
       setIsDeleting(false);
     }
   };
 
+  if (!project) return null;
+
   return (
-    <AnimatePresence>
-      {open && project ? (
-        <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center px-4"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          {/* Backdrop Overlay */}
-          <motion.button
+    <Dialog open={open} onOpenChange={(val) => !val && !isDeleting && onCancel()}>
+      <DialogContent className="max-w-md border-v2-neutral-300 bg-v2-neutral-100 p-6 text-v2-neutral-600 shadow-2xl">
+        <DialogHeader className="flex flex-col items-center text-center gap-3">
+          <span className="grid size-12 place-items-center rounded-2xl bg-destructive/10 text-destructive">
+            <AlertTriangle className="size-6" />
+          </span>
+          <DialogTitle className="text-lg font-bold tracking-tight text-v2-neutral-600">
+            Delete Project
+          </DialogTitle>
+          <DialogDescription className="text-xs text-v2-neutral-400 max-w-sm">
+            Are you sure you want to delete <span className="font-semibold text-v2-neutral-600">&ldquo;{project.name}&rdquo;</span>? All related tasks, deliverables, and timeline history will be permanently deleted.
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter className="mt-4 flex items-center justify-center gap-3 sm:justify-center">
+          <Button
             type="button"
-            aria-label="Cancel delete"
+            variant="outline"
+            onClick={onCancel}
             disabled={isDeleting}
-            className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md cursor-pointer disabled:cursor-not-allowed border-0"
-            onClick={() => !isDeleting && onCancel()}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-          />
-
-          {/* Dialog Container */}
-          <motion.div
-            className="relative z-10 w-full max-w-md overflow-hidden rounded-[24px] border border-red-500/20 bg-[#0c0a2f] bg-gradient-to-br from-red-500/5 via-[#0c0a2f]/95 to-[#0a0826] p-6 shadow-[0_24px_80px_rgba(0,0,0,0.6)] backdrop-blur-md text-left flex flex-col items-center"
-            initial={{ opacity: 0, y: 16, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.98 }}
-            transition={{ type: "spring", stiffness: 260, damping: 24 }}
+            className="border-v2-neutral-300 text-v2-neutral-600 hover:bg-v2-neutral-200"
           >
-            {/* Warning Icon */}
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 shadow-[0_0_15px_rgba(239,68,68,0.15)] mb-4">
-              <AlertTriangle className="h-6 w-6 animate-pulse" />
-            </div>
-
-            {/* Content Details */}
-            <h3 className="text-xl font-bold tracking-tight text-white text-center">
-              Delete "{project.name}"?
-            </h3>
-            <p className="text-xs text-white/50 text-center mt-2 leading-relaxed max-w-xs">
-              This action cannot be undone. All related tasks and project progress will be permanently expunged.
-            </p>
-
-            {/* Actions Grid */}
-            <div className="mt-6 flex w-full gap-3">
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={onCancel}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-4 py-2.5 text-sm font-semibold text-white/70 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.08] hover:text-white hover:border-white/20 active:scale-95 flex-1 justify-center flex items-center cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleConfirmDelete}
-                className="rounded-xl bg-gradient-to-r from-red-500 to-rose-600 px-4 py-2.5 text-sm font-semibold text-white border border-red-500/30 transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_15px_rgba(239,68,68,0.35)] active:scale-95 flex-1 justify-center flex items-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  "Delete Project"
-                )}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      ) : null}
-    </AnimatePresence>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={handleConfirmDelete}
+            disabled={isDeleting}
+            className="gap-2 font-semibold shadow-md"
+          >
+            {isDeleting ? (
+              <>
+                <LoaderCircle className="size-4 animate-spin" />
+                Deleting...
+              </>
+            ) : (
+              <>
+                <Trash2 className="size-4" />
+                Delete Project
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

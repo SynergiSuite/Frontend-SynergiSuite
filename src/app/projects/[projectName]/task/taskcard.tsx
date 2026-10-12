@@ -1,6 +1,39 @@
 "use client";
-import React, { useState } from "react";
-import { Trash } from "lucide-react";
+import React from "react";
+import {
+  Calendar,
+  Flag,
+  Trash2,
+  UserX,
+  Users,
+} from "lucide-react";
+import { TaskAssignee, TaskTeam } from "./schemas/task";
+import { Team } from "@/app/projects/schemas/team";
+import {
+  formatDueDate,
+  getPriorityConfig,
+  getStatusConfig,
+  isDueToday,
+  isOverdue,
+} from "./task-utils";
+
+type TaskCardProps = {
+  id: string;
+  title: string;
+  desc?: string;
+  due?: string;
+  priority?: string;
+  status?: string;
+  assignee?: TaskAssignee | null;
+  teams?: (Team | TaskTeam)[];
+  assigned_to?: string[];
+  onClick?: () => void;
+  onDeleteClick?: (taskId: string) => void;
+  canDelete?: boolean;
+  draggable?: boolean;
+  onDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
+  onDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void;
+};
 
 export default function TaskCard({
   id,
@@ -9,120 +42,154 @@ export default function TaskCard({
   due,
   priority,
   status,
-  assigned_to,
+  assignee,
+  teams = [],
+  assigned_to = [],
   onClick,
   onDeleteClick,
   canDelete,
   draggable,
   onDragStart,
   onDragEnd,
-}: {
-  id: string;
-  title: string;
-  desc: string;
-  due: string;
-  priority: string;
-  status: string;
-  assigned_to: string[];
-  onClick?: () => void;
-  onDeleteClick?: (taskId: string) => void;
-  canDelete?: boolean;
-  draggable?: boolean;
-  onDragStart?: (event: React.DragEvent<HTMLDivElement>) => void;
-  onDragEnd?: (event: React.DragEvent<HTMLDivElement>) => void;
-}) {
-  const normalizedStatus = status?.trim().toLowerCase();
-  const statusStyles =
-    normalizedStatus === "completed"
-      ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-      : normalizedStatus === "blocked"
-        ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-        : normalizedStatus === "in_progress"
-          ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
-          : "bg-white/[0.04] text-white/60 border border-white/[0.08]";
-
-  const normalizedPriority = priority?.trim().toLowerCase();
-  const priorityStyles =
-    normalizedPriority === "low"
-      ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-      : normalizedPriority === "medium"
-        ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-        : normalizedPriority === "high"
-          ? "bg-rose-500/10 text-rose-400 border border-rose-500/20"
-          : "bg-white/[0.04] text-white/60 border border-white/[0.08]";
-
+}: TaskCardProps) {
+  const statusCfg = getStatusConfig(status);
+  const priorityCfg = getPriorityConfig(priority);
+  const overdue = isOverdue(due, status);
+  const dueToday = isDueToday(due);
   const isClickable = typeof onClick === "function";
-  const [isTrashActive, setIsTrashActive] = useState(false);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const primaryTeam = teams && teams.length > 0 ? teams[0] : null;
+  const legacyTeamNames = assigned_to && assigned_to.length > 0 ? assigned_to : [];
 
   return (
-    <>
-      <div
-        className={`group bg-[#0a0826]/40 border border-white/[0.08] backdrop-blur-md rounded-2xl p-4 h-full flex flex-col hover:border-[#5271ff]/30 hover:shadow-[0_0_20px_rgba(82,113,255,0.15)] transition-all duration-300 ${
-          isClickable ? "cursor-pointer" : ""
-        }`}
-        onClick={onClick}
-        draggable={draggable}
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        role={isClickable ? "button" : undefined}
-        tabIndex={isClickable ? 0 : undefined}
-      >
-        <div className="flex justify-between items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <h4 className="font-semibold text-white group-hover:text-[#5271ff] transition-colors truncate">{title}</h4>
-            <p className="text-sm text-ellipsis overflow-hidden max-w-[180px] text-white/50 mt-1 line-clamp-2">{desc}</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
+    <div
+      onClick={onClick}
+      draggable={draggable}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+      className={`group relative flex flex-col justify-between rounded-2xl border border-v2-neutral-500/80 bg-v2-neutral-600/90 p-4 shadow-sm backdrop-blur-md transition-all duration-200 hover:-translate-y-0.5 hover:border-v2-neutral-400 hover:bg-v2-neutral-600 hover:shadow-md ${
+        isClickable ? "cursor-pointer" : ""
+      }`}
+    >
+      {/* Top row: Priority Flag & Status Pill & Actions */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {/* ClickUp Priority Flag */}
+          <span
+            className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-semibold border ${priorityCfg.badgeClass}`}
+            title={`Priority: ${priorityCfg.label}`}
+          >
+            <Flag className="size-3" style={{ color: priorityCfg.flagColor }} />
+            <span>{priorityCfg.label}</span>
+          </span>
+
+          {/* Status badge */}
+          <span
+            className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium border ${statusCfg.badgeClass}`}
+          >
             <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusStyles}`}
-            >
-              {status}
-            </span>
-            {canDelete ? (
-              <button
-                type="button"
-                aria-pressed={isTrashActive}
-                aria-label={isTrashActive ? "Trash marked" : "Mark as trash"}
-                className={`inline-flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
-                  isTrashActive
-                    ? "border-red-500 bg-red-500/10 text-red-400"
-                    : "border-white/[0.08] bg-[#030114]/40 text-white/40 hover:border-red-500 hover:text-red-400"
-                }`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setIsTrashActive((prev) => !prev);
-                  onDeleteClick?.(id);
-                }}
-              >
-                <Trash className="h-4.5 w-4.5" aria-hidden="true" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2 text-sm text-white/40 border-t border-white/[0.04] pt-3">
-          <div className="flex items-center justify-between">
-            <span>Due Date</span>
-            <span className="text-white/70 font-semibold">{due}</span>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <span>Priority</span>
-            <span
-              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${priorityStyles}`}
-            >
-              {priority}
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-4 pt-3 border-t border-white/[0.04] text-sm text-white/40">
-          <span>Assigned: </span>
-          <span className="text-white/70 font-semibold ml-1">
-            {assigned_to?.length ? assigned_to?.join(", ") : "Unassigned"}
+              className="size-1.5 rounded-full"
+              style={{ backgroundColor: statusCfg.dotColor }}
+            />
+            <span className="truncate">{statusCfg.label}</span>
           </span>
         </div>
+
+        {/* Delete action button */}
+        {canDelete && onDeleteClick && (
+          <button
+            type="button"
+            aria-label="Delete task"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDeleteClick(id);
+            }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg text-v2-neutral-400 hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
       </div>
-    </>
+
+      {/* Title & Description */}
+      <div className="my-3 flex-1 min-w-0">
+        <h4 className="text-sm font-semibold tracking-tight text-v2-neutral-100 group-hover:text-primary transition-colors line-clamp-2">
+          {title}
+        </h4>
+        {desc && (
+          <p className="mt-1 text-xs text-v2-neutral-400 line-clamp-2 leading-relaxed">
+            {desc}
+          </p>
+        )}
+      </div>
+
+      {/* Bottom Footer: Due Date & Assignment */}
+      <div className="flex items-center justify-between gap-2 border-t border-v2-neutral-500/60 pt-3 text-xs">
+        {/* Due Date pill */}
+        <div
+          className={`flex items-center gap-1.5 rounded-md px-2 py-0.5 text-[11px] font-medium ${
+            overdue
+              ? "bg-rose-500/15 text-rose-300 border border-rose-500/30"
+              : dueToday
+              ? "bg-amber-500/15 text-amber-300 border border-amber-500/30"
+              : "text-v2-neutral-400"
+          }`}
+        >
+          <Calendar className="size-3 shrink-0" />
+          <span className="truncate">{formatDueDate(due)}</span>
+        </div>
+
+        {/* Assignment Display */}
+        <div className="flex items-center gap-1.5 overflow-hidden min-w-0 max-w-[55%] justify-end">
+          {assignee ? (
+            /* Specific Employee Assigned */
+            <div
+              className="flex items-center gap-1.5 rounded-lg border border-v2-neutral-500 bg-v2-neutral-700/80 px-2 py-0.5 text-[11px] text-v2-neutral-200 truncate"
+              title={`${assignee.name} (${assignee.email})${primaryTeam ? ` • ${primaryTeam.name}` : ""}`}
+            >
+              <span className="grid size-4.5 place-items-center rounded-full bg-primary/20 text-[9px] font-bold text-primary shrink-0">
+                {getInitials(assignee.name)}
+              </span>
+              <span className="truncate font-medium">{assignee.name}</span>
+            </div>
+          ) : primaryTeam ? (
+            /* Team Assigned (no specific employee) */
+            <div
+              className="flex items-center gap-1.5 rounded-lg border border-v2-neutral-500 bg-v2-neutral-700/60 px-2 py-0.5 text-[11px] font-medium text-v2-neutral-300 truncate"
+              title={`Team: ${primaryTeam.name}`}
+            >
+              <Users className="size-3 text-primary shrink-0" />
+              <span className="truncate">{primaryTeam.name}</span>
+            </div>
+          ) : legacyTeamNames.length > 0 ? (
+            /* Fallback legacy team array */
+            <div
+              className="flex items-center gap-1.5 rounded-lg border border-v2-neutral-500 bg-v2-neutral-700/60 px-2 py-0.5 text-[11px] font-medium text-v2-neutral-300 truncate"
+              title={`Team: ${legacyTeamNames.join(", ")}`}
+            >
+              <Users className="size-3 text-primary shrink-0" />
+              <span className="truncate">{legacyTeamNames[0]}</span>
+            </div>
+          ) : (
+            /* Unassigned */
+            <div className="flex items-center gap-1 text-[11px] text-v2-neutral-400">
+              <UserX className="size-3 shrink-0" />
+              <span>Unassigned</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

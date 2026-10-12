@@ -1,13 +1,15 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Plus, Inbox } from "lucide-react";
 import TaskCard from "./taskcard";
 import { Task } from "./schemas/task";
+import { Team } from "@/app/projects/schemas/team";
 import ViewAndEditModal, { type TaskViewEditPayload } from "./viewAndEdit";
 import DeleteTaskModal from "./deleteTask";
 import TaskDetailModal from "./taskDetailModal";
 import {
   filterTasks,
-  formatTaskLabel,
+  getStatusConfig,
   normalizeTaskStatus,
   TASK_STATUS_OPTIONS,
 } from "./task-utils";
@@ -16,12 +18,16 @@ type TaskKanbanProps = {
   searchQuery: string;
   statusFilter: string;
   dueFilter: string;
+  priorityFilter?: string;
+  assignmentFilter?: string;
+  teams?: Team[];
   tasks: Task[];
   onUpdateTask: (
     payload: TaskViewEditPayload,
     options?: { showSuccessToast?: boolean }
   ) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void> | void;
+  onAddTask?: (status?: string) => void;
   canEditTasks: boolean;
   canDeleteTasks: boolean;
   statusOptions?: string[];
@@ -31,9 +37,13 @@ export default function TaskKanban({
   searchQuery,
   statusFilter,
   dueFilter,
+  priorityFilter = "all",
+  assignmentFilter = "all",
+  teams = [],
   tasks,
   onUpdateTask,
   onDeleteTask,
+  onAddTask,
   canEditTasks,
   canDeleteTasks,
   statusOptions = TASK_STATUS_OPTIONS,
@@ -57,14 +67,17 @@ export default function TaskKanban({
         searchQuery,
         statusFilter,
         dueFilter,
+        priorityFilter,
+        assignmentFilter,
       }),
-    [dueFilter, searchQuery, statusFilter, localTasks]
+    [dueFilter, priorityFilter, assignmentFilter, searchQuery, statusFilter, localTasks]
   );
 
   const columns = useMemo(
     () =>
       statusOptions.map((status) => ({
         status,
+        config: getStatusConfig(status),
         tasks: filteredTasks.filter(
           (task) => normalizeTaskStatus(task.status) === status
         ),
@@ -72,7 +85,7 @@ export default function TaskKanban({
     [filteredTasks, statusOptions]
   );
 
-  const boardKey = `${statusFilter}-${dueFilter}-${searchQuery}`;
+  const boardKey = `${statusFilter}-${dueFilter}-${priorityFilter}-${assignmentFilter}-${searchQuery}`;
 
   const handleDrop = async (targetStatus: string, taskId?: string) => {
     if (!canEditTasks) {
@@ -117,8 +130,11 @@ export default function TaskKanban({
           title: task.title,
           description: task.description,
           due_date: task.due_date,
+          dueDate: task.due_date,
           status: targetStatus,
           priority: task.priority,
+          teamId: task.teams?.[0]?.id,
+          assigneeId: task.assignee?.user_id,
         },
         {
           showSuccessToast: false,
@@ -136,7 +152,7 @@ export default function TaskKanban({
   return (
     <>
       <AnimatePresence mode="sync">
-        <div className="h-full min-h-0 max-w-full overflow-x-auto overflow-y-hidden pb-2">
+        <div className="h-full min-h-0 max-w-full overflow-x-auto overflow-y-hidden pb-3 custom-scrollbar">
           <motion.div
             key={boardKey}
             className="flex h-full min-h-0 w-max min-w-full gap-4"
@@ -151,101 +167,132 @@ export default function TaskKanban({
               },
             }}
           >
-            {columns.map((column) => (
-              <motion.section
-                key={column.status}
-                className={`flex h-full min-h-0 w-[min(360px,calc(100vw-3rem))] shrink-0 flex-col rounded-2xl border p-4 transition-all duration-300 task-animate-item opacity-0 sm:w-[360px] ${
-                  dropTargetStatus === column.status
-                    ? "border-[#5271ff]/50 bg-[#0a0826]/80 shadow-[0_0_20px_rgba(82,113,255,0.2)]"
-                    : "border-white/[0.04] bg-white/[0.01]"
-                }`}
-                onDragOver={(event) => {
-                  event.preventDefault();
-                  if (draggedTaskId) {
-                    setDropTargetStatus(column.status);
-                  }
-                }}
-                onDragLeave={() => {
-                  if (dropTargetStatus === column.status) {
-                    setDropTargetStatus(null);
-                  }
-                }}
-                onDrop={async (event) => {
-                  event.preventDefault();
-                  const taskId = event.dataTransfer.getData("text/plain");
-                  await handleDrop(column.status, taskId);
-                }}
-                variants={{
-                  hidden: { opacity: 0, y: 12 },
-                  show: {
-                    opacity: 1,
-                    y: 0,
-                    transition: { duration: 0.24, ease: "easeOut" },
-                  },
-                }}
-              >
-                <div className="mb-4 flex shrink-0 items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-white/80">
-                      {formatTaskLabel(column.status)}
-                    </h3>
-                    <p className="text-xs text-white/40 mt-0.5 font-medium">
-                      {column.tasks.length} {column.tasks.length === 1 ? "task" : "tasks"}
-                    </p>
-                  </div>
-                  <span className="inline-flex h-6 min-w-6 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 px-1.5 text-[11px] font-bold text-[#5271ff]">
-                    {column.tasks.length}
-                  </span>
-                </div>
-
-                <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1 custom-scrollbar">
-                  {column.tasks.length > 0 ? (
-                    column.tasks.map((task) => (
-                      <motion.div
-                        key={task.id}
-                        whileHover={{ y: -3 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 260,
-                          damping: 22,
-                        }}
-                      >
-                        <TaskCard
-                          id={task.id}
-                          title={task.title}
-                          desc={task.description}
-                          due={task.due_date}
-                          priority={task.priority}
-                          status={task.status}
-                          assigned_to={task.teams.map((team) => team.name)}
-                          onClick={() => setSelectedTask(task)}
-                          onDeleteClick={
-                            canDeleteTasks
-                              ? (taskId) => setDeleteTaskId(taskId)
-                              : undefined
-                          }
-                          canDelete={canDeleteTasks}
-                          draggable={canEditTasks && !pendingTaskIds.includes(task.id)}
-                          onDragStart={(event) => {
-                            event.dataTransfer.effectAllowed = "move";
-                            event.dataTransfer.setData("text/plain", task.id);
-                            setDraggedTaskId(task.id);
-                          }}
-                          onDragEnd={() => {
-                            setDraggedTaskId(null);
-                            setDropTargetStatus(null);
-                          }}
-                        />
-                      </motion.div>
-                    ))
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-white/[0.08] bg-[#030114]/20 px-3 py-8 text-center text-xs text-white/30 font-medium">
-                      No tasks in this column
+            {columns.map((column) => {
+              const isDropActive = dropTargetStatus === column.status;
+              return (
+                <motion.section
+                  key={column.status}
+                  className={`flex h-full min-h-0 w-[min(340px,calc(100vw-3rem))] shrink-0 flex-col rounded-2xl border transition-all duration-200 sm:w-[340px] ${
+                    isDropActive
+                      ? "border-primary/60 bg-v2-neutral-600/90 shadow-lg ring-2 ring-primary/20"
+                      : "border-v2-neutral-500/70 bg-v2-neutral-700/40"
+                  }`}
+                  onDragOver={(event) => {
+                    event.preventDefault();
+                    if (draggedTaskId) {
+                      setDropTargetStatus(column.status);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dropTargetStatus === column.status) {
+                      setDropTargetStatus(null);
+                    }
+                  }}
+                  onDrop={async (event) => {
+                    event.preventDefault();
+                    const taskId = event.dataTransfer.getData("text/plain");
+                    await handleDrop(column.status, taskId);
+                  }}
+                  variants={{
+                    hidden: { opacity: 0, y: 12 },
+                    show: {
+                      opacity: 1,
+                      y: 0,
+                      transition: { duration: 0.24, ease: "easeOut" },
+                    },
+                  }}
+                >
+                  {/* ClickUp Column Header */}
+                  <div className="flex shrink-0 items-center justify-between border-b border-v2-neutral-500/60 p-3.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="size-2.5 rounded-full shrink-0 shadow-xs"
+                        style={{ backgroundColor: column.config.dotColor }}
+                      />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-v2-neutral-200 truncate">
+                        {column.config.label}
+                      </h3>
+                      <span className="grid size-5 place-items-center rounded-full bg-v2-neutral-600 text-[10px] font-bold text-v2-neutral-300 border border-v2-neutral-500">
+                        {column.tasks.length}
+                      </span>
                     </div>
-                  )}
-                </div>
-              </motion.section>
-            ))}
+
+                    {/* Inline Quick Add button */}
+                    {canEditTasks && onAddTask && (
+                      <button
+                        type="button"
+                        onClick={() => onAddTask(column.status)}
+                        title={`Add task to ${column.config.label}`}
+                        className="p-1 rounded-lg text-v2-neutral-400 hover:text-v2-neutral-100 hover:bg-v2-neutral-600/60 transition-colors cursor-pointer"
+                      >
+                        <Plus className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Task Column Cards list */}
+                  <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 custom-scrollbar">
+                    {column.tasks.length > 0 ? (
+                      column.tasks.map((task) => (
+                        <motion.div
+                          key={task.id}
+                          whileHover={{ y: -2 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 22,
+                          }}
+                        >
+                          <TaskCard
+                            id={task.id}
+                            title={task.title}
+                            desc={task.description}
+                            due={task.due_date}
+                            priority={task.priority}
+                            status={task.status}
+                            assignee={task.assignee}
+                            teams={task.teams}
+                            onClick={() => setSelectedTask(task)}
+                            onDeleteClick={
+                              canDeleteTasks
+                                ? (taskId) => setDeleteTaskId(taskId)
+                                : undefined
+                            }
+                            canDelete={canDeleteTasks}
+                            draggable={canEditTasks && !pendingTaskIds.includes(task.id)}
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "move";
+                              event.dataTransfer.setData("text/plain", task.id);
+                              setDraggedTaskId(task.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedTaskId(null);
+                              setDropTargetStatus(null);
+                            }}
+                          />
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-v2-neutral-500/50 bg-v2-neutral-600/20 px-4 py-10 text-center">
+                        <Inbox className="size-5 text-v2-neutral-400 mb-1.5 opacity-50" />
+                        <span className="text-xs text-v2-neutral-400 font-medium">
+                          No tasks in this stage
+                        </span>
+                        {canEditTasks && onAddTask && (
+                          <button
+                            type="button"
+                            onClick={() => onAddTask(column.status)}
+                            className="mt-2 text-[11px] font-semibold text-primary hover:underline cursor-pointer"
+                          >
+                            + Add a task
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.section>
+              );
+            })}
           </motion.div>
         </div>
       </AnimatePresence>
@@ -274,8 +321,10 @@ export default function TaskKanban({
               due_date: editingTask.due_date,
               status: editingTask.status,
               priority: editingTask.priority,
+              assignee: editingTask.assignee,
               teams: editingTask.teams,
             }}
+            availableTeams={teams}
             onCancel={() => setEditingTask(null)}
             onSave={async (payload) => {
               await onUpdateTask(payload);

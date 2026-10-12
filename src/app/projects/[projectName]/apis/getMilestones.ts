@@ -1,15 +1,9 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function getMilestone(id: string) {
   try {
-    if (!requestBaseUrl) {
-      throw new Error("Missing backend base URL.");
-    }
-
     const token = await CookieManager("get", "access-token");
-    const req = await fetch(`${requestBaseUrl}/milestone/${id}`, {
+    const req = await fetch(`/api/milestones/${encodeURIComponent(id)}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -18,8 +12,11 @@ export async function getMilestone(id: string) {
     });
 
     if (!req.ok) {
-      const errorText = await req.text();
-      throw new Error(errorText || "Failed to fetch milestones.");
+      if (req.status === 404 || req.status === 204) {
+        return [];
+      }
+      const errorData = await req.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to fetch milestones.");
     }
 
     const data = await req.json();

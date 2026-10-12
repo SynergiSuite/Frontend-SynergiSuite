@@ -1,4 +1,5 @@
 "use client";
+
 import React from "react";
 import ProjectStatus from "./projectstatus";
 import TeamMembers from "./teamMembers";
@@ -14,13 +15,10 @@ interface LeftSidebarProps {
 }
 
 const formatDate = (date?: string) => {
-  if (!date) {
-    return "-";
-  }
-
+  if (!date) return "-";
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) {
-    return "-";
+    return date; // e.g. "2 months" or text duration
   }
 
   return parsed.toLocaleDateString("en-US", {
@@ -30,32 +28,28 @@ const formatDate = (date?: string) => {
   });
 };
 
-const LeftSidebar = ({
+export default function LeftSidebar({
   completionStatus,
   projectDetail,
   teams,
   canManageTeams = false,
   onSaveTeams,
-}: LeftSidebarProps) => {
+}: LeftSidebarProps) {
   return (
-    <>
-      <div className="space-y-5">
-        <ProjectStatus
-          progress={completionStatus}
-          managedBy={projectDetail?.client?.name}
-          startDate={formatDate(projectDetail?.created_at)}
-          dueDate={formatDate(projectDetail?.duration)}
-        />
-        <TeamMembers
-          selectedTeams={projectDetail?.teams ?? []}
-          allTeams={teams ?? []}
-          canManageTeams={canManageTeams}
-          onSaveTeams={onSaveTeams}
-        />
-      </div>
-    </>
+    <div className="space-y-5">
+      <ProjectStatus
+        progress={completionStatus}
+        managedBy={projectDetail?.client?.name}
+        clientCompany={projectDetail?.client?.company}
+        startDate={formatDate(projectDetail?.created_at)}
+        dueDate={formatDate(projectDetail?.duration)}
+      />
+      <TeamMembers
+        selectedTeams={projectDetail?.teams ?? []}
+        allTeams={teams ?? []}
+        canManageTeams={canManageTeams}
+        onSaveTeams={onSaveTeams}
+      />
+    </div>
   );
-};
-
-
-export default LeftSidebar;
+}

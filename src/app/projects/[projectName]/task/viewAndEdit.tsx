@@ -1,372 +1,410 @@
 "use client";
+
 import React, { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import {
+  Edit3,
+  Flag,
+  LoaderCircle,
+  Save,
+  User,
+  UserX,
+  Users,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Field,
+  FieldLabel,
+} from "@/components/ui/field";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { formatTaskLabel, TASK_STATUS_OPTIONS } from "./task-utils";
-
-type TeamMember = {
-  user_id: number;
-  name: string;
-  email?: string;
-};
-
-type TeamInfo = {
-  id: string;
-  name: string;
-  leader?: TeamMember;
-  leader_id?: number;
-  members?: TeamMember[];
-};
+import DatePicker from "@/components/ui/datePicker";
+import { Team } from "@/app/projects/schemas/team";
+import { TaskAssignee, TaskTeam } from "./schemas/task";
+import {
+  getPriorityConfig,
+  getStatusConfig,
+  TASK_PRIORITY_OPTIONS,
+  TASK_STATUS_OPTIONS,
+} from "./task-utils";
 
 export type TaskViewEditPayload = {
   id: string;
-  title: string;
+  title?: string;
   description?: string;
-  due_date: string;
-  status: string;
-  priority: string;
+  due_date?: string;
+  dueDate?: string;
+  status?: string;
+  priority?: string;
+  teamId?: string;
+  assigneeId?: number;
 };
 
 export type TaskViewEditData = {
   id: string;
   title: string;
   description?: string;
-  due_date: string;
-  status: string;
-  priority: string;
-  teams?: TeamInfo[];
+  due_date?: string;
+  status?: string;
+  priority?: string;
+  assignee?: TaskAssignee | null;
+  teams?: (Team | TaskTeam)[];
 };
 
 type ViewAndEditProps = {
   data: TaskViewEditData;
+  availableTeams?: Team[];
   onCancel: () => void;
-  onSave: (payload: TaskViewEditPayload) => void;
+  onSave: (payload: TaskViewEditPayload) => Promise<void> | void;
   statusOptions?: string[];
   priorityOptions?: string[];
   canEdit?: boolean;
 };
 
-const LeaderIcon = () => (
-  <svg
-    width="12"
-    height="12"
-    viewBox="0 0 20 20"
-    aria-hidden="true"
-    className="text-amber-400 fill-current animate-pulse"
-  >
-    <path d="M10 1.5l2.4 4.86 5.36.78-3.88 3.78.92 5.34L10 13.98l-4.8 2.52.92-5.34L2.24 7.14l5.36-.78L10 1.5z" />
-  </svg>
-);
+const inputClassName =
+  "h-11 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3.5 text-xs text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-400 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20 disabled:cursor-not-allowed disabled:opacity-60";
 
-const fallbackPriorityOptions = ["low", "medium", "high"];
+const textareaClassName =
+  "w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 p-3.5 text-xs text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-400 hover:border-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-[3px] focus:ring-v2-neutral-400/20 disabled:cursor-not-allowed disabled:opacity-60 resize-none";
 
 export default function ViewAndEditModal({
   data,
+  availableTeams = [],
   onCancel,
   onSave,
-  statusOptions,
-  priorityOptions,
+  statusOptions = TASK_STATUS_OPTIONS,
+  priorityOptions = TASK_PRIORITY_OPTIONS,
   canEdit = true,
 }: ViewAndEditProps) {
   const [taskId, setTaskId] = useState(data.id ?? "");
   const [title, setTitle] = useState(data.title ?? "");
   const [description, setDescription] = useState(data.description ?? "");
   const [dueDate, setDueDate] = useState(data.due_date ?? "");
-  const [statusValue, setStatusValue] = useState(data.status ?? "");
-  const [priorityValue, setPriorityValue] = useState(data.priority ?? "");
+  const [statusValue, setStatusValue] = useState(data.status ?? "todo");
+  const [priorityValue, setPriorityValue] = useState(data.priority ?? "medium");
+  const [assignmentValue, setAssignmentValue] = useState<string>("unassigned");
+  const [isSaving, setIsSaving] = useState(false);
 
+  // Compute available teams list from props or data
+  const projectTeams = useMemo(() => {
+    return availableTeams.length > 0
+      ? availableTeams
+      : ((data.teams || []) as Team[]);
+  }, [availableTeams, data.teams]);
+
+  // Initial assignment calculation
   useEffect(() => {
     setTaskId(data.id ?? "");
     setTitle(data.title ?? "");
     setDescription(data.description ?? "");
     setDueDate(data.due_date ?? "");
-    setStatusValue(data.status ?? "");
-    setPriorityValue(data.priority ?? "");
+    setStatusValue(data.status ?? "todo");
+    setPriorityValue(data.priority ?? "medium");
+
+    if (data.assignee?.user_id && data.teams?.[0]?.id) {
+      setAssignmentValue(`member:${data.teams[0].id}:${data.assignee.user_id}`);
+    } else if (data.teams?.[0]?.id) {
+      setAssignmentValue(`team:${data.teams[0].id}`);
+    } else {
+      setAssignmentValue("unassigned");
+    }
   }, [data]);
 
-  const teams = useMemo(() => data.teams ?? [], [data.teams]);
-  const resolvedStatusOptions = useMemo(
-    () =>
-      statusOptions && statusOptions.length > 0
-        ? statusOptions
-        : TASK_STATUS_OPTIONS,
-    [statusOptions]
-  );
+  // Parse assignment selection into teamId & assigneeId
+  const { teamId, assigneeId } = useMemo(() => {
+    if (!assignmentValue || assignmentValue === "unassigned") {
+      return { teamId: undefined, assigneeId: undefined };
+    }
+    if (assignmentValue.startsWith("team:")) {
+      return { teamId: assignmentValue.slice(5), assigneeId: undefined };
+    }
+    if (assignmentValue.startsWith("member:")) {
+      const parts = assignmentValue.split(":");
+      return { teamId: parts[1], assigneeId: Number(parts[2]) };
+    }
+    return { teamId: undefined, assigneeId: undefined };
+  }, [assignmentValue]);
 
-  const resolvedPriorityOptions = useMemo(
-    () =>
-      priorityOptions && priorityOptions.length > 0
-        ? priorityOptions
-        : fallbackPriorityOptions,
-    [priorityOptions]
-  );
+  const isFormValid = title.trim().length >= 3 && dueDate !== "";
 
-  const isFormValid =
-    title.trim().length > 0 &&
-    dueDate !== "" &&
-    statusValue !== "" &&
-    priorityValue !== "";
+  const handleSave = async () => {
+    if (!isFormValid || isSaving || !canEdit) return;
+
+    try {
+      setIsSaving(true);
+      await onSave({
+        id: taskId,
+        title: title.trim(),
+        description: description.trim() || undefined,
+        due_date: dueDate,
+        dueDate: dueDate,
+        status: statusValue,
+        priority: priorityValue,
+        teamId,
+        assigneeId,
+      });
+    } catch (err) {
+      console.error("Error saving task:", err);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.25 }}
-    >
-      {/* Background Overlay */}
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="fixed inset-0 bg-[#030114]/80 backdrop-blur-md z-45"
-        onClick={onCancel}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.25 }}
-      />
-
-      {/* Modal Container Shell */}
-      <motion.div
-        className="relative z-50 flex flex-col w-full max-w-2xl rounded-2xl border border-white/[0.08] bg-[#0a0826]/90 backdrop-blur-2xl shadow-[0_24px_80px_rgba(0,0,0,0.6)] overflow-hidden max-h-[calc(100vh-4rem)]"
-        initial={{ opacity: 0, y: 30, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 20, scale: 0.96 }}
-        transition={{ type: "spring", stiffness: 280, damping: 25 }}
+    <Dialog open onOpenChange={(open) => !open && !isSaving && onCancel()}>
+      <DialogContent
+        showCloseButton={!isSaving}
+        className="max-h-[92vh] max-w-xl overflow-y-auto border border-v2-neutral-300 bg-v2-neutral-100 p-0 text-v2-neutral-600 shadow-2xl rounded-2xl custom-scrollbar"
       >
-        {/* Top Accent Neon Stripe */}
-        <div className="absolute top-0 left-0 right-0 h-[4px] bg-gradient-to-r from-[#5271ff] via-cyan-400 to-[#3a4ec4] z-10" />
-
-        {/* Ambient interior glow */}
-        <div className="absolute -left-20 -top-20 h-[300px] w-[300px] bg-[radial-gradient(circle,rgba(82,113,255,0.12),transparent_65%)] pointer-events-none" />
-
         {/* Header */}
-        <div className="relative z-10 border-b border-white/[0.08] px-6 py-5 sm:px-8 bg-white/[0.01]">
-          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-            {canEdit ? "View & Edit Task" : "View Task Details"}
-          </h2>
-          <p className="text-xs text-white/40 mt-1 font-medium">
-            {canEdit
-              ? "Update task properties, parameters, and review assignments"
-              : "Review task details, status, and assigned team members"}
-          </p>
-        </div>
+        <DialogHeader className="border-b border-v2-neutral-200 px-6 py-5">
+          <div className="flex items-start gap-3.5 pr-8">
+            <span className="grid size-11 shrink-0 place-items-center rounded-2xl border border-primary/20 bg-primary/10 text-primary shadow-xs">
+              <Edit3 className="size-5" aria-hidden="true" />
+            </span>
+            <div>
+              <DialogTitle className="text-lg font-bold tracking-tight text-v2-neutral-600">
+                Edit Task
+              </DialogTitle>
+              <DialogDescription className="mt-1 text-xs leading-5 text-v2-neutral-400">
+                Update task specifications, assignment, priority, status, and timeline
+              </DialogDescription>
+            </div>
+          </div>
+        </DialogHeader>
 
-        {/* Body (Scrollable) */}
-        <div className="relative z-10 flex-1 overflow-y-auto px-6 py-6 sm:px-8 space-y-5 text-white custom-scrollbar">
+        {/* Modal Form */}
+        <div className="space-y-4 px-6 py-5">
           {/* Title */}
-          <div>
-            <label className="block text-sm font-semibold text-white/70 mb-2">
-              Title
-            </label>
+          <Field>
+            <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+              Task Name <span className="text-destructive">*</span>
+            </FieldLabel>
             <input
               type="text"
-              disabled={!canEdit}
-              placeholder="Enter task title"
-              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 disabled:opacity-75 disabled:cursor-not-allowed"
               value={title}
-              onChange={(event) => setTitle(event.target.value)}
+              disabled={isSaving || !canEdit}
+              onChange={(e) => setTitle(e.target.value)}
+              className={inputClassName}
             />
-          </div>
+          </Field>
 
           {/* Description */}
-          <div>
-            <label className="block text-sm font-semibold text-white/70 mb-2">
+          <Field>
+            <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
               Description
-            </label>
+            </FieldLabel>
             <textarea
               rows={3}
-              disabled={!canEdit}
-              placeholder="Add task details..."
-              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl p-4 text-white placeholder-white/20 focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 resize-none disabled:opacity-75 disabled:cursor-not-allowed"
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              disabled={isSaving || !canEdit}
+              onChange={(e) => setDescription(e.target.value)}
+              className={textareaClassName}
             />
-          </div>
+          </Field>
 
-          {/* Status & Priority Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Status */}
-            <div>
-              <label className="block text-sm font-semibold text-white/70 mb-2">
-                Status
-              </label>
-              <Select value={statusValue} onValueChange={setStatusValue} disabled={!canEdit}>
-                <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300 disabled:opacity-75 disabled:cursor-not-allowed">
+          {/* Status & Priority */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Status <span className="text-destructive">*</span>
+              </FieldLabel>
+              <Select
+                value={statusValue}
+                onValueChange={setStatusValue}
+                disabled={isSaving || !canEdit}
+              >
+                <SelectTrigger className={inputClassName}>
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                  {resolvedStatusOptions.map((status) => (
-                    <SelectItem
-                      key={status}
-                      value={status}
-                      className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white rounded-lg py-2 px-3 transition-colors text-white/80"
-                    >
-                      {formatTaskLabel(status)}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl rounded-xl">
+                  {statusOptions.map((opt) => {
+                    const cfg = getStatusConfig(opt);
+                    return (
+                      <SelectItem key={opt} value={opt} className="cursor-pointer text-xs">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="size-2 rounded-full"
+                            style={{ backgroundColor: cfg.dotColor }}
+                          />
+                          <span>{cfg.label}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
 
-            {/* Priority */}
-            <div>
-              <label className="block text-sm font-semibold text-white/70 mb-2">
-                Priority
-              </label>
-              <Select value={priorityValue} onValueChange={setPriorityValue} disabled={!canEdit}>
-                <SelectTrigger className="w-full border border-white/[0.08] bg-[#030114]/40 text-white rounded-xl h-11 focus:ring-1 focus:ring-[#5271ff]/30 focus:border-[#5271ff]/50 cursor-pointer flex items-center justify-between px-4 transition-all duration-300 disabled:opacity-75 disabled:cursor-not-allowed">
+            <Field>
+              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+                Priority <span className="text-destructive">*</span>
+              </FieldLabel>
+              <Select
+                value={priorityValue}
+                onValueChange={setPriorityValue}
+                disabled={isSaving || !canEdit}
+              >
+                <SelectTrigger className={inputClassName}>
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
-                <SelectContent className="border border-white/[0.08] bg-[#0a0826] text-white rounded-xl shadow-2xl backdrop-blur-2xl">
-                  {resolvedPriorityOptions.map((priority) => (
-                    <SelectItem
-                      key={priority}
-                      value={priority}
-                      className="cursor-pointer focus:bg-[#5271ff]/20 focus:text-white rounded-lg py-2 px-3 transition-colors text-white/80"
-                    >
-                      {formatTaskLabel(priority)}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl rounded-xl">
+                  {priorityOptions.map((opt) => {
+                    const cfg = getPriorityConfig(opt);
+                    return (
+                      <SelectItem key={opt} value={opt} className="cursor-pointer text-xs">
+                        <div className="flex items-center gap-2">
+                          <Flag className="size-3" style={{ color: cfg.flagColor }} />
+                          <span>{cfg.label}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
-            </div>
+            </Field>
           </div>
 
-          {/* Due Date */}
-          <div>
-            <label className="block text-sm font-semibold text-white/70 mb-2">
-              Due Date
-            </label>
-            <input
-              type="date"
-              disabled={!canEdit}
-              value={dueDate}
-              onChange={(event) => setDueDate(event.target.value)}
-              className="w-full bg-[#030114]/40 border border-white/[0.08] rounded-xl px-4 py-2.5 h-11 text-white focus:outline-none focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 transition-all duration-300 scheme-dark cursor-pointer font-medium disabled:opacity-75 disabled:cursor-not-allowed"
-            />
-            <p className="mt-1.5 text-xs text-white/30 font-medium pl-1">
-              Format: YYYY-MM-DD
-            </p>
-          </div>
+          {/* 3-Choice Assignment Selector */}
+          <Field>
+            <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+              Assignee / Squad Allocation
+            </FieldLabel>
+            <Select
+              value={assignmentValue}
+              onValueChange={setAssignmentValue}
+              disabled={isSaving || !canEdit}
+            >
+              <SelectTrigger className={inputClassName}>
+                <SelectValue placeholder="Select assignment" />
+              </SelectTrigger>
+              <SelectContent className="max-h-72 border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl rounded-xl">
+                {/* Unassigned Option */}
+                <SelectItem value="unassigned" className="cursor-pointer text-xs font-medium">
+                  <div className="flex items-center gap-2 text-v2-neutral-400">
+                    <UserX className="size-3.5" />
+                    <span>Unassigned</span>
+                  </div>
+                </SelectItem>
 
-          {/* Assigned Teams */}
-          <div>
-            <label className="block text-sm font-semibold text-white/70 mb-3">
-              Assigned Teams & Squad Members
-            </label>
+                {/* Team & Member Options Grouped by Team */}
+                {projectTeams.map((team) => {
+                  const membersList = [
+                    ...(team.leader ? [team.leader] : []),
+                    ...(team.members || []),
+                    ...(team.employees || []),
+                  ];
 
-            {!data.teams || data.teams.length === 0 ? (
-              <div className="rounded-xl border border-white/[0.08] bg-[#030114]/30 p-4 text-sm text-white/40 italic">
-                No teams assigned to this task.
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {data.teams.map((team) => {
-                  const members = team.members ?? [];
-                  const leaderId = team.leader_id ?? team.leader?.user_id;
+                  const uniqueMembers = membersList.filter(
+                    (m, idx, self) =>
+                      Boolean(m.user_id) &&
+                      idx === self.findIndex((o) => o.user_id === m.user_id)
+                  );
 
                   return (
-                    <div
-                      key={team.id}
-                      className="rounded-xl border border-white/[0.08] bg-[#030114]/40 p-4 space-y-3"
-                    >
-                      <div className="flex items-center justify-between border-b border-white/[0.06] pb-2">
-                        <span className="font-semibold text-[#5271ff] text-sm tracking-wide">
-                          {team.name}
-                        </span>
-                        <span className="text-xs text-white/40">
-                          {members.length} {members.length === 1 ? "member" : "members"}
-                        </span>
-                      </div>
+                    <SelectGroup key={team.id} className="border-t border-v2-neutral-200/80 pt-1 mt-1">
+                      <SelectLabel className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-v2-neutral-400">
+                        {team.name}
+                      </SelectLabel>
 
-                      {members.length === 0 ? (
-                        <p className="text-xs text-white/30 italic">No members in this team.</p>
-                      ) : (
-                        <ul className="space-y-1.5">
-                          {members.map((member) => {
-                            const isLeader =
-                              leaderId !== undefined && member.user_id === leaderId;
+                      {/* Entire Team Option */}
+                      <SelectItem
+                        value={`team:${team.id}`}
+                        className="cursor-pointer text-xs font-medium text-primary"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Users className="size-3.5" />
+                          <span>Entire Team ({team.name})</span>
+                        </div>
+                      </SelectItem>
 
-                            return (
-                              <li
-                                key={member.user_id}
-                                className="flex items-center gap-2 text-sm text-white/80"
-                              >
-                                {isLeader ? (
-                                  <span className="flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md">
-                                    <LeaderIcon />
-                                    Leader
-                                  </span>
-                                ) : (
-                                  <span className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                )}
-                                <span className="font-medium text-white/90">
-                                  {member.name}
-                                </span>
-                                {member.email && (
-                                  <span className="text-xs text-white/30 font-light">
-                                    ({member.email})
-                                  </span>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
+                      {/* Individual Member Options */}
+                      {uniqueMembers.map((member) => (
+                        <SelectItem
+                          key={`${team.id}-${member.user_id}`}
+                          value={`member:${team.id}:${member.user_id}`}
+                          className="cursor-pointer text-xs pl-6"
+                        >
+                          <div className="flex items-center gap-2">
+                            <User className="size-3 text-v2-neutral-400" />
+                            <span className="font-medium text-v2-neutral-600">
+                              {member.name}
+                            </span>
+                            <span className="text-[10px] text-v2-neutral-400">
+                              ({team.name})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   );
                 })}
-              </div>
-            )}
-          </div>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          {/* Target Due Date */}
+          <Field>
+            <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+              Target Due Date <span className="text-destructive">*</span>
+            </FieldLabel>
+            <DatePicker
+              value={dueDate}
+              onChange={setDueDate}
+              disabled={isSaving || !canEdit}
+              placeholder="Select target completion date"
+            />
+          </Field>
         </div>
 
         {/* Footer */}
-        <div className="relative z-10 border-t border-white/[0.08] bg-[#0a0826]/40 px-6 py-5 sm:px-8 flex justify-end space-x-3">
-          <button
+        <DialogFooter className="border-t border-v2-neutral-200 bg-v2-neutral-200/30 px-6 py-4 flex items-center justify-end gap-3">
+          <Button
             type="button"
+            variant="outline"
             onClick={onCancel}
-            className="rounded-xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md px-5 py-2.5 text-sm font-semibold text-white/60 hover:text-white hover:bg-[#0a0826]/75 hover:border-white/[0.15] transition-all duration-300"
+            disabled={isSaving}
+            className="border-v2-neutral-300 text-v2-neutral-600 hover:bg-v2-neutral-200"
           >
-            {canEdit ? "Cancel" : "Close"}
-          </button>
-
+            Cancel
+          </Button>
           {canEdit && (
-            <button
+            <Button
               type="button"
-              onClick={() => {
-                if (!isFormValid) {
-                  return;
-                }
-                onSave({
-                  id: taskId,
-                  title: title.trim(),
-                  description: description.trim() || undefined,
-                  due_date: dueDate,
-                  status: statusValue,
-                  priority: priorityValue,
-                });
-              }}
-              disabled={!isFormValid}
-              className={`rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition-all duration-300 ${
-                isFormValid
-                  ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_15px_rgba(82,113,255,0.25)] hover:shadow-[0_0_22px_rgba(82,113,255,0.4)] hover:scale-[1.02] active:scale-[0.98]"
-                  : "bg-white/[0.04] text-white/20 border border-white/[0.04] cursor-not-allowed"
-              }`}
+              onClick={handleSave}
+              disabled={!isFormValid || isSaving}
+              className="gap-2 font-semibold shadow-sm min-w-[130px]"
             >
-              Save Changes
-            </button>
+              {isSaving ? (
+                <>
+                  <LoaderCircle className="size-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="size-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
           )}
-        </div>
-      </motion.div>
-    </motion.div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

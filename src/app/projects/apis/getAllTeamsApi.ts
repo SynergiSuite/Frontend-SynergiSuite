@@ -1,25 +1,27 @@
 import { CookieManager } from "@/lib/cookieManager";
 import { Team } from "../schemas/team";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function getTeamsApi(): Promise<Team[]> {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/teams/get-all-teams`, {
+    if (!token) return [];
+
+    const response = await fetch("/api/teams/all", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: "Bearer " + token,
-        "ngrok-skip-browser-warning": "1",
       },
     });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch teams");
+      if (response.status === 404 || response.status === 204) {
+        return [];
+      }
+      return [];
     }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => null);
 
     const teamsList: Team[] = Array.isArray(data?.data)
       ? data.data

@@ -1,33 +1,40 @@
 import { CookieManager } from "@/lib/cookieManager";
 import { Team } from "@/app/projects/schemas/team";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function getProjectTeams(projectId?: string): Promise<Team[]> {
   try {
-    const token = CookieManager("get", "access-token");
-    const resolvedProjectId = projectId ?? CookieManager("get", "project-id");
+    const token = await CookieManager("get", "access-token");
+    const cookieProjectId = await CookieManager("get", "project-id");
+    const resolvedProjectId = projectId || (cookieProjectId ? String(cookieProjectId) : "");
 
     if (!resolvedProjectId) {
       throw new Error("Missing project id.");
     }
 
-    const response = await fetch(`${requestBaseUrl}/projects/get-all-project-teams`, {
-      method: "POST",
+    const response = await fetch(`/api/projects/teams/${encodeURIComponent(resolvedProjectId)}`, {
+      method: "GET",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token ?? ""}`,
       },
-      body: JSON.stringify({ id: resolvedProjectId }),
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to fetch project teams");
+      if (response.status === 404 || response.status === 204) {
+        return [];
+      }
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to fetch project teams");
     }
 
     const data = await response.json();
-    return data;
+    return Array.isArray(data?.teams)
+      ? data.teams
+      : Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data)
+      ? data
+      : [];
   } catch (error) {
     throw new Error(
       error instanceof Error ? error.message : "Failed to fetch project teams"

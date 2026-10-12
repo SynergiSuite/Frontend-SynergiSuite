@@ -1,7 +1,24 @@
 "use client";
-import React, { useEffect, useRef, useState } from "react";
 
-const ProjectStatus = ({ progress, startDate, dueDate, managedBy }: any) => {
+import React, { useEffect, useRef, useState } from "react";
+import { Building2, Calendar, Clock3, TrendingUp } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+
+interface ProjectStatusProps {
+  progress: number;
+  startDate?: string;
+  dueDate?: string;
+  managedBy?: string;
+  clientCompany?: string;
+}
+
+export default function ProjectStatus({
+  progress,
+  startDate,
+  dueDate,
+  managedBy,
+  clientCompany,
+}: ProjectStatusProps) {
   const [animatedProgress, setAnimatedProgress] = useState(0);
   const prevProgressRef = useRef(0);
 
@@ -12,8 +29,8 @@ const ProjectStatus = ({ progress, startDate, dueDate, managedBy }: any) => {
     }
 
     const from = prevProgressRef.current;
-    const to = Math.max(0, Math.min(100, next));
-    const durationMs = 700;
+    const to = Math.max(0, Math.min(100, Math.round(next)));
+    const durationMs = 600;
     const startTime = performance.now();
 
     let rafId = 0;
@@ -34,49 +51,80 @@ const ProjectStatus = ({ progress, startDate, dueDate, managedBy }: any) => {
   }, [progress]);
 
   return (
-    <>
-      <div className="bg-[#0a0826]/40 border border-white/[0.08] backdrop-blur-md rounded-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden transition-all duration-300 hover:border-[#5271ff]/30">
-        {/* Left Glowing Accent */}
-        <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-gradient-to-b from-[#5271ff] to-[#3a4ec4]" />
-
-        <h3 className="text-white/60 text-xs font-bold uppercase tracking-wider mb-2.5">
-          Project Status
-        </h3>
-        
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-3xl font-extrabold text-white tracking-tight">
-            {animatedProgress}%
+    <Card className="overflow-hidden border border-v2-neutral-300 bg-v2-neutral-100 shadow-sm">
+      <CardHeader className="pb-3 border-b border-v2-neutral-200/80">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-7 place-items-center rounded-lg bg-v2-neutral-200 text-v2-neutral-600">
+              <TrendingUp className="size-3.5" />
+            </span>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-v2-neutral-400">
+              Project Lifecycle
+            </h3>
+          </div>
+          <span className="rounded-full bg-v2-neutral-200 px-2.5 py-1 text-[11px] font-semibold text-v2-neutral-600">
+            {animatedProgress === 100
+              ? "Completed"
+              : animatedProgress > 0
+              ? "In Execution"
+              : "Planning"}
           </span>
-          <span className="text-xs text-white/40 font-medium">Completed</span>
         </div>
+      </CardHeader>
 
-        {/* Progress Slider Track */}
-        <div className="w-full bg-white/[0.06] rounded-full h-1.5 mt-3.5 overflow-hidden border border-white/[0.04]">
-          <div
-            className="bg-gradient-to-r from-[#5271ff] to-cyan-400 h-full rounded-full transition-all duration-500 ease-out shadow-[0_0_8px_#5271ff]"
-            style={{ width: `${animatedProgress}%` }}
-          />
+      <CardContent className="pt-4 space-y-4 text-xs">
+        {/* Progress Display */}
+        <div>
+          <div className="flex items-baseline justify-between mb-2">
+            <span className="text-2xl font-bold tracking-tight text-v2-neutral-600">
+              {animatedProgress}%
+            </span>
+            <span className="text-[11px] font-medium text-v2-neutral-400">
+              Deliverables Completed
+            </span>
+          </div>
+
+          <div className="h-2 w-full overflow-hidden rounded-full bg-v2-neutral-200">
+            <div
+              className="h-full rounded-full bg-v2-neutral-600 transition-all duration-500 ease-out"
+              style={{ width: `${animatedProgress}%` }}
+            />
+          </div>
         </div>
 
         {/* Metadata Details */}
-        <div className="pt-4 space-y-2.5 border-t border-white/[0.06] mt-4.5 text-xs font-medium text-white/50">
-          <p className="flex justify-between items-center">
-            <span>Managed by</span>
-            <span className="text-white font-semibold">{managedBy || "No Client"}</span>
-          </p>
-          <p className="flex justify-between items-center">
-            <span>Start Date</span>
-            <span className="text-white/90 font-semibold">{startDate}</span>
-          </p>
-          <p className="flex justify-between items-center">
-            <span>Due Date</span>
-            <span className="text-[#5271ff] font-semibold">{dueDate}</span>
-          </p>
+        <div className="space-y-3 pt-3.5 border-t border-v2-neutral-200/80 text-v2-neutral-500">
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-v2-neutral-400">
+              <Building2 className="size-3.5 text-v2-neutral-400 shrink-0" />
+              Client
+            </span>
+            <span className="font-semibold text-v2-neutral-600 truncate max-w-[160px] text-right">
+              {clientCompany || managedBy || "No Client Assigned"}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-v2-neutral-400">
+              <Calendar className="size-3.5 text-v2-neutral-400 shrink-0" />
+              Start Date
+            </span>
+            <span className="font-semibold text-v2-neutral-600">
+              {startDate || "—"}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-3">
+            <span className="flex items-center gap-2 text-v2-neutral-400">
+              <Clock3 className="size-3.5 text-v2-neutral-400 shrink-0" />
+              Timeline
+            </span>
+            <span className="font-semibold text-v2-neutral-600">
+              {dueDate || "—"}
+            </span>
+          </div>
         </div>
-      </div>
-    </>
+      </CardContent>
+    </Card>
   );
-};
-
-
-export default ProjectStatus;
+}

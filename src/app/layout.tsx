@@ -95,7 +95,8 @@ export default function RootLayout({
   const usesV2WorkspaceSurface =
     pathName.startsWith("/employees") ||
     pathName.startsWith("/settings") ||
-    pathName.startsWith("/teams");
+    pathName.startsWith("/teams") ||
+    pathName.startsWith("/projects");
 
   useEffect(() => {
     const patchedWindow = window as WindowWithPatchedFetch;

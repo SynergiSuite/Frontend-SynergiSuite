@@ -1,4 +1,5 @@
 "use client";
+
 import React from "react";
 import ActivityFeed from "./activityfeed";
 import QuickStats from "./quickstats";
@@ -10,10 +11,14 @@ type RightSidebarProps = {
   projectName?: string;
 };
 
-const RightSidebar = ({ tasks, projectId, projectName }: RightSidebarProps) => {
+export default function RightSidebar({
+  tasks,
+  projectId,
+  projectName,
+}: RightSidebarProps) {
   const normalizeStatus = (status: string) =>
     status.trim().toLowerCase().replace(/[\s-]+/g, "_");
-  const stats = tasks.reduce(
+  const stats = (tasks || []).reduce(
     (acc, task) => {
       const normalized = normalizeStatus(task.status || "");
       if (normalized === "completed") acc.completed += 1;
@@ -27,13 +32,9 @@ const RightSidebar = ({ tasks, projectId, projectName }: RightSidebarProps) => {
   );
 
   return (
-    <>
-      <div className="w-full min-w-0 space-y-4">
-        <QuickStats stats={stats} />
-        <ActivityFeed projectId={projectId} projectName={projectName} />
-      </div>
-    </>
+    <div className="w-full min-w-0 space-y-5">
+      <QuickStats stats={stats} />
+      <ActivityFeed projectId={projectId} projectName={projectName} />
+    </div>
   );
-};
-
-export default RightSidebar;
+}
