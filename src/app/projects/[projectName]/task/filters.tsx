@@ -25,6 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Team } from "@/app/projects/schemas/team";
 import {
+  extractTeamMembers,
   getStatusConfig,
   getPriorityConfig,
   TASK_PRIORITY_OPTIONS,
@@ -101,7 +102,7 @@ export default function FiltersBar({
       {/* Top row: View switchers on left, Quick CTA on right */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-v2-neutral-500/70 pb-3">
         {/* ClickUp-style View Switcher Tabs */}
-        <div className="flex items-center gap-1 rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 p-1">
+        <div className="flex items-center gap-1 rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/25 p-1">
           {viewModes.map((mode) => {
             const Icon = mode.icon;
             const isActive = viewMode === mode.id;
@@ -113,13 +114,13 @@ export default function FiltersBar({
                 className={`relative flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all duration-200 cursor-pointer ${
                   isActive
                     ? "bg-v2-neutral-500 text-v2-neutral-100 shadow-xs"
-                    : "text-v2-neutral-400 hover:text-v2-neutral-200 hover:bg-v2-neutral-600/60"
+                    : "text-v2-neutral-400 hover:text-v2-neutral-200 hover:bg-v2-neutral-500/30"
                 }`}
               >
-                <Icon className={`size-3.5 ${isActive ? "text-primary" : ""}`} />
+                <Icon className={`size-3.5 ${isActive ? "text-sky-400" : ""}`} />
                 <span>{mode.label}</span>
                 {isActive && (
-                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-0.5 rounded-full bg-primary" />
+                  <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-0.5 rounded-full bg-sky-400" />
                 )}
               </button>
             );
@@ -129,8 +130,8 @@ export default function FiltersBar({
         {/* Action button & active count */}
         <div className="flex items-center gap-2.5">
           {totalTasksCount !== undefined && (
-            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-v2-neutral-500 bg-v2-neutral-700/50 px-2.5 py-1 text-xs font-medium text-v2-neutral-300">
-              <span className="size-1.5 rounded-full bg-primary" />
+            <span className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-v2-neutral-500/70 bg-v2-neutral-500/25 px-2.5 py-1 text-xs font-medium text-v2-neutral-300">
+              <span className="size-1.5 rounded-full bg-sky-400" />
               {totalTasksCount} {totalTasksCount === 1 ? "task" : "tasks"}
             </span>
           )}
@@ -139,7 +140,7 @@ export default function FiltersBar({
             <Button
               onClick={onAddTask}
               size="sm"
-              className="gap-1.5 font-semibold shadow-md bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer rounded-xl h-9 px-3.5"
+              className="gap-1.5 font-semibold shadow-md bg-sky-500 hover:bg-sky-600 text-white cursor-pointer rounded-xl h-9 px-3.5"
             >
               <Plus className="size-4" strokeWidth={2.5} />
               <span>Add Task</span>
@@ -158,7 +159,7 @@ export default function FiltersBar({
             placeholder="Search tasks, squads, or assignees..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 py-2 pl-9 pr-8 text-xs sm:text-sm text-v2-neutral-100 placeholder:text-v2-neutral-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-all duration-200 h-9"
+            className="w-full rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/25 py-2 pl-9 pr-8 text-xs sm:text-sm text-v2-neutral-100 placeholder:text-v2-neutral-400 focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500/30 transition-all duration-200 h-9"
           />
           {searchQuery && (
             <button
@@ -174,7 +175,7 @@ export default function FiltersBar({
         {/* Assignment Filter (All, Unassigned, Teams, Employees) */}
         {onAssignmentChange && (
           <Select value={assignmentFilter} onValueChange={onAssignmentChange}>
-            <SelectTrigger className="h-9 min-w-[140px] rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-primary">
+            <SelectTrigger className="h-9 min-w-[140px] rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/25 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-sky-500/30">
               <SelectValue placeholder="Assignee: All" />
             </SelectTrigger>
             <SelectContent className="max-h-72 rounded-xl border border-v2-neutral-500 bg-v2-neutral-600 text-v2-neutral-100 shadow-2xl backdrop-blur-xl">
@@ -189,16 +190,7 @@ export default function FiltersBar({
               </SelectItem>
 
               {teams.map((team) => {
-                const membersList = [
-                  ...(team.leader ? [team.leader] : []),
-                  ...(team.members || []),
-                  ...(team.employees || []),
-                ];
-                const uniqueMembers = membersList.filter(
-                  (m, idx, self) =>
-                    Boolean(m.user_id) &&
-                    idx === self.findIndex((o) => o.user_id === m.user_id)
-                );
+                const uniqueMembers = extractTeamMembers(team);
 
                 return (
                   <SelectGroup key={team.id} className="border-t border-v2-neutral-500/50 pt-1 mt-1">
@@ -207,7 +199,7 @@ export default function FiltersBar({
                     </SelectLabel>
                     <SelectItem value={`team:${team.id}`} className="cursor-pointer text-xs">
                       <div className="flex items-center gap-2">
-                        <Users className="size-3 text-primary" />
+                        <Users className="size-3 text-sky-400" />
                         <span>Team: {team.name}</span>
                       </div>
                     </SelectItem>
@@ -232,7 +224,7 @@ export default function FiltersBar({
 
         {/* Status Filter */}
         <Select value={statusFilter} onValueChange={onStatusChange}>
-          <SelectTrigger className="h-9 min-w-[130px] rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-primary">
+          <SelectTrigger className="h-9 min-w-[130px] rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/25 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-sky-500/30">
             <SelectValue placeholder="Status: All" />
           </SelectTrigger>
           <SelectContent className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-600 text-v2-neutral-100 shadow-2xl backdrop-blur-xl">
@@ -259,7 +251,7 @@ export default function FiltersBar({
         {/* Priority Filter */}
         {onPriorityChange && (
           <Select value={priorityFilter} onValueChange={onPriorityChange}>
-            <SelectTrigger className="h-9 min-w-[125px] rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-primary">
+            <SelectTrigger className="h-9 min-w-[125px] rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/25 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-sky-500/30">
               <SelectValue placeholder="Priority: All" />
             </SelectTrigger>
             <SelectContent className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-600 text-v2-neutral-100 shadow-2xl backdrop-blur-xl">
@@ -283,7 +275,7 @@ export default function FiltersBar({
 
         {/* Due Date Filter */}
         <Select value={dueFilter} onValueChange={onDueChange}>
-          <SelectTrigger className="h-9 min-w-[130px] rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-primary">
+          <SelectTrigger className="h-9 min-w-[130px] rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/25 px-3 text-xs font-medium text-v2-neutral-200 hover:border-v2-neutral-400 focus:ring-1 focus:ring-sky-500/30">
             <SelectValue placeholder="Due: All" />
           </SelectTrigger>
           <SelectContent className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-600 text-v2-neutral-100 shadow-2xl backdrop-blur-xl">

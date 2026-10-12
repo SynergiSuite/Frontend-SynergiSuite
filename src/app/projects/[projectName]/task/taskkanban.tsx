@@ -127,14 +127,7 @@ export default function TaskKanban({
       await onUpdateTask(
         {
           id: task.id,
-          title: task.title,
-          description: task.description,
-          due_date: task.due_date,
-          dueDate: task.due_date,
           status: targetStatus,
-          priority: task.priority,
-          teamId: task.teams?.[0]?.id,
-          assigneeId: task.assignee?.user_id,
         },
         {
           showSuccessToast: false,
@@ -174,8 +167,8 @@ export default function TaskKanban({
                   key={column.status}
                   className={`flex h-full min-h-0 w-[min(340px,calc(100vw-3rem))] shrink-0 flex-col rounded-2xl border transition-all duration-200 sm:w-[340px] ${
                     isDropActive
-                      ? "border-primary/60 bg-v2-neutral-600/90 shadow-lg ring-2 ring-primary/20"
-                      : "border-v2-neutral-500/70 bg-v2-neutral-700/40"
+                      ? "border-sky-500/80 bg-sky-500/10 shadow-lg ring-2 ring-sky-500/25"
+                      : "border-v2-neutral-500/60 bg-v2-neutral-500/15"
                   }`}
                   onDragOver={(event) => {
                     event.preventDefault();
@@ -212,7 +205,7 @@ export default function TaskKanban({
                       <h3 className="text-xs font-bold uppercase tracking-wider text-v2-neutral-200 truncate">
                         {column.config.label}
                       </h3>
-                      <span className="grid size-5 place-items-center rounded-full bg-v2-neutral-600 text-[10px] font-bold text-v2-neutral-300 border border-v2-neutral-500">
+                      <span className="grid size-5 place-items-center rounded-full bg-v2-neutral-500/40 text-[10px] font-bold text-v2-neutral-300 border border-v2-neutral-500/80">
                         {column.tasks.length}
                       </span>
                     </div>
@@ -223,7 +216,7 @@ export default function TaskKanban({
                         type="button"
                         onClick={() => onAddTask(column.status)}
                         title={`Add task to ${column.config.label}`}
-                        className="p-1 rounded-lg text-v2-neutral-400 hover:text-v2-neutral-100 hover:bg-v2-neutral-600/60 transition-colors cursor-pointer"
+                        className="p-1 rounded-lg text-v2-neutral-400 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/40 transition-colors cursor-pointer"
                       >
                         <Plus className="size-3.5" />
                       </button>
@@ -234,15 +227,7 @@ export default function TaskKanban({
                   <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 custom-scrollbar">
                     {column.tasks.length > 0 ? (
                       column.tasks.map((task) => (
-                        <motion.div
-                          key={task.id}
-                          whileHover={{ y: -2 }}
-                          transition={{
-                            type: "spring",
-                            stiffness: 260,
-                            damping: 22,
-                          }}
-                        >
+                        <div key={task.id}>
                           <TaskCard
                             id={task.id}
                             title={task.title}
@@ -260,6 +245,7 @@ export default function TaskKanban({
                             }
                             canDelete={canDeleteTasks}
                             draggable={canEditTasks && !pendingTaskIds.includes(task.id)}
+                            isDragging={draggedTaskId === task.id}
                             onDragStart={(event) => {
                               event.dataTransfer.effectAllowed = "move";
                               event.dataTransfer.setData("text/plain", task.id);
@@ -270,10 +256,10 @@ export default function TaskKanban({
                               setDropTargetStatus(null);
                             }}
                           />
-                        </motion.div>
+                        </div>
                       ))
                     ) : (
-                      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-v2-neutral-500/50 bg-v2-neutral-600/20 px-4 py-10 text-center">
+                      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-v2-neutral-500/50 bg-v2-neutral-500/10 px-4 py-10 text-center">
                         <Inbox className="size-5 text-v2-neutral-400 mb-1.5 opacity-50" />
                         <span className="text-xs text-v2-neutral-400 font-medium">
                           No tasks in this stage

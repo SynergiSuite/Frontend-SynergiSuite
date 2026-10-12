@@ -37,6 +37,7 @@ import DatePicker from "@/components/ui/datePicker";
 import { Team } from "@/app/projects/schemas/team";
 import { TaskAssignee, TaskTeam } from "./schemas/task";
 import {
+  extractTeamMembers,
   getPriorityConfig,
   getStatusConfig,
   TASK_PRIORITY_OPTIONS,
@@ -48,11 +49,11 @@ export type TaskViewEditPayload = {
   title?: string;
   description?: string;
   due_date?: string;
-  dueDate?: string;
   status?: string;
   priority?: string;
   teamId?: string;
   assigneeId?: number;
+  milestoneId?: string;
 };
 
 export type TaskViewEditData = {
@@ -64,6 +65,8 @@ export type TaskViewEditData = {
   priority?: string;
   assignee?: TaskAssignee | null;
   teams?: (Team | TaskTeam)[];
+  milestone?: { id: string; name: string } | null;
+  milestoneId?: string;
 };
 
 type ViewAndEditProps = {
@@ -152,11 +155,11 @@ export default function ViewAndEditModal({
         title: title.trim(),
         description: description.trim() || undefined,
         due_date: dueDate,
-        dueDate: dueDate,
         status: statusValue,
         priority: priorityValue,
         teamId,
         assigneeId,
+        milestoneId: data.milestone?.id || data.milestoneId || undefined,
       });
     } catch (err) {
       console.error("Error saving task:", err);
@@ -303,57 +306,53 @@ export default function ViewAndEditModal({
                 </SelectItem>
 
                 {/* Team & Member Options Grouped by Team */}
-                {projectTeams.map((team) => {
-                  const membersList = [
-                    ...(team.leader ? [team.leader] : []),
-                    ...(team.members || []),
-                    ...(team.employees || []),
-                  ];
+                {projectTeams.length === 0 ? (
+                  <div className="py-3 px-3 text-center text-xs text-v2-neutral-400">
+                    No squads available for assignment.
+                  </div>
+                ) : (
+                  projectTeams.map((team) => {
+                    const uniqueMembers = extractTeamMembers(team);
 
-                  const uniqueMembers = membersList.filter(
-                    (m, idx, self) =>
-                      Boolean(m.user_id) &&
-                      idx === self.findIndex((o) => o.user_id === m.user_id)
-                  );
+                    return (
+                      <SelectGroup key={team.id} className="border-t border-v2-neutral-200/80 pt-1 mt-1">
+                        <SelectLabel className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-v2-neutral-400">
+                          {team.name}
+                        </SelectLabel>
 
-                  return (
-                    <SelectGroup key={team.id} className="border-t border-v2-neutral-200/80 pt-1 mt-1">
-                      <SelectLabel className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-v2-neutral-400">
-                        {team.name}
-                      </SelectLabel>
-
-                      {/* Entire Team Option */}
-                      <SelectItem
-                        value={`team:${team.id}`}
-                        className="cursor-pointer text-xs font-medium text-primary"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Users className="size-3.5" />
-                          <span>Entire Team ({team.name})</span>
-                        </div>
-                      </SelectItem>
-
-                      {/* Individual Member Options */}
-                      {uniqueMembers.map((member) => (
+                        {/* Entire Team Option */}
                         <SelectItem
-                          key={`${team.id}-${member.user_id}`}
-                          value={`member:${team.id}:${member.user_id}`}
-                          className="cursor-pointer text-xs pl-6"
+                          value={`team:${team.id}`}
+                          className="cursor-pointer text-xs font-medium text-primary"
                         >
                           <div className="flex items-center gap-2">
-                            <User className="size-3 text-v2-neutral-400" />
-                            <span className="font-medium text-v2-neutral-600">
-                              {member.name}
-                            </span>
-                            <span className="text-[10px] text-v2-neutral-400">
-                              ({team.name})
-                            </span>
+                            <Users className="size-3.5" />
+                            <span>Entire Squad ({team.name})</span>
                           </div>
                         </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  );
-                })}
+
+                        {/* Individual Member Options */}
+                        {uniqueMembers.map((member) => (
+                          <SelectItem
+                            key={`${team.id}-${member.user_id}`}
+                            value={`member:${team.id}:${member.user_id}`}
+                            className="cursor-pointer text-xs pl-6"
+                          >
+                            <div className="flex items-center gap-2">
+                              <User className="size-3 text-v2-neutral-400" />
+                              <span className="font-medium text-v2-neutral-600">
+                                {member.name}
+                              </span>
+                              <span className="text-[10px] text-v2-neutral-400">
+                                ({team.name})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })
+                )}
               </SelectContent>
             </Select>
           </Field>

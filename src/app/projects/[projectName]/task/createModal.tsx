@@ -38,6 +38,7 @@ import {
 import DatePicker from "@/components/ui/datePicker";
 import { Team } from "@/app/projects/schemas/team";
 import {
+  extractTeamMembers,
   getPriorityConfig,
   getStatusConfig,
   TASK_PRIORITY_OPTIONS,
@@ -280,58 +281,53 @@ export default function NewTaskModal({
                 </SelectItem>
 
                 {/* Team & Member Options Grouped by Team */}
-                {teams.map((team) => {
-                  const membersList = [
-                    ...(team.leader ? [team.leader] : []),
-                    ...(team.members || []),
-                    ...(team.employees || []),
-                  ];
+                {teams.length === 0 ? (
+                  <div className="py-3 px-3 text-center text-xs text-v2-neutral-400">
+                    No squads available for assignment.
+                  </div>
+                ) : (
+                  teams.map((team) => {
+                    const uniqueMembers = extractTeamMembers(team);
 
-                  // Deduplicate members by user_id
-                  const uniqueMembers = membersList.filter(
-                    (m, idx, self) =>
-                      Boolean(m.user_id) &&
-                      idx === self.findIndex((o) => o.user_id === m.user_id)
-                  );
+                    return (
+                      <SelectGroup key={team.id} className="border-t border-v2-neutral-200/80 pt-1 mt-1">
+                        <SelectLabel className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-v2-neutral-400">
+                          {team.name}
+                        </SelectLabel>
 
-                  return (
-                    <SelectGroup key={team.id} className="border-t border-v2-neutral-200/80 pt-1 mt-1">
-                      <SelectLabel className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-v2-neutral-400">
-                        {team.name}
-                      </SelectLabel>
-
-                      {/* Option 2: Entire Team */}
-                      <SelectItem
-                        value={`team:${team.id}`}
-                        className="cursor-pointer text-xs font-medium text-primary"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Users className="size-3.5" />
-                          <span>Entire Team ({team.name})</span>
-                        </div>
-                      </SelectItem>
-
-                      {/* Option 3: Specific Employee */}
-                      {uniqueMembers.map((member) => (
+                        {/* Option 2: Entire Team */}
                         <SelectItem
-                          key={`${team.id}-${member.user_id}`}
-                          value={`member:${team.id}:${member.user_id}`}
-                          className="cursor-pointer text-xs pl-6"
+                          value={`team:${team.id}`}
+                          className="cursor-pointer text-xs font-medium text-primary"
                         >
                           <div className="flex items-center gap-2">
-                            <User className="size-3 text-v2-neutral-400" />
-                            <span className="font-medium text-v2-neutral-600">
-                              {member.name}
-                            </span>
-                            <span className="text-[10px] text-v2-neutral-400">
-                              ({team.name})
-                            </span>
+                            <Users className="size-3.5" />
+                            <span>Entire Squad ({team.name})</span>
                           </div>
                         </SelectItem>
-                      ))}
-                    </SelectGroup>
-                  );
-                })}
+
+                        {/* Option 3: Specific Employee */}
+                        {uniqueMembers.map((member) => (
+                          <SelectItem
+                            key={`${team.id}-${member.user_id}`}
+                            value={`member:${team.id}:${member.user_id}`}
+                            className="cursor-pointer text-xs pl-6"
+                          >
+                            <div className="flex items-center gap-2">
+                              <User className="size-3 text-v2-neutral-400" />
+                              <span className="font-medium text-v2-neutral-600">
+                                {member.name}
+                              </span>
+                              <span className="text-[10px] text-v2-neutral-400">
+                                ({team.name})
+                              </span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    );
+                  })
+                )}
               </SelectContent>
             </Select>
             <FieldDescription className="text-[11px] text-v2-neutral-400 mt-1">
@@ -339,48 +335,47 @@ export default function NewTaskModal({
             </FieldDescription>
           </Field>
 
-          {/* Roadmap Milestone Selection & Target Due Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
-                Roadmap Milestone
-              </FieldLabel>
-              <Select
-                value={milestoneId}
-                onValueChange={setMilestoneId}
-                disabled={isSubmitting}
-              >
-                <SelectTrigger className={inputClassName}>
-                  <SelectValue placeholder="Optional milestone" />
-                </SelectTrigger>
-                <SelectContent className="border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl rounded-xl">
-                  <SelectItem value="none" className="cursor-pointer text-xs">
-                    No milestone linked
+          {/* Roadmap Milestone Selection */}
+          <Field>
+            <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+              Roadmap Milestone
+            </FieldLabel>
+            <Select
+              value={milestoneId}
+              onValueChange={setMilestoneId}
+              disabled={isSubmitting}
+            >
+              <SelectTrigger className={inputClassName}>
+                <SelectValue placeholder="Optional milestone" />
+              </SelectTrigger>
+              <SelectContent className="border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl rounded-xl">
+                <SelectItem value="none" className="cursor-pointer text-xs">
+                  No milestone linked
+                </SelectItem>
+                {milestones.map((m) => (
+                  <SelectItem key={m.id} value={m.id} className="cursor-pointer text-xs">
+                    <div className="flex items-center gap-2">
+                      <Layers className="size-3.5 text-v2-neutral-500" />
+                      <span>{m.name}</span>
+                    </div>
                   </SelectItem>
-                  {milestones.map((m) => (
-                    <SelectItem key={m.id} value={m.id} className="cursor-pointer text-xs">
-                      <div className="flex items-center gap-2">
-                        <Layers className="size-3.5 text-v2-neutral-500" />
-                        <span>{m.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
 
-            <Field>
-              <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
-                Target Due Date <span className="text-destructive">*</span>
-              </FieldLabel>
-              <DatePicker
-                value={dueDate}
-                onChange={setDueDate}
-                disabled={isSubmitting}
-                placeholder="Select date"
-              />
-            </Field>
-          </div>
+          {/* Target Due Date */}
+          <Field>
+            <FieldLabel className="text-xs font-semibold text-v2-neutral-600">
+              Target Due Date <span className="text-destructive">*</span>
+            </FieldLabel>
+            <DatePicker
+              value={dueDate}
+              onChange={setDueDate}
+              disabled={isSubmitting}
+              placeholder="Select target completion date"
+            />
+          </Field>
         </div>
 
         {/* Footer */}

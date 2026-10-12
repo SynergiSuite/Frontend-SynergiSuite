@@ -7,7 +7,6 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
   RotateCcw,
   Sparkles,
   X,
@@ -56,29 +55,6 @@ function parseYMD(str?: string): Date | null {
   return isNaN(parsed.getTime()) ? null : parsed;
 }
 
-function getRelativeDateLabel(date: Date): string | null {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const target = new Date(date);
-  target.setHours(0, 0, 0, 0);
-
-  const diffTime = target.getTime() - today.getTime();
-  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Tomorrow";
-  if (diffDays === -1) return "Yesterday";
-  if (diffDays < -1) return `${Math.abs(diffDays)}d ago`;
-  if (diffDays < 7) return `In ${diffDays} days`;
-  if (diffDays < 30) {
-    const weeks = Math.round(diffDays / 7);
-    return `In ${weeks} week${weeks > 1 ? "s" : ""}`;
-  }
-  const months = Math.round(diffDays / 30);
-  return `In ${months} month${months > 1 ? "s" : ""}`;
-}
-
 export default function DatePicker({
   value,
   onChange,
@@ -106,6 +82,33 @@ export default function DatePicker({
       setCurrentMonth(new Date(parsed));
     }
   }, [value]);
+
+  // Close calendar on outside click or Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
 
   // GSAP Entrance Animation when panel opens
   useLayoutEffect(() => {
@@ -234,67 +237,66 @@ export default function DatePicker({
   }
 
   const todayStr = formatToYMD(new Date());
-  const relativeLabel = selectedDate ? getRelativeDateLabel(selectedDate) : null;
 
   return (
     <div ref={containerRef} className={`space-y-2.5 w-full ${className}`}>
       {/* Date Trigger Bar */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => !disabled && setIsOpen((prev) => !prev)}
-          className={`flex h-11 flex-1 items-center justify-between rounded-xl border bg-v2-neutral-100 px-3.5 text-xs text-v2-neutral-600 outline-none transition-all duration-200 cursor-pointer ${
-            isOpen
-              ? "border-v2-neutral-500 ring-[3px] ring-v2-neutral-400/20"
-              : "border-v2-neutral-300 hover:border-v2-neutral-400"
-          } disabled:cursor-not-allowed disabled:opacity-60`}
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <CalendarIcon className="size-4 text-v2-neutral-400 shrink-0" />
-            {selectedDate ? (
-              <span className="font-semibold text-v2-neutral-600 truncate">
-                {selectedDate.toLocaleDateString("en-US", {
-                  weekday: "short",
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                })}
-              </span>
-            ) : (
-              <span className="text-v2-neutral-400">{placeholder}</span>
-            )}
-          </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        className={`group flex h-11 w-full items-center justify-between rounded-xl border bg-v2-neutral-100 px-3.5 text-xs text-v2-neutral-600 outline-none transition-all duration-200 cursor-pointer ${
+          isOpen
+            ? "border-v2-neutral-500 ring-[3px] ring-v2-neutral-400/20"
+            : "border-v2-neutral-300 hover:border-v2-neutral-400"
+        } disabled:cursor-not-allowed disabled:opacity-60`}
+      >
+        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+          <CalendarIcon className="size-4 text-v2-neutral-400 shrink-0" />
+          {selectedDate ? (
+            <span className="font-semibold text-v2-neutral-600 truncate">
+              {selectedDate.toLocaleDateString("en-US", {
+                weekday: "short",
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </span>
+          ) : (
+            <span className="text-v2-neutral-400 truncate">{placeholder}</span>
+          )}
+        </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {relativeLabel && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-v2-neutral-300 bg-v2-neutral-200/80 px-2.5 py-0.5 text-[10px] font-semibold text-v2-neutral-600">
-                <Clock className="size-3 text-v2-neutral-500" />
-                {relativeLabel}
-              </span>
-            )}
-            <ChevronDown
-              className={`size-4 text-v2-neutral-400 transition-transform duration-300 ease-out ${
-                isOpen ? "rotate-180 text-v2-neutral-600" : ""
-              }`}
-            />
-          </div>
-        </button>
-
-        {value && (
-          <button
-            type="button"
-            title="Clear date"
-            onClick={() => {
-              onChange("");
-              setIsOpen(false);
-            }}
-            className="grid size-11 shrink-0 place-items-center rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-400 hover:text-destructive hover:border-destructive/30 hover:bg-destructive/5 transition-colors cursor-pointer"
-          >
-            <X className="size-4" />
-          </button>
-        )}
-      </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {value && !disabled && (
+            <span
+              role="button"
+              tabIndex={0}
+              title="Clear date"
+              onClick={(e) => {
+                e.stopPropagation();
+                onChange("");
+                setIsOpen(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.stopPropagation();
+                  onChange("");
+                  setIsOpen(false);
+                }
+              }}
+              className="grid size-6 place-items-center rounded-md text-v2-neutral-400 hover:text-destructive hover:bg-destructive/10 transition-colors"
+            >
+              <X className="size-3.5" />
+            </span>
+          )}
+          <ChevronDown
+            className={`size-4 text-v2-neutral-400 transition-transform duration-300 ease-out ${
+              isOpen ? "rotate-180 text-v2-neutral-600" : ""
+            }`}
+          />
+        </div>
+      </button>
 
       {/* Expandable Calendar Panel */}
       {isOpen && (
@@ -390,7 +392,7 @@ export default function DatePicker({
                 return (
                   <div
                     key={`filler-${index}`}
-                    className="grid size-9 place-items-center rounded-lg text-xs font-normal text-v2-neutral-300 select-none opacity-40"
+                    className="grid size-9 place-items-center rounded-lg text-xs font-normal text-v2-neutral-300 select-none opacity-40 mx-auto"
                   >
                     {item.day}
                   </div>
@@ -406,7 +408,7 @@ export default function DatePicker({
                   key={`day-${item.day}`}
                   type="button"
                   onClick={() => handleSelectDay(item.day)}
-                  className={`grid size-9 place-items-center rounded-lg text-xs transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95 ${
+                  className={`grid size-9 place-items-center rounded-lg text-xs transition-all duration-150 cursor-pointer hover:scale-105 active:scale-95 mx-auto ${
                     isSelected
                       ? "bg-v2-neutral-600 text-v2-neutral-100 font-bold shadow-sm"
                       : isToday

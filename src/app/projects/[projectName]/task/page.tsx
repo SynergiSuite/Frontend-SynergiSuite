@@ -24,6 +24,10 @@ import { Task } from "./schemas/task";
 import { GetProjectDetails } from "../apis/getProjectDetails";
 import { getMilestone } from "../apis/getMilestones";
 import { getProjectTeams } from "./apis/getProjectTeamApi";
+import { getTeamsApi } from "@/app/projects/apis/getAllTeamsApi";
+import { getTeamsWithTasksApi } from "@/app/teams/apis/getTeamsWithTasksApi";
+import { getBusinessTeamsWithMembersApi } from "@/app/projects/apis/getBusinessTeamsWithMembersApi";
+import { getAllEmployeesApi } from "@/app/employees/apis/getAllEmployeeApi";
 import { fetchTaskApi } from "./apis/fetchTasksApi";
 import { createTaskApi } from "./apis/createTaskApi";
 import { updateTaskApi } from "./apis/updateTaskApi";
@@ -36,6 +40,7 @@ import CalendarWidget from "./calendar";
 import NewTaskModal, { type NewTaskPayload } from "./createModal";
 import { TaskViewEditPayload } from "./viewAndEdit";
 import {
+  extractTeamMembers,
   isOverdue,
   normalizeTaskStatus,
   TASK_STATUS_OPTIONS,
@@ -92,8 +97,134 @@ export default function TaskPage() {
         if (resolvedId) {
           await getTasks(resolvedId);
 
-          const projectTeams = await getProjectTeams(resolvedId);
-          setTeams(projectTeams);
+          type DetailsWithBusiness = {
+            business_id?: number | string;
+            business?: { id?: number | string; business_id?: number | string };
+          };
+          const projectDetailsObj = details as DetailsWithBusiness | null;
+          const rawCookieBusinessId =
+            (await CookieManager("get", "business-id")) ||
+            (await CookieManager("get", "business_id"));
+
+          const cookieBusinessId =
+            typeof rawCookieBusinessId === "string" || typeof rawCookieBusinessId === "number"
+              ? rawCookieBusinessId
+              : undefined;
+
+          const businessId =
+            projectDetailsObj?.business_id ??
+            projectDetailsObj?.business?.id ??
+            projectDetailsObj?.business?.business_id ??
+            cookieBusinessId;
+
+          // 1. Fetch from the new dedicated endpoint: GET /teams/business/:business_id
+          const [businessTeamsData, allCompanyTeams, teamsWithTasksRes, allEmployees] =
+            await Promise.all([
+              getBusinessTeamsWithMembersApi(businessId),
+              getTeamsApi().catch(() => []),
+              getTeamsWithTasksApi(1, 100).catch(() => ({ data: [] })),
+              getAllEmployeesApi().catch(() => []),
+            ]);
+
+          let resolvedTeams: Team[] = [];
+
+          if (businessTeamsData?.teams && businessTeamsData.teams.length > 0) {
+            // New endpoint succeeded: build rich teams list with full leader and member profiles
+            resolvedTeams = businessTeamsData.teams.map((t) => {
+              const leader = t.leader
+                ? {
+                    user_id: t.leader.user_id,
+                    name: t.leader.name,
+                    email: t.leader.email,
+                  }
+                : undefined;
+
+              const memberItems = (t.members || []).map((m) => ({
+                user_id: m.user_id,
+                name: m.name,
+                email: m.email,
+              }));
+
+              const allMembers = [
+                ...(leader ? [leader] : []),
+                ...memberItems,
+              ];
+
+              const uniqueMembers = allMembers.filter(
+                (m, idx, self) => idx === self.findIndex((o) => o.user_id === m.user_id)
+              );
+
+              return {
+                id: t.id,
+                name: t.name,
+                description: t.description || undefined,
+                leader,
+                members: uniqueMembers,
+              };
+            });
+          } else {
+            // Fallback if business_id endpoint was unavailable
+            let projectTeams: Team[] = [];
+            try {
+              projectTeams = await getProjectTeams(resolvedId);
+            } catch {
+              projectTeams = [];
+            }
+
+            type SquadRecord = Team & { teamMembers?: unknown[] };
+            const squadMap = new Map<string, SquadRecord>();
+            for (const t of allCompanyTeams) {
+              if (t?.id) squadMap.set(String(t.id), t);
+            }
+            for (const t of (teamsWithTasksRes?.data || [])) {
+              if (t?.id) {
+                const prev = squadMap.get(String(t.id)) || ({} as SquadRecord);
+                squadMap.set(String(t.id), {
+                  ...prev,
+                  ...t,
+                  members: t.members?.length
+                    ? (t.members as unknown as typeof prev.members)
+                    : prev.members,
+                  teamMembers: t.teamMembers?.length ? t.teamMembers : prev.teamMembers,
+                });
+              }
+            }
+            for (const t of projectTeams) {
+              if (t?.id) {
+                const prev = squadMap.get(String(t.id)) || ({} as SquadRecord);
+                squadMap.set(String(t.id), {
+                  ...prev,
+                  ...t,
+                  members: t.members?.length ? t.members : prev.members,
+                });
+              }
+            }
+            for (const t of (details?.teams || [])) {
+              if (t?.id) {
+                const prev = squadMap.get(String(t.id)) || ({} as SquadRecord);
+                squadMap.set(String(t.id), {
+                  ...prev,
+                  ...t,
+                  members: t.members?.length ? t.members : prev.members,
+                });
+              }
+            }
+
+            const allSquadsList = Array.from(squadMap.values());
+            resolvedTeams = allSquadsList.map((team) => {
+              const extracted = extractTeamMembers(team, allEmployees);
+              return {
+                ...team,
+                members: extracted.map((m) => ({
+                  user_id: m.user_id,
+                  name: m.name,
+                  email: m.email,
+                })),
+              };
+            });
+          }
+
+          setTeams(resolvedTeams);
 
           const milestoneData = await getMilestone(resolvedId);
           setMilestones(milestoneData);
@@ -186,7 +317,7 @@ export default function TaskPage() {
               description: payload.description ?? t.description,
               status: payload.status ?? t.status,
               priority: payload.priority ?? t.priority,
-              due_date: payload.due_date ?? payload.dueDate ?? t.due_date,
+              due_date: payload.due_date ?? t.due_date,
             }
           : t
       )
@@ -199,9 +330,10 @@ export default function TaskPage() {
         description: payload.description,
         status: payload.status,
         priority: payload.priority,
-        dueDate: payload.dueDate || payload.due_date,
+        due_date: payload.due_date,
         teamId: payload.teamId,
         assigneeId: payload.assigneeId,
+        milestoneId: payload.milestoneId,
       });
       if (projectId) {
         await getTasks(projectId);
@@ -294,8 +426,8 @@ export default function TaskPage() {
                     <h1 className="text-2xl font-bold tracking-tight text-v2-neutral-100 sm:text-3xl">
                       Task Board
                     </h1>
-                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-v2-neutral-500 bg-v2-neutral-700/60 px-2.5 py-1 text-xs font-semibold text-v2-neutral-200">
-                      <FolderKanban className="size-3.5 text-primary" />
+                    <span className="inline-flex items-center gap-1.5 rounded-lg border border-v2-neutral-500/70 bg-v2-neutral-500/30 px-2.5 py-1 text-xs font-semibold text-v2-neutral-200">
+                      <FolderKanban className="size-3.5 text-sky-400" />
                       <span>{completionPercentage}% Complete</span>
                     </span>
                   </div>
@@ -307,12 +439,12 @@ export default function TaskPage() {
                 <div className="flex items-center gap-2.5">
                   <Link
                     href={`/projects/${encodeURIComponent(projectName)}/overview`}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/50 px-3 py-2 text-xs font-semibold text-v2-neutral-200 hover:text-v2-neutral-100 hover:bg-v2-neutral-600 transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/30 px-3 py-2 text-xs font-semibold text-v2-neutral-200 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/50 transition-colors"
                   >
                     View Overview
                   </Link>
 
-                  {canEditTasks && (
+                  {/* {canEditTasks && (
                     <Button
                       onClick={() => handleOpenCreateWithStatus("todo")}
                       className="gap-2 font-semibold shadow-md cursor-pointer"
@@ -320,7 +452,7 @@ export default function TaskPage() {
                       <Plus className="size-4" />
                       Create Task
                     </Button>
-                  )}
+                  )} */}
                 </div>
               </div>
 

@@ -112,14 +112,7 @@ export default function TaskList({
     await onUpdateTask(
       {
         id: task.id,
-        title: task.title,
-        description: task.description,
-        due_date: task.due_date,
-        dueDate: task.due_date,
-        priority: task.priority,
         status: nextStatus,
-        teamId: task.teams?.[0]?.id,
-        assigneeId: task.assignee?.user_id,
       },
       { showSuccessToast: true }
     );
@@ -154,7 +147,7 @@ export default function TaskList({
               {/* ClickUp Group Header */}
               <div
                 onClick={() => toggleGroupCollapse(group.status)}
-                className="flex cursor-pointer items-center justify-between border-b border-v2-neutral-500/60 bg-v2-neutral-700/50 px-4 py-2.5 transition-colors hover:bg-v2-neutral-700/80"
+                className="flex cursor-pointer items-center justify-between border-b border-v2-neutral-500/60 bg-v2-neutral-500/20 px-4 py-2.5 transition-colors hover:bg-v2-neutral-500/30"
               >
                 <div className="flex items-center gap-2.5">
                   <button
@@ -177,7 +170,7 @@ export default function TaskList({
                     {group.config.label}
                   </span>
 
-                  <span className="grid size-5 place-items-center rounded-full bg-v2-neutral-600 text-[10px] font-bold text-v2-neutral-300 border border-v2-neutral-500">
+                  <span className="grid size-5 place-items-center rounded-full bg-v2-neutral-500/40 text-[10px] font-bold text-v2-neutral-300 border border-v2-neutral-500/70">
                     {group.tasks.length}
                   </span>
                 </div>
@@ -189,7 +182,7 @@ export default function TaskList({
                       e.stopPropagation();
                       onAddTask(group.status);
                     }}
-                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-v2-neutral-400 hover:text-v2-neutral-100 hover:bg-v2-neutral-600 transition-colors"
+                    className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-v2-neutral-400 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/30 transition-colors"
                   >
                     <Plus className="size-3.5" />
                     <span>Add Task</span>
@@ -202,7 +195,7 @@ export default function TaskList({
                 <div className="overflow-x-auto custom-scrollbar">
                   {hasTasks ? (
                     <table className="w-full text-left text-sm text-v2-neutral-100">
-                      <thead className="border-b border-v2-neutral-500/40 bg-v2-neutral-700/20 text-[11px] font-semibold uppercase tracking-wider text-v2-neutral-400">
+                      <thead className="border-b border-v2-neutral-500/40 bg-v2-neutral-500/15 text-[11px] font-semibold uppercase tracking-wider text-v2-neutral-400">
                         <tr>
                           <th scope="col" className="w-12 px-4 py-2 text-center">
                             #
@@ -236,7 +229,7 @@ export default function TaskList({
                             <tr
                               key={task.id}
                               onClick={() => setSelectedTask(task)}
-                              className="group cursor-pointer transition-colors hover:bg-v2-neutral-700/40"
+                              className="group cursor-pointer transition-colors hover:bg-v2-neutral-500/25"
                             >
                               {/* Checkbox Quick Complete */}
                               <td className="px-4 py-3 text-center">
@@ -246,7 +239,7 @@ export default function TaskList({
                                   className={`grid size-5 place-items-center rounded-md border transition-all ${
                                     isCompleted
                                       ? "border-emerald-500 bg-emerald-500 text-white"
-                                      : "border-v2-neutral-400/80 bg-v2-neutral-700/60 hover:border-primary text-transparent"
+                                      : "border-v2-neutral-400/80 bg-v2-neutral-500/30 hover:border-sky-400 text-transparent"
                                   }`}
                                   title={isCompleted ? "Mark incomplete" : "Mark completed"}
                                 >
@@ -258,7 +251,7 @@ export default function TaskList({
                               <td className="px-4 py-3">
                                 <div className="min-w-0 max-w-md">
                                   <span
-                                    className={`font-semibold text-xs sm:text-sm tracking-tight transition-colors group-hover:text-primary ${
+                                    className={`font-semibold text-xs sm:text-sm tracking-tight transition-colors group-hover:text-white ${
                                       isCompleted
                                         ? "text-v2-neutral-400 line-through"
                                         : "text-v2-neutral-100"
@@ -291,10 +284,10 @@ export default function TaskList({
                               <td className="whitespace-nowrap px-4 py-3">
                                 {task.assignee ? (
                                   <div
-                                    className="inline-flex items-center gap-1.5 rounded-md border border-v2-neutral-500 bg-v2-neutral-700/70 px-2 py-0.5 text-xs font-medium text-v2-neutral-200 max-w-[200px]"
+                                    className="inline-flex items-center gap-1.5 rounded-md border border-v2-neutral-500/70 bg-v2-neutral-500/30 px-2 py-0.5 text-xs font-medium text-v2-neutral-200 max-w-[200px]"
                                     title={`${task.assignee.name} (${task.assignee.email})${primaryTeam ? ` • ${primaryTeam.name}` : ""}`}
                                   >
-                                    <span className="grid size-4.5 place-items-center rounded-full bg-primary/20 text-[9px] font-bold text-primary shrink-0">
+                                    <span className="grid size-4.5 place-items-center rounded-full bg-sky-500/25 text-[9px] font-bold text-sky-300 shrink-0">
                                       {getInitials(task.assignee.name)}
                                     </span>
                                     <span className="truncate">{task.assignee.name}</span>
@@ -305,8 +298,8 @@ export default function TaskList({
                                     )}
                                   </div>
                                 ) : primaryTeam ? (
-                                  <div className="inline-flex items-center gap-1.5 rounded-md border border-v2-neutral-500 bg-v2-neutral-700/70 px-2 py-0.5 text-xs font-medium text-v2-neutral-200 max-w-[200px]">
-                                    <Users className="size-3.5 text-primary shrink-0" />
+                                  <div className="inline-flex items-center gap-1.5 rounded-md border border-v2-neutral-500/70 bg-v2-neutral-500/30 px-2 py-0.5 text-xs font-medium text-v2-neutral-200 max-w-[200px]">
+                                    <Users className="size-3.5 text-sky-400 shrink-0" />
                                     <span className="truncate">{primaryTeam.name}</span>
                                   </div>
                                 ) : (

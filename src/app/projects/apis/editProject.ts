@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export type EditProjectPayload = {
   name: string;
   description?: string;
@@ -12,7 +10,7 @@ export type EditProjectPayload = {
 export async function editProjectApi(id: string | number, payload: EditProjectPayload) {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/projects/${id}`, {
+    const response = await fetch(`/api/projects/${encodeURIComponent(String(id))}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

@@ -29,6 +29,7 @@ export async function proxyBackendRequest(
     "Content-Type": "application/json",
     "ngrok-skip-browser-warning": "true",
     "x-client-secret": clientSecret,
+    "x-frontend-secret": clientSecret,
   });
 
   if (forwardAuthorization && authorization) {

@@ -36,6 +36,18 @@ export async function getAllEmployeesApi(): Promise<AllEmployeeRecord[]> {
     throw new Error(text || `Failed to fetch all employees: ${response.statusText}`);
   }
 
-  const resJson: GetAllEmployeesResponse = await response.json();
-  return resJson.data || [];
+  const resJson: unknown = await response.json();
+  const resRecord = resJson as {
+    data?: AllEmployeeRecord[];
+    employees?: AllEmployeeRecord[];
+  } | null;
+
+  const list: AllEmployeeRecord[] = Array.isArray(resRecord?.data)
+    ? resRecord.data
+    : Array.isArray(resJson)
+    ? (resJson as AllEmployeeRecord[])
+    : Array.isArray(resRecord?.employees)
+    ? resRecord.employees
+    : [];
+  return list;
 }

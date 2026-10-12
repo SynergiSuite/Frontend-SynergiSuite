@@ -1,12 +1,10 @@
 import { CookieManager } from "@/lib/cookieManager";
 import { GetAllClientsResponseDto } from "@/app/clients/dtos/getAllClientsResponse.dto";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function getClientsApi(): Promise<GetAllClientsResponseDto[]> {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/clients/get-all-clients`, {
+    const response = await fetch("/api/clients/all", {
       method: "GET",
       headers: {
         "content-type": "application/json",

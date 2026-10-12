@@ -303,3 +303,84 @@ export const filterTasks = ({
     return true;
   });
 };
+
+export interface ExtractedMember {
+  user_id: number;
+  name: string;
+  email: string;
+}
+
+export interface AllEmployeeRecordLike {
+  user_id: number;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string;
+}
+
+export function extractTeamMembers(
+  team: unknown,
+  employees?: AllEmployeeRecordLike[]
+): ExtractedMember[] {
+  if (!team || typeof team !== "object") return [];
+
+  const teamObj = team as Record<string, unknown>;
+  const rawList: unknown[] = [
+    ...(teamObj.leader ? [teamObj.leader] : []),
+    ...(teamObj.leader_id ? [teamObj.leader_id] : []),
+    ...(Array.isArray(teamObj.members) ? teamObj.members : []),
+    ...(Array.isArray(teamObj.employees) ? teamObj.employees : []),
+    ...(Array.isArray(teamObj.teamMembers) ? teamObj.teamMembers : []),
+  ];
+
+  const normalized: ExtractedMember[] = rawList
+    .map((item) => {
+      let rawId: number | undefined;
+      let rawName: string | undefined;
+      let rawEmail: string | undefined;
+
+      if (typeof item === "number" && !Number.isNaN(item)) {
+        rawId = item;
+      } else if (typeof item === "string" && /^\d+$/.test(item.trim())) {
+        rawId = Number(item.trim());
+      } else if (item && typeof item === "object") {
+        const obj = item as Record<string, unknown>;
+        const user = (obj.user && typeof obj.user === "object" ? obj.user : obj) as Record<string, unknown>;
+        const potentialId = user.user_id ?? user.id ?? obj.user_id ?? obj.id;
+        if (potentialId !== undefined && potentialId !== null) {
+          rawId = Number(potentialId);
+        }
+        if (typeof user.name === "string" && user.name.trim()) {
+          rawName = user.name.trim();
+        } else if (typeof user.first_name === "string" || typeof user.last_name === "string") {
+          const fn = typeof user.first_name === "string" ? user.first_name : "";
+          const ln = typeof user.last_name === "string" ? user.last_name : "";
+          const combined = `${fn} ${ln}`.trim();
+          if (combined) rawName = combined;
+        }
+        if (typeof user.email === "string" && user.email.trim()) {
+          rawEmail = user.email.trim();
+        }
+      }
+
+      if (!rawId || Number.isNaN(rawId)) {
+        return null;
+      }
+
+      const matchedEmp = employees?.find((e) => Number(e.user_id) === rawId);
+      const name =
+        rawName ||
+        matchedEmp?.name ||
+        (matchedEmp?.first_name ? `${matchedEmp.first_name} ${matchedEmp.last_name || ""}`.trim() : "") ||
+        `Member #${rawId}`;
+      const email = rawEmail || matchedEmp?.email || "";
+
+      return { user_id: rawId, name, email };
+    })
+    .filter((m): m is ExtractedMember => Boolean(m && m.user_id));
+
+  // Deduplicate by user_id
+  return normalized.filter(
+    (m, idx, self) => idx === self.findIndex((o) => o.user_id === m.user_id)
+  );
+}

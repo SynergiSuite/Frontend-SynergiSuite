@@ -180,7 +180,7 @@ export default function CalendarWidget({
             <button
               type="button"
               onClick={handleToday}
-              className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 px-2.5 py-1 text-xs font-semibold text-v2-neutral-200 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/50 transition-colors cursor-pointer"
+              className="rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/30 px-2.5 py-1 text-xs font-semibold text-v2-neutral-200 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/50 transition-colors cursor-pointer"
             >
               Today
             </button>
@@ -190,14 +190,14 @@ export default function CalendarWidget({
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="flex size-8 items-center justify-center rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 text-v2-neutral-300 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/50 transition-colors cursor-pointer"
+              className="flex size-8 items-center justify-center rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/30 text-v2-neutral-300 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/50 transition-colors cursor-pointer"
             >
               <ChevronLeft className="size-4" />
             </button>
             <button
               type="button"
               onClick={handleNextMonth}
-              className="flex size-8 items-center justify-center rounded-xl border border-v2-neutral-500 bg-v2-neutral-700/80 text-v2-neutral-300 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/50 transition-colors cursor-pointer"
+              className="flex size-8 items-center justify-center rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/30 text-v2-neutral-300 hover:text-v2-neutral-100 hover:bg-v2-neutral-500/50 transition-colors cursor-pointer"
             >
               <ChevronRight className="size-4" />
             </button>
@@ -225,8 +225,8 @@ export default function CalendarWidget({
                   day.isToday
                     ? "border-primary bg-primary/10 ring-1 ring-primary/30"
                     : day.isCurrentMonth
-                    ? "border-v2-neutral-500/60 bg-v2-neutral-700/40 hover:bg-v2-neutral-700/70"
-                    : "border-v2-neutral-500/20 bg-v2-neutral-700/10 opacity-40"
+                    ? "border-v2-neutral-500/50 bg-v2-neutral-500/15 hover:bg-v2-neutral-500/25"
+                    : "border-v2-neutral-500/20 bg-v2-neutral-500/5 opacity-40"
                 }`}
               >
                 {/* Date Number Header */}
@@ -316,7 +316,7 @@ export default function CalendarWidget({
                         setSelectedTask(task);
                         setPopoverDay(null);
                       }}
-                      className="flex items-center justify-between p-2.5 rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-700/60 hover:bg-v2-neutral-700 transition-colors cursor-pointer"
+                      className="flex items-center justify-between p-2.5 rounded-xl border border-v2-neutral-500/70 bg-v2-neutral-500/30 hover:bg-v2-neutral-500/50 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2 min-w-0">
                         <span

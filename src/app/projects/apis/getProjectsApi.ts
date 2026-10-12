@@ -1,7 +1,6 @@
 import { CookieManager } from "@/lib/cookieManager";
 import { Projects } from "../schemas/project";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
 
 export interface ProjectsPaginationMeta {
   totalItems: number;
@@ -39,7 +38,7 @@ export async function getProjectsApi(
     }
 
     const queryString = params.toString();
-    const url = `${requestBaseUrl}/projects/get-projects-by-business${
+    const url = `/api/projects${
       queryString ? `?${queryString}` : ""
     }`;
 

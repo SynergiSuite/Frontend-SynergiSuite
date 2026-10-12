@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export interface AllProjectRecord {
   id: string;
   name: string;
@@ -20,9 +18,7 @@ export async function getAllProjectsApi(): Promise<AllProjectRecord[]> {
     throw new Error("Authentication token not found");
   }
 
-  const response = await fetch(
-    `${requestBaseUrl}/projects/get-all-projects-for-business`,
-    {
+  const response = await fetch("/api/projects/all", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

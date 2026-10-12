@@ -1,8 +1,6 @@
 import { CookieManager } from "@/lib/cookieManager";
 
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export type CreateProjectPayload = {
   name: string;
   description?: string;
@@ -15,7 +13,7 @@ export type CreateProjectPayload = {
 export async function CreateNewProject(payload: CreateProjectPayload) {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/projects/create-new-project`, {
+    const response = await fetch("/api/projects/create", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
