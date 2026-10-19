@@ -2,19 +2,29 @@
 
 import React from "react";
 
-const TableHeader = () => {
+export default function TableHeader() {
   return (
-    <>
-      <div className="hidden grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] border-b border-white/[0.08] bg-[#0c0a2f]/60 px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-white/40 md:grid">
-        <div className="min-w-0 truncate">Client Name</div>
-        <div className="min-w-0 truncate">Email</div>
-        <div className="min-w-0 truncate">Company</div>
-        <div className="min-w-0 truncate">Priority</div>
-        <div className="min-w-0 truncate">Actions</div>
-      </div>
-    </>
+    <thead className="border-b border-v2-neutral-200 bg-v2-neutral-200/50 text-[11px] font-semibold uppercase tracking-wider text-v2-neutral-400">
+      <tr>
+        <th scope="col" className="px-5 py-3.5">
+          Client
+        </th>
+        <th scope="col" className="px-5 py-3.5">
+          Company
+        </th>
+        <th scope="col" className="px-5 py-3.5">
+          Contact
+        </th>
+        <th scope="col" className="px-5 py-3.5">
+          Priority
+        </th>
+        <th scope="col" className="px-5 py-3.5">
+          Billing
+        </th>
+        <th scope="col" className="px-5 py-3.5 text-right">
+          Actions
+        </th>
+      </tr>
+    </thead>
   );
-};
-
-export default TableHeader;
-
+}

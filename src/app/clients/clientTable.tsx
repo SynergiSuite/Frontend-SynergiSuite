@@ -1,10 +1,10 @@
 "use client";
 
 import React from "react";
-
+import { Building2 } from "lucide-react";
 import TableHeader from "./clientTableHeader";
 import ClientRow from "./clientTableRows";
-import { ClientType } from "./page";
+import type { ClientType } from "./page";
 
 type Props = {
   clients: ClientType[];
@@ -14,21 +14,20 @@ type Props = {
   canManageClients: boolean;
 };
 
-const ClientsTable = ({
+export default function ClientsTable({
   clients,
   deleteClient,
   onSelectClient,
   onEditClient,
   canManageClients,
-}: Props) => {
+}: Props) {
   return (
-    <>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm text-v2-neutral-600">
         <TableHeader />
-
-        {clients.length > 0 ? (
-          <div className="flex-1 overflow-y-auto">
-            {clients.map((client) => (
+        <tbody className="divide-y divide-v2-neutral-200/60">
+          {clients.length > 0 ? (
+            clients.map((client) => (
               <ClientRow
                 key={client.id}
                 client={client}
@@ -37,17 +36,26 @@ const ClientsTable = ({
                 onEditClient={onEditClient}
                 canManageClients={canManageClients}
               />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-1 items-center justify-center px-6 py-12 text-sm text-white/40">
-            No clients found
-          </div>
-        )}
-      </div>
-    </>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={6} className="px-6 py-16 text-center">
+                <div className="flex flex-col items-center justify-center">
+                  <div className="grid size-12 place-items-center rounded-2xl bg-v2-neutral-200 text-v2-neutral-500 mb-3">
+                    <Building2 className="size-6" />
+                  </div>
+                  <p className="text-sm font-semibold text-v2-neutral-600">
+                    No clients found
+                  </p>
+                  <p className="mt-1 text-xs text-v2-neutral-400">
+                    Try adjusting your search criteria or register a new client.
+                  </p>
+                </div>
+              </td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+    </div>
   );
-};
-
-export default ClientsTable;
-
+}

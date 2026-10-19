@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { Pencil, Trash } from "lucide-react";
+import { Building2, DollarSign, Mail, MapPin, Pencil, Phone, Trash2 } from "lucide-react";
 import { ClientPriority } from "../enums/clientPriority.enum";
-import { ClientType } from "./page";
+import type { ClientType } from "./page";
 
 type Props = {
   client: ClientType;
@@ -13,132 +13,158 @@ type Props = {
   canManageClients: boolean;
 };
 
-const ClientRow = ({
+export default function ClientRow({
   client,
   deleteClient,
   onSelectClient,
   onEditClient,
   canManageClients,
-}: Props) => {
-  const getDisplayValue = (value?: string) => {
-    const trimmed = value?.trim();
-    return trimmed ? trimmed : "N/A";
-  };
-
+}: Props) {
   const priorityValue = Number(client?.priority);
   const priorityLabel =
     priorityValue === ClientPriority.HIGH
       ? "High"
       : priorityValue === ClientPriority.MEDIUM
-        ? "Medium"
-        : priorityValue === ClientPriority.LOW
-          ? "Low"
-          : "N/A";
+      ? "Medium"
+      : priorityValue === ClientPriority.LOW
+      ? "Low"
+      : "Standard";
+
+  const getPriorityBadge = (p: string) => {
+    switch (p) {
+      case "High":
+        return "bg-rose-50 text-rose-700 border-rose-200";
+      case "Medium":
+        return "bg-amber-50 text-amber-700 border-amber-200";
+      case "Low":
+        return "bg-sky-50 text-sky-700 border-sky-200";
+      default:
+        return "bg-v2-neutral-200 text-v2-neutral-600 border-v2-neutral-300";
+    }
+  };
+
+  const getInitials = (name?: string) => {
+    if (!name) return "CL";
+    return name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  };
+
+  const paymentLabel =
+    client.paymentType === "each_milestone"
+      ? "Milestone"
+      : "Hourly";
 
   return (
-    <>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onSelectClient(client)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onSelectClient(client);
-          }
-        }}
-        className="grid w-full gap-4 border-b border-white/[0.08] px-4 py-4 text-left transition-all duration-300 hover:bg-white/[0.03] hover:translate-x-1 focus:bg-white/[0.03] focus:outline-none last:border-b-0 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] md:items-center md:gap-0 md:px-6 md:py-5"
-      >
-        <div className="min-w-0">
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Client Name
-          </p>
-          <p className="truncate font-semibold text-white text-sm" title={getDisplayValue(client?.name)}>
-            {getDisplayValue(client?.name)}
-          </p>
-        </div>
-
-        <div className="min-w-0">
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Email
-          </p>
-          <div className="truncate text-white/70 text-sm" title={getDisplayValue(client?.email)}>
-            {getDisplayValue(client?.email)}
-          </div>
-        </div>
-
-        <div className="min-w-0">
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Company
-          </p>
-          <div className="truncate text-white/70 text-sm" title={getDisplayValue(client?.company)}>
-            {getDisplayValue(client?.company)}
-          </div>
-        </div>
-
-        <div className="min-w-0">
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Priority
-          </p>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold border ${
-              priorityLabel === "High"
-                ? "bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_12px_rgba(239,68,68,0.15)]"
-                : priorityLabel === "Medium"
-                  ? "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
-                  : priorityLabel === "Low"
-                    ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]"
-                    : "bg-white/5 text-white/40 border-white/10"
-            }`}
-            title={priorityLabel}
-          >
-            <span className={`h-1 w-1 rounded-full ${
-              priorityLabel === "High" ? "bg-red-400" : priorityLabel === "Medium" ? "bg-amber-400" : "bg-cyan-400"
-            }`} />
-            {priorityLabel}
+    <tr
+      onClick={() => onSelectClient(client)}
+      className="group cursor-pointer border-b border-v2-neutral-200/70 transition-colors hover:bg-v2-neutral-200/40 last:border-b-0"
+    >
+      {/* Client Name & Avatar */}
+      <td className="px-5 py-4">
+        <div className="flex items-center gap-3">
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-v2-neutral-200 text-xs font-bold text-v2-neutral-600 shadow-xs">
+            {getInitials(client.name)}
           </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-v2-neutral-600">
+              {client.name || "Unnamed Client"}
+            </p>
+            {client.email && (
+              <p className="flex items-center gap-1 truncate text-xs text-v2-neutral-400">
+                <Mail className="size-3 shrink-0" />
+                <span className="truncate">{client.email}</span>
+              </p>
+            )}
+          </div>
         </div>
+      </td>
 
-        <div className="flex min-w-0 items-center justify-between gap-3 md:justify-start">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Actions
+      {/* Company & Address */}
+      <td className="px-5 py-4">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 truncate text-sm font-medium text-v2-neutral-600">
+            <Building2 className="size-3.5 shrink-0 text-v2-neutral-400" />
+            <span className="truncate">{client.company || "Direct Individual"}</span>
           </p>
-          {canManageClients ? (
-            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-              <button
-                type="button"
-                aria-label="Edit client"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onEditClient(client);
-                }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.02] text-white/60 transition-all duration-200 hover:bg-white/[0.08] hover:border-[#5271ff]/30 hover:text-white"
-              >
-                <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Delete client"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  deleteClient(client.id);
-                }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.02] text-white/60 transition-all duration-200 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
-              >
-                <Trash className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
-            </div>
-          ) : (
-            <span className="rounded-md border border-white/[0.04] bg-white/[0.02] px-2 py-0.5 text-xs text-white/30">
-              No Access
-            </span>
+          {client.address && (
+            <p className="flex items-center gap-1 truncate text-xs text-v2-neutral-400 mt-0.5">
+              <MapPin className="size-3 shrink-0" />
+              <span className="truncate">{client.address}</span>
+            </p>
           )}
         </div>
-      </div>
-    </>
+      </td>
+
+      {/* Phone / Contact */}
+      <td className="px-5 py-4">
+        <div className="flex items-center gap-1.5 text-xs text-v2-neutral-600">
+          <Phone className="size-3.5 shrink-0 text-v2-neutral-400" />
+          <span className="truncate font-medium">{client.phone || "—"}</span>
+        </div>
+      </td>
+
+      {/* Priority Pill */}
+      <td className="px-5 py-4">
+        <span
+          className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getPriorityBadge(
+            priorityLabel
+          )}`}
+        >
+          <span
+            className={`size-1.5 rounded-full ${
+              priorityLabel === "High"
+                ? "bg-rose-500"
+                : priorityLabel === "Medium"
+                ? "bg-amber-500"
+                : "bg-sky-500"
+            }`}
+          />
+          {priorityLabel}
+        </span>
+      </td>
+
+      {/* Billing & Rate */}
+      <td className="px-5 py-4">
+        <div className="inline-flex items-center gap-1 rounded-md border border-v2-neutral-300 bg-v2-neutral-200/50 px-2 py-0.5 text-xs font-medium text-v2-neutral-600">
+          <DollarSign className="size-3 text-v2-neutral-400" />
+          <span>
+            {client.amount ? `$${client.amount}` : "Standard"} / {paymentLabel}
+          </span>
+        </div>
+      </td>
+
+      {/* Action Buttons */}
+      <td className="px-5 py-4 text-right">
+        {canManageClients ? (
+          <div
+            className="flex items-center justify-end gap-1.5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              aria-label="Edit client"
+              onClick={() => onEditClient(client)}
+              className="inline-flex size-8 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 transition-colors hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-v2-neutral-400 cursor-pointer"
+            >
+              <Pencil className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Delete client"
+              onClick={() => deleteClient(client.id)}
+              className="inline-flex size-8 items-center justify-center rounded-lg border border-rose-200 bg-rose-50 text-rose-600 transition-colors hover:border-rose-300 hover:bg-rose-100 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 cursor-pointer"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+        ) : (
+          <span className="text-xs text-v2-neutral-400">View only</span>
+        )}
+      </td>
+    </tr>
   );
-};
-
-export default ClientRow;
-
+}

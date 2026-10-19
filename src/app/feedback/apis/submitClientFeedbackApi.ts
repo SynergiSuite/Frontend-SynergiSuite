@@ -1,14 +1,7 @@
 import { CookieManager } from "@/lib/cookieManager";
+import type { ClientFeedbackType } from "../types/ticket";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
-export type FeedbackCategory =
-  | "request"
-  | "review"
-  | "issue"
-  | "question"
-  | "approval"
-  | "general";
+export type FeedbackCategory = ClientFeedbackType;
 
 export interface SubmitClientFeedbackDto {
   feedbackTitle: string;
@@ -20,11 +13,11 @@ export interface SubmitClientFeedbackDto {
 
 export async function submitClientFeedbackApi(payload: SubmitClientFeedbackDto) {
   const accessToken = await CookieManager("get", "access-token");
-  const response = await fetch(`${requestBaseUrl}/client-feedback/submit`, {
+  const response = await fetch("/api/feedback/submit", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken ?? ""}`,
     },
     body: JSON.stringify({
       feedbackTitle: payload.feedbackTitle,

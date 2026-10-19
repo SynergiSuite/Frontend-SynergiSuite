@@ -1,0 +1,302 @@
+"use client";
+
+import React, { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { PlusCircle, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ClientPriority,
+  CLIENT_PRIORITY_OPTIONS,
+} from "../enums/clientPriority.enum";
+import type { CreateClientDto } from "./dtos/createClient.dto";
+
+type CreateClientModalProps = {
+  isOpen: boolean;
+  onClose: () => void;
+  onAddClient: (payload: CreateClientDto) => Promise<void>;
+};
+
+export default function CreateClientModal({
+  isOpen,
+  onClose,
+  onAddClient,
+}: CreateClientModalProps) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [company, setCompany] = useState("");
+  const [priority, setPriority] = useState<ClientPriority>(ClientPriority.HIGH);
+  const [paymentType, setPaymentType] = useState<string>("per_hour");
+  const [amount, setAmount] = useState<number | string>(125);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const resetForm = () => {
+    setName("");
+    setEmail("");
+    setPhone("");
+    setAddress("");
+    setCompany("");
+    setPriority(ClientPriority.HIGH);
+    setPaymentType("per_hour");
+    setAmount(125);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name || !email || !phone || !company) return;
+
+    try {
+      setIsSubmitting(true);
+      await onAddClient({
+        name,
+        email,
+        phone,
+        address,
+        company,
+        priority,
+        paymentType,
+        amount: Number(amount) || 0,
+      });
+      resetForm();
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-v2-neutral-600/75 backdrop-blur-xs"
+            onClick={onClose}
+          />
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            className="relative z-10 w-full max-w-xl rounded-2xl border border-v2-neutral-400 bg-v2-neutral-600 shadow-2xl overflow-hidden"
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-v2-neutral-500 px-6 py-4">
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-9 place-items-center rounded-xl bg-v2-neutral-100 text-v2-neutral-600 shadow-sm">
+                  <PlusCircle className="size-4.5" />
+                </span>
+                <div>
+                  <h3 className="text-base font-semibold text-v2-neutral-100">
+                    Register New Client
+                  </h3>
+                  <p className="text-xs text-v2-neutral-400">
+                    Add a company or individual client profile to your workspace.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex size-8 items-center justify-center rounded-lg border border-v2-neutral-500 text-v2-neutral-400 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Full Name */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Client Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Sarah Jenkins"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+                  />
+                </div>
+
+                {/* Email */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="sarah@acmecorp.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Company */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Company Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Acme Innovations"
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="+1 (555) 012-3456"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+                  />
+                </div>
+              </div>
+
+              {/* Address */}
+              <div>
+                <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                  Business Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 742 Evergreen Terrace, New York, NY"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {/* Priority */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Priority Tier
+                  </label>
+                  <Select
+                    value={String(priority)}
+                    onValueChange={(val) =>
+                      setPriority(Number(val) as ClientPriority)
+                    }
+                  >
+                    <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                      <SelectValue placeholder="Select priority..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                      {CLIENT_PRIORITY_OPTIONS.map((opt) => (
+                        <SelectItem
+                          key={opt.value}
+                          value={String(opt.value)}
+                          className="cursor-pointer rounded-lg py-2 text-xs text-v2-neutral-600 focus:bg-v2-neutral-200/80 focus:text-v2-neutral-600"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`size-2 rounded-full ${
+                                opt.value === ClientPriority.HIGH
+                                  ? "bg-rose-500"
+                                  : opt.value === ClientPriority.MEDIUM
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-500"
+                              }`}
+                            />
+                            <span>{opt.label}</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Payment Type */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Billing Structure
+                  </label>
+                  <Select
+                    value={paymentType}
+                    onValueChange={(val) => setPaymentType(val)}
+                  >
+                    <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                      <SelectValue placeholder="Select billing structure..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                      <SelectItem
+                        value="per_hour"
+                        className="cursor-pointer rounded-lg py-2 text-xs text-v2-neutral-600 focus:bg-v2-neutral-200/80 focus:text-v2-neutral-600"
+                      >
+                        Per Hour
+                      </SelectItem>
+                      <SelectItem
+                        value="each_milestone"
+                        className="cursor-pointer rounded-lg py-2 text-xs text-v2-neutral-600 focus:bg-v2-neutral-200/80 focus:text-v2-neutral-600"
+                      >
+                        Each Milestone
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Amount */}
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Rate ($)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="125"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-v2-neutral-500">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? "Creating..." : "Create Client"}
+                </Button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}

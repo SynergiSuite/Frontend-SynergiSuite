@@ -2,11 +2,20 @@
 
 import React, { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown, PencilLine, X } from "lucide-react";
+import { PencilLine, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ClientPriority,
   CLIENT_PRIORITY_OPTIONS,
 } from "../enums/clientPriority.enum";
-import { EditClientDto } from "./dtos/editClient.dto";
+import type { EditClientDto } from "./dtos/editClient.dto";
 
 type EditClientModalProps = {
   client: {
@@ -35,7 +44,9 @@ export default function EditClientModal({
   const [address, setAddress] = useState(client.address);
   const [company, setCompany] = useState(client.company);
   const [priority, setPriority] = useState<number>(client.priority);
-  const [paymentType, setPaymentType] = useState<string>(client.paymentType || "per_hour");
+  const [paymentType, setPaymentType] = useState<string>(
+    client.paymentType || "per_hour"
+  );
   const [amount, setAmount] = useState<number | string>(client.amount ?? 125);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -52,10 +63,7 @@ export default function EditClientModal({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-
-    if (!name || !email || !phone || !company) {
-      return;
-    }
+    if (!name || !email || !phone || !company) return;
 
     try {
       setIsSubmitting(true);
@@ -76,203 +84,210 @@ export default function EditClientModal({
   };
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-        onClick={onClose}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
+        className="fixed inset-0 bg-v2-neutral-600/75 backdrop-blur-xs"
+        onClick={onClose}
       />
 
       <motion.div
-        className="relative w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0c0a2f] bg-gradient-to-br from-[#5271ff]/5 via-[#0c0a2f]/95 to-[#0a0826] p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.6)] backdrop-blur-md flex flex-col max-h-[90vh] overflow-y-auto"
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 260, damping: 24 }}
+        initial={{ opacity: 0, scale: 0.96, y: 12 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 12 }}
+        className="relative z-10 w-full max-w-xl rounded-2xl border border-v2-neutral-400 bg-v2-neutral-600 shadow-2xl overflow-hidden"
       >
-        <div className="mb-6 border-b border-white/[0.08] pb-4">
-          <div className="flex items-start justify-between gap-4">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-v2-neutral-500 px-6 py-4">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-9 place-items-center rounded-xl bg-v2-neutral-100 text-v2-neutral-600 shadow-sm">
+              <PencilLine className="size-4.5" />
+            </span>
             <div>
-              <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                <PencilLine className="h-6 w-6 text-[#5271ff]" />
+              <h3 className="text-base font-semibold text-v2-neutral-100">
                 Edit Client Profile
-              </h2>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-white/30 mt-1">
-                Modify details for {client.name || "client account"}
+              </h3>
+              <p className="text-xs text-v2-neutral-400">
+                Update account information, rate, and priority level.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.02] text-white/50 transition hover:bg-white/[0.08] hover:text-white"
-            >
-              <X className="h-4 w-4" />
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-v2-neutral-500 text-v2-neutral-400 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 transition-colors cursor-pointer"
+          >
+            <X className="size-4" />
+          </button>
         </div>
 
-        <form className="flex flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className="space-y-4 flex-1">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  required
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  required
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Phone Number
-                </label>
-                <input
-                  type="text"
-                  value={phone}
-                  onChange={(event) => setPhone(event.target.value)}
-                  required
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Company
-                </label>
-                <input
-                  type="text"
-                  value={company}
-                  onChange={(event) => setCompany(event.target.value)}
-                  required
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                />
-              </div>
-            </div>
-
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                Address
+              <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                Client Name *
               </label>
               <input
                 type="text"
-                value={address}
-                onChange={(event) => setAddress(event.target.value)}
-                className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
               />
             </div>
 
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                Priority
+              <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                Email Address *
               </label>
-              <div className="relative">
-                <select
-                  value={priority}
-                  onChange={(event) => setPriority(Number(event.target.value))}
-                  className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                >
-                  {CLIENT_PRIORITY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value} className="bg-[#0c0a2f] text-white">
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-
-                <ChevronDown
-                  size={16}
-                  className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Payment Type
-                </label>
-                <div className="relative">
-                  <select
-                    value={paymentType}
-                    onChange={(event) => setPaymentType(event.target.value)}
-                    className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                  >
-                    <option value="per_hour" className="bg-[#0c0a2f] text-white">Per Hour</option>
-                    <option value="each_milestone" className="bg-[#0c0a2f] text-white">Each Milestone</option>
-                  </select>
-
-                  <ChevronDown
-                    size={16}
-                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Billing Amount ($)
-                </label>
-                <input
-                  type="number"
-                  placeholder="125"
-                  value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
-                  min="0"
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                />
-              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+              />
             </div>
           </div>
 
-          <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-white/[0.08]">
-            <button
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                Company *
+              </label>
+              <input
+                type="text"
+                required
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                Phone Number *
+              </label>
+              <input
+                type="text"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+              Address
+            </label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                Priority Tier
+              </label>
+              <Select
+                value={String(priority)}
+                onValueChange={(val) => setPriority(Number(val))}
+              >
+                <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                  <SelectValue placeholder="Select priority..." />
+                </SelectTrigger>
+                <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                  {CLIENT_PRIORITY_OPTIONS.map((opt) => (
+                    <SelectItem
+                      key={opt.value}
+                      value={String(opt.value)}
+                      className="cursor-pointer rounded-lg py-2 text-xs text-v2-neutral-600 focus:bg-v2-neutral-200/80 focus:text-v2-neutral-600"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`size-2 rounded-full ${
+                            opt.value === ClientPriority.HIGH
+                              ? "bg-rose-500"
+                              : opt.value === ClientPriority.MEDIUM
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          }`}
+                        />
+                        <span>{opt.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                Billing Structure
+              </label>
+              <Select
+                value={paymentType}
+                onValueChange={(val) => setPaymentType(val)}
+              >
+                <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                  <SelectValue placeholder="Select billing structure..." />
+                </SelectTrigger>
+                <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                  <SelectItem
+                    value="per_hour"
+                    className="cursor-pointer rounded-lg py-2 text-xs text-v2-neutral-600 focus:bg-v2-neutral-200/80 focus:text-v2-neutral-600"
+                  >
+                    Per Hour
+                  </SelectItem>
+                  <SelectItem
+                    value="each_milestone"
+                    className="cursor-pointer rounded-lg py-2 text-xs text-v2-neutral-600 focus:bg-v2-neutral-200/80 focus:text-v2-neutral-600"
+                  >
+                    Each Milestone
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                Rate ($)
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-v2-neutral-500">
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-5 py-2 text-sm font-semibold text-white/70 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.08] hover:text-white hover:border-white/20 active:scale-95"
+              disabled={isSubmitting}
             >
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-6 py-2 text-sm font-semibold text-white transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_15px_rgba(82,113,255,0.35)] active:scale-95 disabled:opacity-50"
-            >
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Save Changes"}
-            </button>
+            </Button>
           </div>
         </form>
       </motion.div>
-    </motion.div>
+    </div>
   );
 }
-

@@ -1,12 +1,10 @@
 import { CookieManager } from "@/lib/cookieManager";
-import { EditClientDto } from "../dtos/editClient.dto";
-
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+import type { EditClientDto } from "../dtos/editClient.dto";
 
 export async function editClientApi(id: string, obj: EditClientDto) {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/clients/edit-client/${id}`, {
+    const response = await fetch(`/api/clients/${encodeURIComponent(id)}/edit`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -16,7 +14,8 @@ export async function editClientApi(id: string, obj: EditClientDto) {
     });
 
     if (!response.ok) {
-      throw new Error("Failed to edit client");
+      const errorData = await response.json().catch(() => null);
+      throw new Error(errorData?.message || "Failed to edit client");
     }
 
     const data = await response.json();

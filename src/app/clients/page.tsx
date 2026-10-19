@@ -1,28 +1,43 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from "react";
-import { AnimatePresence } from "framer-motion";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { gsap } from "gsap";
+import {
+  Building2,
+  LoaderCircle,
+  Plus,
+  RefreshCw,
+  Search,
+} from "lucide-react";
+import { toast } from "sonner";
 
-import SidebarForm from "./sidebarClientAddForm";
-import SubHeader from "./subHeadingSearchbar";
-import StatsCards from "./statesCards";
-import ClientsTable from "./clientTable";
-import Pagination from "./footer";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { CookieManager } from "@/lib/cookieManager";
+import { canManageClients } from "@/lib/rolePermissions";
+import { ClientPriority } from "../enums/clientPriority.enum";
 import { getClientsApi } from "../projects/apis/getAllClients";
 import { createClientApi } from "./apis/createClient";
 import { editClientApi } from "./apis/editClient";
 import { deleteClientApi } from "./apis/deleteClient";
-import { GetAllClientsResponseDto } from "./dtos/getAllClientsResponse.dto";
-import LoaderCustom from "@/components/ui/loader-custom";
-import { toast } from "sonner";
-import { ClientPriority } from "../enums/clientPriority.enum";
-import { CreateClientDto } from "./dtos/createClient.dto";
-import { EditClientDto } from "./dtos/editClient.dto";
+import type { CreateClientDto } from "./dtos/createClient.dto";
+import type { EditClientDto } from "./dtos/editClient.dto";
+import type { GetAllClientsResponseDto } from "./dtos/getAllClientsResponse.dto";
+
+import StatsCards from "./statesCards";
+import ClientsTable from "./clientTable";
+import Pagination from "./footer";
+import CreateClientModal from "./createClientModal";
 import EditClientModal from "./editClientModal";
 import DeleteClientModal from "./deleteClientModal";
-import { CookieManager } from "@/lib/cookieManager";
 import ClientDetailModal from "./clientDetail";
-import { gsap } from "gsap";
 
 export type ClientType = {
   id: string;
@@ -35,6 +50,8 @@ export type ClientType = {
   paymentType: string;
   amount: number;
   image: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 const mapClientResponse = (
@@ -54,247 +71,346 @@ const mapClientResponse = (
   image: `https://i.pravatar.cc/100?u=${client.email ?? client.name ?? index}`,
 });
 
-const ClientManagementPage = () => {
-  // ✅ DYNAMIC STATE
-  const [clients, setClients] =
-    useState<ClientType[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+const PAGE_SIZE = 6;
+
+export default function ClientsPage() {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [clients, setClients] = useState<ClientType[]>([]);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
+  const [dataError, setDataError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  // Search & Filtering
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Modals & Selection
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<ClientType | null>(null);
   const [detailClient, setDetailClient] = useState<ClientType | null>(null);
   const [deleteClientId, setDeleteClientId] = useState<string | null>(null);
-  const [role, setRole] = useState("");
+  const [userRole, setUserRole] = useState("");
 
-  // ✅ SEARCH STATE
-  const [search, setSearch] = useState("");
+  const canManage = canManageClients(userRole);
 
-  // ✅ PAGINATION STATE
-  const [currentPage, setCurrentPage] = useState(1);
+  // Read role from cookie
+  useEffect(() => {
+    const roleCookie =
+      CookieManager("get", "primary_role") || CookieManager("get", "role");
+    setUserRole(String(roleCookie || ""));
+  }, []);
 
-  // ✅ REFS FOR GSAP
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Debounced search
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setCurrentPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-  const itemsPerPage = 4;
-  const allowedRoles = ["manager", "founder", "admin"];
-  const normalizedRole = role.trim().toLowerCase();
-  const canManageClients = allowedRoles.includes(normalizedRole);
+  // Load clients data
+  const loadClients = useCallback(async () => {
+    setIsDataLoading(true);
+    setDataError(null);
 
-  // ✅ FILTERED CLIENTS
+    try {
+      const response = await getClientsApi();
+      const mapped = response.map((client, index) =>
+        mapClientResponse(client, index)
+      );
+      setClients(mapped);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to load clients list.";
+      setDataError(msg);
+      toast.error(msg);
+      setClients([]);
+    } finally {
+      setIsDataLoading(false);
+      setIsInitialLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadClients();
+  }, [loadClients, reloadKey]);
+
+  const refresh = () => setReloadKey((prev) => prev + 1);
+
+  // GSAP entrance animation
+  useLayoutEffect(() => {
+    const root = rootRef.current;
+    if (
+      isInitialLoading ||
+      !root ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const context = gsap.context(() => {
+      gsap.from("[data-clients-section]", {
+        autoAlpha: 0,
+        y: 12,
+        duration: 0.45,
+        stagger: 0.08,
+        ease: "power2.out",
+      });
+    }, root);
+
+    return () => context.revert();
+  }, [isInitialLoading]);
+
+  // Filter clients by search
   const filteredClients = useMemo(() => {
+    if (!debouncedSearch) return clients;
+    const q = debouncedSearch.toLowerCase();
     return clients.filter((client) =>
       [client.name, client.email, client.company, client.phone, client.address]
         .join(" ")
         .toLowerCase()
-        .includes(search.toLowerCase())
+        .includes(q)
     );
-  }, [clients, search]);
+  }, [clients, debouncedSearch]);
 
-  useEffect(() => {
-    const cookieRole = CookieManager("get", "primary_role") || CookieManager("get", "role");
-    setRole((cookieRole as string) ?? "");
-  }, []);
-
-  useEffect(() => {
-    const loadClients = async () => {
-      setIsLoading(true);
-      try {
-        const response = await getClientsApi();
-        const mappedClients = response.map((client, index) =>
-          mapClientResponse(client, index)
-        );
-        setClients(mappedClients);
-      } catch (error) {
-        toast.error("Failed to fetch clients" + error);
-        setClients([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadClients();
-  }, []);
-
-  useEffect(() => {
-    if (!canManageClients) {
-      setSelectedClient(null);
-      setDeleteClientId(null);
-    }
-  }, [canManageClients]);
-
-  // ✅ GSAP STAGGER ENTRANCE ANIMATION
-  useEffect(() => {
-    if (!isLoading && clients.length > 0) {
-      const ctx = gsap.context(() => {
-        gsap.from([".clients-header-area", ".clients-stats-area", ".clients-table-area", ".clients-sidebar-area"], {
-          opacity: 0,
-          y: 20,
-          duration: 0.6,
-          ease: "power3.out",
-          stagger: 0.12,
-          clearProps: "all"
-        });
-      }, containerRef);
-      return () => ctx.revert();
-    }
-  }, [isLoading, clients.length > 0]);
-
-  // ✅ PAGINATION LOGIC
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredClients.length / itemsPerPage)
-  );
-
-  const startIndex = (currentPage - 1) * itemsPerPage;
-
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
   const currentClients = filteredClients.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + PAGE_SIZE
   );
 
-  // ✅ ADD CLIENT FUNCTION
-  const addClient = async (payload: CreateClientDto) => {
+  // Actions
+  const handleAddClient = async (payload: CreateClientDto) => {
     try {
       const response = await createClientApi(payload);
-      const mappedClient = mapClientResponse(
+      const mapped = mapClientResponse(
         response as GetAllClientsResponseDto,
         Date.now()
       );
-      setClients((prev) => [mappedClient, ...prev]);
-      toast.success("Client created successfully");
-    } catch (error) {
-      toast.error("Failed to create client" + error);
-      throw error;
-    }
-  };
-
-  // ✅ DELETE CLIENT
-  const deleteClient = async (id: string) => {
-    try {
-      await deleteClientApi(id);
-      setClients((prev) =>
-        prev.filter((client) => client.id !== id)
-      );
-      toast.success("Client deleted successfully");
-    } catch (error) {
-      toast.error("Failed to delete client" + error);
-      throw error;
+      setClients((prev) => [mapped, ...prev]);
+      toast.success("Client account registered successfully.");
+      setIsCreateOpen(false);
+    } catch (err) {
+      toast.error("Failed to register client: " + err);
+      throw err;
     }
   };
 
   const handleEditClient = async (id: string, payload: EditClientDto) => {
     try {
       const response = await editClientApi(id, payload);
-      const mappedClient = mapClientResponse(
+      const mapped = mapClientResponse(
         response as GetAllClientsResponseDto,
         0,
         id
       );
 
       setClients((prev) =>
-        prev.map((client) =>
-          client.id === id
-            ? {
-                ...client,
-                ...mappedClient,
-              }
-            : client
-        )
+        prev.map((c) => (c.id === id ? { ...c, ...mapped } : c))
       );
-      toast.success("Client updated successfully");
-    } catch (error) {
-      toast.error("Failed to update client" + error);
-      throw error;
+      setSelectedClient(null);
+      toast.success("Client profile updated successfully.");
+    } catch (err) {
+      toast.error("Failed to update client: " + err);
+      throw err;
+    }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    try {
+      await deleteClientApi(id);
+      setClients((prev) => prev.filter((c) => c.id !== id));
+      setDeleteClientId(null);
+      toast.success("Client account deleted.");
+    } catch (err) {
+      toast.error("Failed to delete client: " + err);
+      throw err;
     }
   };
 
   return (
-    <>
-      {isLoading ? (
-        <LoaderCustom />
-      ) : (
-        <div ref={containerRef} className="relative min-h-0 w-full overflow-hidden">
-          {/* Ambient background glows */}
-          <div className="pointer-events-none absolute -top-32 left-1/4 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#5271ff]/[0.06] blur-[130px]" />
-          <div className="pointer-events-none absolute top-1/2 right-0 h-[400px] w-[400px] rounded-full bg-[#3a4ec4]/[0.06] blur-[120px]" />
-          <div className="pointer-events-none absolute bottom-0 left-1/3 h-[300px] w-[300px] rounded-full bg-[#22d3ee]/[0.04] blur-[100px]" />
+    <div ref={rootRef} className="min-h-full text-v2-neutral-100">
+      <div className="flex flex-col gap-6">
+        {/* Page Top Header */}
+        <header
+          data-clients-section
+          className="flex flex-col gap-4 border-b border-v2-neutral-500 pb-6 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div>
+            <h1 className="text-3xl font-semibold tracking-[-0.045em] text-v2-neutral-100 sm:text-4xl">
+              Clients
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-v2-neutral-300">
+              Manage client partnerships, contracts, billing structures, and strategic account priorities.
+            </p>
+          </div>
 
-          <div
-            className={`relative z-10 grid grid-cols-1 items-stretch gap-6 lg:min-h-[calc(100vh-140px)] lg:gap-8 ${
-              canManageClients
-                ? "lg:grid-cols-[minmax(420px,1.2fr)_minmax(0,0.8fr)]"
-                : ""
-            }`}
-          >
-              <div className="flex min-h-0 flex-col">
-                <div className="clients-header-area">
-                  <SubHeader
-                    search={search}
-                    setSearch={setSearch}
-                  />
-                </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={isDataLoading}
+              className="gap-1.5"
+            >
+              <RefreshCw
+                className={`size-3.5 ${isDataLoading ? "animate-spin" : ""}`}
+              />
+              <span>Refresh</span>
+            </Button>
 
-                <div className="clients-stats-area">
-                  <StatsCards clients={clients} />
-                </div>
+            {canManage && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsCreateOpen(true)}
+                className="gap-1.5 shadow-md"
+              >
+                <Plus className="size-4" />
+                <span>Add Client</span>
+              </Button>
+            )}
+          </div>
+        </header>
 
-                <div className="clients-table-area flex flex-col flex-1 min-h-0">
-                  <div className="min-h-0 flex-1">
-                    <ClientsTable
-                      clients={currentClients}
-                      deleteClient={setDeleteClientId}
-                      onSelectClient={setDetailClient}
-                      onEditClient={setSelectedClient}
-                      canManageClients={canManageClients}
-                    />
+        {/* State / KPI Cards */}
+        <div data-clients-section>
+          <StatsCards clients={clients} />
+        </div>
+
+        {/* Error State */}
+        {dataError ? (
+          <div data-clients-section>
+            <Card className="border-v2-neutral-500 bg-v2-neutral-500/30 p-8 text-center">
+              <CardContent className="flex flex-col items-center justify-center p-0">
+                <span className="grid size-12 place-items-center rounded-2xl bg-v2-neutral-200 text-v2-neutral-500 mb-3">
+                  <Building2 className="size-6" />
+                </span>
+                <h3 className="text-base font-semibold text-v2-neutral-100">
+                  Unable to load clients
+                </h3>
+                <p className="mt-1 text-xs text-v2-neutral-300 max-w-sm">
+                  {dataError}
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={refresh}
+                  className="mt-4"
+                >
+                  <RefreshCw className="size-3.5 mr-1.5" />
+                  Try Again
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          /* Main Client Table Card */
+          <div data-clients-section>
+            <Card className="relative min-w-0 border-v2-neutral-200 bg-v2-neutral-100 shadow-sm">
+              <CardHeader className="border-b border-v2-neutral-200 pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2.5">
+                      <h2 className="text-base font-semibold text-v2-neutral-600">
+                        Client Directory
+                      </h2>
+                      <span className="inline-flex items-center rounded-full bg-v2-neutral-200 px-2.5 py-0.5 text-xs font-semibold text-v2-neutral-600">
+                        {filteredClients.length}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs text-v2-neutral-400">
+                      Overview of registered business accounts and key contact personnel.
+                    </p>
                   </div>
 
-                  <Pagination
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    setCurrentPage={setCurrentPage}
-                  />
+                  {/* Search Filter */}
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-v2-neutral-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search clients..."
+                      className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 pl-9 pr-3 text-xs text-v2-neutral-600 outline-none transition-[border-color,box-shadow] placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              {canManageClients ? (
-                <div className="clients-sidebar-area min-h-0">
-                  <SidebarForm addClient={addClient} />
-                </div>
-              ) : null}
+              </CardHeader>
+
+              <CardContent className="relative flex flex-1 flex-col p-0">
+                {isDataLoading && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-v2-neutral-100/85 backdrop-blur-[2px]">
+                    <LoaderCircle className="size-5 animate-spin text-v2-neutral-600" />
+                  </div>
+                )}
+
+                <ClientsTable
+                  clients={currentClients}
+                  deleteClient={setDeleteClientId}
+                  onSelectClient={setDetailClient}
+                  onEditClient={setSelectedClient}
+                  canManageClients={canManage}
+                />
+
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  setCurrentPage={setCurrentPage}
+                  totalItems={filteredClients.length}
+                  itemsPerPage={PAGE_SIZE}
+                />
+              </CardContent>
+            </Card>
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Create Client Modal */}
+      {isCreateOpen && canManage && (
+        <CreateClientModal
+          isOpen={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onAddClient={handleAddClient}
+        />
       )}
 
-      <AnimatePresence>
-        {selectedClient && canManageClients ? (
-          <EditClientModal
-            client={selectedClient}
-            onClose={() => setSelectedClient(null)}
-            onSave={handleEditClient}
-          />
-        ) : null}
-      </AnimatePresence>
+      {/* Edit Client Modal */}
+      {selectedClient && canManage && (
+        <EditClientModal
+          client={selectedClient}
+          onClose={() => setSelectedClient(null)}
+          onSave={handleEditClient}
+        />
+      )}
 
+      {/* Client Detail Modal */}
       <ClientDetailModal
         client={detailClient}
         open={detailClient !== null}
         onClose={() => setDetailClient(null)}
+        onEdit={setSelectedClient}
+        canManageClients={canManage}
       />
 
+      {/* Delete Client Confirmation Modal */}
       <DeleteClientModal
-        open={deleteClientId !== null && canManageClients}
+        open={deleteClientId !== null && canManage}
         clientId={deleteClientId}
         onOpenChange={(open) => {
-          if (!open) {
-            setDeleteClientId(null);
-          }
+          if (!open) setDeleteClientId(null);
         }}
-        onConfirm={async (clientId) => {
-          await deleteClient(clientId);
-          setDeleteClientId(null);
-        }}
+        onConfirm={handleDeleteClient}
       />
-    </>
+    </div>
   );
-};
-
-export default ClientManagementPage;
+}

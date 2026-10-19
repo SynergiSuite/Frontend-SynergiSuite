@@ -9,3 +9,11 @@ export async function GET(request: Request) {
     method: "GET",
   });
 }
+
+export async function POST(request: Request) {
+  return proxyBackendRequest(request, {
+    backendPath: "/client-feedback",
+    forwardAuthorization: true,
+    method: "POST",
+  });
+}

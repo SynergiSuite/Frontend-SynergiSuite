@@ -29,3 +29,8 @@ export const canManageProjects = (role?: string | null) =>
   milestoneManagerRoles.includes(
     normalizeRole(role) as (typeof milestoneManagerRoles)[number]
   );
+
+export const canManageClients = (role?: string | null) =>
+  milestoneManagerRoles.includes(
+    normalizeRole(role) as (typeof milestoneManagerRoles)[number]
+  ) || normalizeRole(role) === "admin";

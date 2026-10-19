@@ -1,51 +1,94 @@
 "use client";
 
 import React from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type Props = {
   currentPage: number;
   totalPages: number;
-  setCurrentPage: React.Dispatch<
-    React.SetStateAction<number>
-  >;
+  setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
+  totalItems?: number;
+  itemsPerPage?: number;
 };
 
-const Pagination = ({
+export default function Pagination({
   currentPage,
   totalPages,
   setCurrentPage,
-}: Props) => {
-  return (
-    <>
-      <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between px-2">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
-          Page {currentPage} of {totalPages}
-        </p>
+  totalItems,
+  itemsPerPage = 5,
+}: Props) {
+  if (totalPages <= 1) {
+    return null;
+  }
 
-        <div className="flex flex-wrap gap-2">
-          {Array.from(
-            { length: totalPages },
-            (_, index) => (
+  const startItem = (currentPage - 1) * itemsPerPage + 1;
+  const endItem = totalItems ? Math.min(currentPage * itemsPerPage, totalItems) : undefined;
+
+  return (
+    <div className="flex flex-col gap-3 border-t border-v2-neutral-200 px-5 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+      <p className="text-xs text-v2-neutral-400">
+        {totalItems ? (
+          <>
+            Showing <span className="font-semibold text-v2-neutral-600">{startItem}</span> to{" "}
+            <span className="font-semibold text-v2-neutral-600">{endItem}</span> of{" "}
+            <span className="font-semibold text-v2-neutral-600">{totalItems}</span> clients
+          </>
+        ) : (
+          <>
+            Page <span className="font-semibold text-v2-neutral-600">{currentPage}</span> of{" "}
+            <span className="font-semibold text-v2-neutral-600">{totalPages}</span>
+          </>
+        )}
+      </p>
+
+      <div className="flex items-center gap-1.5">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={currentPage <= 1}
+          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+          className="h-8 gap-1 px-2.5 text-xs"
+        >
+          <ChevronLeft className="size-3.5" />
+          <span>Previous</span>
+        </Button>
+
+        <div className="flex items-center gap-1">
+          {Array.from({ length: totalPages }, (_, index) => {
+            const pageNum = index + 1;
+            const isActive = pageNum === currentPage;
+            return (
               <button
-                key={index}
-                onClick={() =>
-                  setCurrentPage(index + 1)
-                }
-                className={`h-9 w-9 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                  currentPage === index + 1
-                    ? "bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] text-white border border-[#5271ff]/30 shadow-[0_0_12px_rgba(82,113,255,0.3)] scale-105"
-                    : "border border-white/[0.08] bg-[#0a0826]/40 text-white/60 backdrop-blur-md hover:bg-white/[0.03] hover:border-white/[0.15] hover:text-white"
+                key={pageNum}
+                type="button"
+                onClick={() => setCurrentPage(pageNum)}
+                className={`flex size-8 items-center justify-center rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  isActive
+                    ? "bg-v2-neutral-600 text-v2-neutral-100 shadow-sm"
+                    : "border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-600 hover:bg-v2-neutral-200"
                 }`}
               >
-                {index + 1}
+                {pageNum}
               </button>
-            )
-          )}
+            );
+          })}
         </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={currentPage >= totalPages}
+          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+          className="h-8 gap-1 px-2.5 text-xs"
+        >
+          <span>Next</span>
+          <ChevronRight className="size-3.5" />
+        </Button>
       </div>
-    </>
+    </div>
   );
-};
-
-export default Pagination;
-
+}

@@ -1,40 +1,19 @@
 import { CookieManager } from "@/lib/cookieManager";
+import type { TicketReplyItem } from "../types/ticket";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
+export type FeedbackReply = TicketReplyItem;
 
-export interface FeedbackReply {
-  id?: string | number;
-  message?: string;
-  reply?: string;
-  response?: string;
-  status?: string;
-  replier?: {
-    userId?: number | string;
-    name?: string;
-    email?: string;
-  };
-  sender?: {
-    id?: number;
-    name?: string;
-    email?: string;
-    role?: string;
-  };
-  createdBy?: {
-    name?: string;
-    email?: string;
-  };
-  createdAt?: string;
-  created_at?: string;
-}
-
-export async function getFeedbackRepliesApi(feedbackId: string | number): Promise<FeedbackReply[]> {
+export async function getFeedbackRepliesApi(
+  feedbackId: string | number
+): Promise<FeedbackReply[]> {
   const accessToken = await CookieManager("get", "access-token");
-  const response = await fetch(`${requestBaseUrl}/client-feedback/${feedbackId}/replies`, {
+  const response = await fetch(`/api/feedback/${feedbackId}/replies`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${accessToken ?? ""}`,
     },
+    cache: "no-store",
   });
 
   if (!response.ok) {

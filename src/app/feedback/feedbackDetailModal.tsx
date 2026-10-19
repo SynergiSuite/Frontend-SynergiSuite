@@ -1,435 +1,574 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  X,
-  MessageSquareQuote,
-  Star,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
-  User,
-  Building,
-  Send,
-  Sliders,
-  ChevronDown,
-  Sparkles,
+  Building2,
+  Check,
+  FolderKanban,
   Loader2,
+  Mail,
+  MessageSquare,
+  Phone,
+  RefreshCw,
+  Send,
+  Star,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { updateClientFeedbackApi, AllowedFeedbackStatus } from "./apis/updateClientFeedbackApi";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { updateClientFeedbackApi } from "./apis/updateClientFeedbackApi";
 import { getFeedbackRepliesApi, FeedbackReply } from "./apis/getFeedbackRepliesApi";
-
-export interface FeedbackDetailData {
-  rawId?: string | number;
-  id: string;
-  title: string;
-  category: string;
-  projectName: string;
-  message: string;
-  status: string;
-  rating?: number;
-  createdAt: string;
-  clientName?: string;
-  clientEmail?: string;
-  reply?: string;
-  replyAt?: string;
-}
+import {
+  ClientFeedbackStatus,
+  TICKET_STATUS_CONFIG,
+  TICKET_TYPE_OPTIONS,
+  type TicketItem,
+} from "./types/ticket";
 
 interface FeedbackDetailModalProps {
-  feedback: FeedbackDetailData | null;
+  ticket: TicketItem | null;
+  open: boolean;
   onClose: () => void;
-  onRefresh?: () => Promise<void> | void;
-  onUpdateFeedback?: (updated: { id: string; status: string; reply?: string }) => void;
-  isManagementRole?: boolean;
+  onTicketUpdated: (updated: {
+    id: string | number;
+    status: ClientFeedbackStatus;
+    reply?: string;
+  }) => void;
+  canManage: boolean;
 }
 
 export default function FeedbackDetailModal({
-  feedback,
+  ticket,
+  open,
   onClose,
-  onRefresh,
-  onUpdateFeedback,
-  isManagementRole = true,
+  onTicketUpdated,
+  canManage,
 }: FeedbackDetailModalProps) {
-  const [isManaging, setIsManaging] = useState(false);
-  const [status, setStatus] = useState<string>(feedback?.status || "In Review");
-  const [replyText, setReplyText] = useState(feedback?.reply || "");
+  const [currentStatus, setCurrentStatus] = useState<ClientFeedbackStatus>(
+    ticket?.status || "open"
+  );
+  const [replyText, setReplyText] = useState("");
   const [replies, setReplies] = useState<FeedbackReply[]>([]);
   const [isLoadingReplies, setIsLoadingReplies] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const rawStatusMap: Record<string, AllowedFeedbackStatus> = {
-    Open: "open",
-    "In Review": "in_review",
-    "In Progress": "in_progress",
-    Resolved: "resolved",
-    Rejected: "rejected",
-  };
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
 
   const fetchReplies = useCallback(async () => {
-    if (!feedback) return;
-    const targetId = feedback.rawId ?? feedback.id;
+    if (!ticket) return;
     try {
       setIsLoadingReplies(true);
-      const data = await getFeedbackRepliesApi(targetId);
+      const data = await getFeedbackRepliesApi(ticket.rawId);
       setReplies(data);
     } catch (err) {
-      console.error("Failed to load replies:", err);
+      console.warn("Failed to load replies:", err);
     } finally {
       setIsLoadingReplies(false);
     }
-  }, [feedback]);
+  }, [ticket]);
 
   useEffect(() => {
-    if (feedback) {
-      setStatus(feedback.status || "In Review");
-      setReplyText(feedback.reply || "");
+    if (ticket && open) {
+      setCurrentStatus(ticket.status || "open");
+      setReplyText("");
       void fetchReplies();
     }
-  }, [feedback, fetchReplies]);
+  }, [ticket, open, fetchReplies]);
 
-  if (!feedback) return null;
+  if (!ticket) return null;
 
-  const handleSaveManagement = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const statusCfg = TICKET_STATUS_CONFIG[currentStatus] || TICKET_STATUS_CONFIG.open;
+  const typeCfg = TICKET_TYPE_OPTIONS.find((t) => t.value === ticket.feedbackType);
+
+  const clientName = ticket.client?.name || "Client Account";
+  const clientCompany = ticket.client?.company || "Direct Client Account";
+  const clientEmail = ticket.client?.email || "";
+  const clientPhone = ticket.client?.phone || "";
+
+  const initials = clientName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "CL";
+
+  const formattedDate = new Date(ticket.createdAt).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const displayId =
+    typeof ticket.rawId === "number"
+      ? `TK-${ticket.rawId}`
+      : String(ticket.rawId || ticket.id).slice(0, 8).toUpperCase();
+
+  const copyToClipboard = (text: string, fieldName: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    window.setTimeout(() => setCopiedField(null), 1800);
+  };
+
+  // Direct status change handler
+  const handleStatusChange = async (newStatus: ClientFeedbackStatus) => {
+    if (!canManage || newStatus === currentStatus) return;
+
     try {
-      setIsSubmitting(true);
-      const targetId = feedback.rawId ?? feedback.id;
-      const targetStatus: AllowedFeedbackStatus =
-        rawStatusMap[status] ||
-        (status.toLowerCase().replace(" ", "_") as AllowedFeedbackStatus);
-
+      setIsUpdatingStatus(true);
       await updateClientFeedbackApi({
-        id: targetId,
-        status: targetStatus,
-        reply: replyText.trim() || undefined,
+        id: ticket.rawId,
+        status: newStatus,
       });
 
-      toast.success("Feedback ticket updated successfully!");
-
-      // Update state locally in real time
-      if (onUpdateFeedback) {
-        onUpdateFeedback({
-          id: feedback.id,
-          status,
-          reply: replyText.trim() || undefined,
-        });
-      }
-
-      if (onRefresh) {
-        await onRefresh();
-      }
-      await fetchReplies();
-      setIsManaging(false);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to update feedback";
+      setCurrentStatus(newStatus);
+      onTicketUpdated({
+        id: ticket.rawId,
+        status: newStatus,
+      });
+      toast.success(`Ticket status updated to ${TICKET_STATUS_CONFIG[newStatus].label}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to update ticket status";
       toast.error(msg);
     } finally {
-      setIsSubmitting(false);
+      setIsUpdatingStatus(false);
     }
   };
 
-  const getStatusBadge = (statusVal: string) => {
-    const norm = (statusVal || "").trim().toLowerCase();
-    if (norm === "in_progress" || norm === "in progress") {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.15)]">
-          <Clock className="h-3.5 w-3.5" />
-          In Progress
-        </span>
-      );
+  // Send reply handler (optionally with updated status)
+  const handleSendReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) {
+      toast.error("Please enter a reply message.");
+      return;
     }
-    if (norm === "in_review" || norm === "in review") {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]">
-          <AlertCircle className="h-3.5 w-3.5" />
-          In Review
-        </span>
-      );
+
+    try {
+      setIsSubmittingReply(true);
+      await updateClientFeedbackApi({
+        id: ticket.rawId,
+        status: currentStatus,
+        reply: replyText.trim(),
+      });
+
+      toast.success("Reply sent to client successfully!");
+      setReplyText("");
+      onTicketUpdated({
+        id: ticket.rawId,
+        status: currentStatus,
+        reply: replyText.trim(),
+      });
+      await fetchReplies();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to send reply";
+      toast.error(msg);
+    } finally {
+      setIsSubmittingReply(false);
     }
-    if (norm === "resolved") {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          Resolved
-        </span>
-      );
-    }
-    if (norm === "rejected") {
-      return (
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.15)]">
-          <X className="h-3.5 w-3.5" />
-          Rejected
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
-        Open
-      </span>
-    );
   };
 
   return (
     <AnimatePresence>
-      <motion.div
-        className="fixed inset-0 z-50 flex items-center justify-center px-4"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-      >
-        {/* Backdrop Overlay */}
-        <div
-          className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
-          onClick={onClose}
-        />
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-v2-neutral-600/80 backdrop-blur-xs"
+            onClick={onClose}
+          />
 
-        {/* Modal Window */}
-        <motion.div
-          initial={{ scale: 0.95, opacity: 0, y: 18 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.95, opacity: 0, y: 14 }}
-          className="relative w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/[0.1] bg-[#0c0a2f] bg-gradient-to-br from-[#5271ff]/10 via-[#0c0a2f] to-[#0a0826] shadow-[0_24px_80px_rgba(0,0,0,0.7)] backdrop-blur-2xl"
-        >
-          {/* Top Neon Stripe Accent */}
-          <div className="h-1 w-full bg-gradient-to-r from-[#5271ff] via-cyan-400 to-[#3a4ec4]" />
+          {/* Modal Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 16 }}
+            className="relative z-10 flex flex-col w-full max-w-3xl max-h-[90vh] rounded-2xl border border-v2-neutral-400 bg-v2-neutral-600 shadow-2xl overflow-hidden"
+          >
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-v2-neutral-500 bg-v2-neutral-600 px-6 py-5 shrink-0">
+              <div className="space-y-1.5 min-w-0 pr-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-xs font-bold text-v2-neutral-300 bg-v2-neutral-500 px-2 py-0.5 rounded-md">
+                    {displayId}
+                  </span>
+                  <span
+                    className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-semibold ${
+                      typeCfg?.badgeClass || "bg-v2-neutral-500 text-v2-neutral-200"
+                    }`}
+                  >
+                    {typeCfg?.label || ticket.feedbackType}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-semibold ${statusCfg.badgeClass}`}
+                  >
+                    <span className={`size-1.5 rounded-full ${statusCfg.dotClass}`} />
+                    {statusCfg.label}
+                  </span>
+                </div>
 
-          {/* Modal Header */}
-          <div className="flex items-start justify-between border-b border-white/[0.08] p-6 sm:p-8">
-            <div className="space-y-2 pr-6">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-white/40">
-                  {feedback.id}
-                </span>
-                <span className="rounded-md border border-[#5271ff]/30 bg-[#5271ff]/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#5271ff]">
-                  {feedback.category}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-white/70">
-                  <Building className="h-3 w-3 text-cyan-400" />
-                  {feedback.projectName}
-                </span>
+                <h2 className="text-lg font-bold text-v2-neutral-100 tracking-tight line-clamp-1">
+                  {ticket.titleOfFeedback}
+                </h2>
+
+                <p className="flex items-center gap-2 text-xs text-v2-neutral-400">
+                  <span className="flex items-center gap-1">
+                    <FolderKanban className="size-3.5 text-v2-neutral-400" />
+                    <span>{ticket.projectName || "General Workspace"}</span>
+                  </span>
+                  <span>•</span>
+                  <span>Submitted {formattedDate}</span>
+                </p>
               </div>
 
-              <h2 className="text-xl font-bold tracking-tight text-white sm:text-2xl">
-                {feedback.title}
-              </h2>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-xl border border-v2-neutral-500 text-v2-neutral-400 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/60 transition hover:bg-white/10 hover:text-white"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Modal Body */}
-          <div className="max-h-[60vh] space-y-6 overflow-y-auto p-6 sm:p-8 custom-scrollbar">
-            {/* Meta Row: Status & Ratings */}
-            <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/[0.08] bg-[#0a0826]/50 p-4">
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold uppercase tracking-wider text-white/40">
-                  Status:
-                </span>
-                {getStatusBadge(status)}
-              </div>
-
-              <div className="flex items-center gap-3">
-                {feedback.rating && (
-                  <div className="flex items-center gap-1">
-                    <span className="text-xs font-semibold text-white/40 mr-1">Rating:</span>
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`h-4 w-4 ${
-                          i < (feedback.rating || 0)
-                            ? "fill-amber-400 text-amber-400"
-                            : "text-white/20"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                )}
-                <span className="text-xs text-white/40 font-medium">
-                  {new Date(feedback.createdAt).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              </div>
-            </div>
-
-            {/* Client Info (if available) */}
-            {(feedback.clientName || feedback.clientEmail) && (
-              <div className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3.5 text-xs text-white/70">
-                <User className="h-4 w-4 text-[#5271ff]" />
-                <span>Submitted by:</span>
-                <strong className="text-white">{feedback.clientName || "Client"}</strong>
-                {feedback.clientEmail && (
-                  <span className="text-white/40">({feedback.clientEmail})</span>
-                )}
-              </div>
-            )}
-
-            {/* Feedback Message */}
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-white/50">
-                Feedback Details
-              </h4>
-              <div className="rounded-2xl border border-white/[0.08] bg-[#030114]/60 p-5 text-sm leading-relaxed text-white/80 whitespace-pre-wrap">
-                {feedback.message}
-              </div>
-            </div>
-
-            {/* Replies Thread Section */}
-            {(replies.length > 0 || feedback.reply) && !isManaging && (
-              <div className="space-y-3 pt-2 border-t border-white/[0.08]">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#5271ff] flex items-center gap-1.5">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Responses & Activity ({replies.length || (feedback.reply ? 1 : 0)})
-                </h4>
-
-                {isLoadingReplies ? (
-                  <div className="flex items-center gap-2 text-xs text-white/40 py-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-[#5271ff]" />
-                    Fetching response thread...
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {replies.length > 0
-                      ? replies.map((r, idx) => (
-                          <div
-                            key={r.id || idx}
-                            className="rounded-2xl border border-[#5271ff]/30 bg-[#5271ff]/10 p-4 space-y-1.5"
-                          >
-                            <div className="flex items-center justify-between text-xs text-white/50">
-                              <span className="font-semibold text-white">
-                                {r.replier?.name || r.sender?.name || r.createdBy?.name || "Management Team"}
-                              </span>
-                              {r.createdAt && (
-                                <span>
-                                  {new Date(r.createdAt).toLocaleDateString("en-US", {
-                                    month: "short",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm text-white/90 leading-relaxed whitespace-pre-wrap">
-                              {r.message || r.reply || r.response}
-                            </p>
-                          </div>
-                        ))
-                      : feedback.reply && (
-                          <div className="rounded-2xl border border-[#5271ff]/30 bg-[#5271ff]/10 p-4 text-sm text-white/90 leading-relaxed">
-                            {feedback.reply}
-                          </div>
-                        )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Manage Form Expanded */}
-            <AnimatePresence>
-              {isManaging && (
-                <motion.form
-                  onSubmit={handleSaveManagement}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="space-y-4 rounded-2xl border border-[#5271ff]/40 bg-[#0a0826]/80 p-5 shadow-[0_0_30px_rgba(82,113,255,0.15)]"
-                >
-                  <div className="flex items-center gap-2 border-b border-white/[0.08] pb-3 text-sm font-bold text-white">
-                    <Sliders className="h-4 w-4 text-[#5271ff]" />
-                    <span>Manage Ticket & Send Response</span>
-                  </div>
-
-                  {/* Status Dropdown */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/60">
-                      Update Ticket Status
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="h-11 w-full appearance-none rounded-xl border border-white/[0.1] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition focus:border-[#5271ff]"
-                      >
-                        <option value="Open" className="bg-[#0c0a2f] text-white">Open (open)</option>
-                        <option value="In Review" className="bg-[#0c0a2f] text-white">In Review (in_review)</option>
-                        <option value="In Progress" className="bg-[#0c0a2f] text-white">In Progress (in_progress)</option>
-                        <option value="Resolved" className="bg-[#0c0a2f] text-white">Resolved (resolved)</option>
-                        <option value="Rejected" className="bg-[#0c0a2f] text-white">Rejected (rejected)</option>
-                      </select>
-                      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40 h-4 w-4" />
+            {/* Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
+              {/* Client Info Strip & Status Controller */}
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {/* Client Profile Card */}
+                <div className="sm:col-span-2 flex items-center justify-between rounded-xl border border-v2-neutral-500 bg-v2-neutral-500/30 p-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="grid size-10 shrink-0 place-items-center rounded-xl bg-v2-neutral-100 text-sm font-bold text-v2-neutral-600 shadow-sm">
+                      {initials}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-v2-neutral-100">
+                        {clientName}
+                      </p>
+                      <p className="flex items-center gap-1.5 truncate text-xs text-v2-neutral-400 mt-0.5">
+                        <Building2 className="size-3.5 shrink-0" />
+                        <span className="truncate">{clientCompany}</span>
+                      </p>
                     </div>
                   </div>
 
-                  {/* Reply Textarea */}
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/60">
-                      Add Response / Reply Message (Optional)
-                    </label>
-                    <textarea
-                      rows={4}
-                      value={replyText}
-                      onChange={(e) => setReplyText(e.target.value)}
-                      placeholder="Type your response message to the client..."
-                      className="w-full rounded-xl border border-white/[0.1] bg-[#030114]/60 p-4 text-sm text-white placeholder-white/20 outline-none focus:border-[#5271ff]"
-                    />
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {clientEmail && (
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(clientEmail, "email")}
+                        title={`Copy ${clientEmail}`}
+                        className="p-2 rounded-lg border border-v2-neutral-500 text-v2-neutral-400 hover:text-v2-neutral-100 hover:bg-v2-neutral-500 transition-colors cursor-pointer"
+                      >
+                        {copiedField === "email" ? (
+                          <Check className="size-3.5 text-emerald-400" />
+                        ) : (
+                          <Mail className="size-3.5" />
+                        )}
+                      </button>
+                    )}
+                    {clientPhone && (
+                      <button
+                        type="button"
+                        onClick={() => copyToClipboard(clientPhone, "phone")}
+                        title={`Copy ${clientPhone}`}
+                        className="p-2 rounded-lg border border-v2-neutral-500 text-v2-neutral-400 hover:text-v2-neutral-100 hover:bg-v2-neutral-500 transition-colors cursor-pointer"
+                      >
+                        {copiedField === "phone" ? (
+                          <Check className="size-3.5 text-emerald-400" />
+                        ) : (
+                          <Phone className="size-3.5" />
+                        )}
+                      </button>
+                    )}
                   </div>
+                </div>
 
-                  <div className="flex justify-end gap-3 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsManaging(false)}
-                      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white/70 hover:bg-white/10 hover:text-white"
-                    >
-                      Cancel
-                    </button>
-                    <button
+                {/* Status Selector Box (Employee POV) */}
+                <div className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-500/30 p-4 flex flex-col justify-between">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-v2-neutral-400">
+                    Manage Status
+                  </span>
+                  <div className="mt-2">
+                    {canManage ? (
+                      <Select
+                        value={currentStatus}
+                        onValueChange={(val) =>
+                          handleStatusChange(val as ClientFeedbackStatus)
+                        }
+                        disabled={isUpdatingStatus}
+                      >
+                        <SelectTrigger className="h-9 w-full rounded-xl border-v2-neutral-400 bg-v2-neutral-600 px-3 text-xs font-semibold text-v2-neutral-100 shadow-none hover:border-v2-neutral-300">
+                          <SelectValue placeholder="Update status..." />
+                        </SelectTrigger>
+                        <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                          {(
+                            [
+                              "open",
+                              "in_progress",
+                              "in_review",
+                              "resolved",
+                              "rejected",
+                            ] as ClientFeedbackStatus[]
+                          ).map((st) => {
+                            const cfg = TICKET_STATUS_CONFIG[st];
+                            return (
+                              <SelectItem
+                                key={st}
+                                value={st}
+                                className="cursor-pointer rounded-lg py-2 text-xs text-v2-neutral-600 focus:bg-v2-neutral-200/80 focus:text-v2-neutral-600"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`size-2 rounded-full ${cfg.dotClass}`}
+                                  />
+                                  <span>{cfg.label}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold ${statusCfg.badgeClass}`}
+                      >
+                        <span
+                          className={`size-1.5 rounded-full ${statusCfg.dotClass}`}
+                        />
+                        {statusCfg.label}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Client Original Feedback Content */}
+              <div className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-500/20 p-4 sm:p-5">
+                <div className="flex items-center justify-between pb-3 border-b border-v2-neutral-500">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-v2-neutral-300">
+                    Client Description & Submission
+                  </span>
+
+                  {typeof ticket.starRating === "number" &&
+                    ticket.starRating > 0 && (
+                      <div className="flex items-center gap-1.5">
+                        <div className="flex items-center text-amber-400">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`size-3.5 ${
+                                i < (ticket.starRating || 0)
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "text-v2-neutral-400"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs font-bold text-amber-400">
+                          {ticket.starRating}.0
+                        </span>
+                      </div>
+                    )}
+                </div>
+
+                <div className="mt-3 text-xs leading-relaxed text-v2-neutral-200 whitespace-pre-wrap">
+                  {ticket.feedback}
+                </div>
+              </div>
+
+              {/* Conversation & Threaded Replies Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-v2-neutral-300 flex items-center gap-2">
+                    <MessageSquare className="size-3.5 text-v2-neutral-400" />
+                    <span>Communication Thread ({replies.length})</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => void fetchReplies()}
+                    title="Refresh thread"
+                    className="p-1 rounded-md text-v2-neutral-400 hover:text-v2-neutral-200 cursor-pointer"
+                  >
+                    <RefreshCw className={`size-3.5 ${isLoadingReplies ? "animate-spin" : ""}`} />
+                  </button>
+                </div>
+
+                {isLoadingReplies ? (
+                  <div className="py-8 flex flex-col items-center justify-center text-v2-neutral-400">
+                    <Loader2 className="size-6 animate-spin mb-2" />
+                    <p className="text-xs">Loading replies...</p>
+                  </div>
+                ) : replies.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-v2-neutral-500 p-6 text-center text-v2-neutral-400">
+                    <MessageSquare className="size-6 mx-auto mb-2 opacity-40" />
+                    <p className="text-xs font-semibold text-v2-neutral-300">
+                      No replies logged yet
+                    </p>
+                    <p className="text-[11px] text-v2-neutral-400 mt-0.5">
+                      Send an official update, resolution, or inquiry to the client using the reply composer below.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {replies.map((reply, idx) => {
+                      const isEmployee = Boolean(reply.replier || reply.createdBy);
+                      const authorName =
+                        reply.replier?.name ||
+                        reply.createdBy?.name ||
+                        (isEmployee ? "Workspace Staff" : clientName);
+                      const replyTime = reply.createdAt
+                        ? new Date(reply.createdAt).toLocaleDateString(undefined, {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })
+                        : "Just now";
+
+                      return (
+                        <div
+                          key={reply.id || idx}
+                          className={`rounded-xl border p-4 ${
+                            isEmployee
+                              ? "border-v2-neutral-400 bg-v2-neutral-500/40 ml-4 sm:ml-8"
+                              : "border-v2-neutral-500 bg-v2-neutral-500/20 mr-4 sm:mr-8"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between pb-2 border-b border-v2-neutral-500/50">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`size-6 rounded-full grid place-items-center text-[10px] font-bold ${
+                                  isEmployee
+                                    ? "bg-v2-neutral-100 text-v2-neutral-600"
+                                    : "bg-v2-neutral-400 text-v2-neutral-100"
+                                }`}
+                              >
+                                {authorName.charAt(0).toUpperCase()}
+                              </span>
+                              <span className="text-xs font-semibold text-v2-neutral-100">
+                                {authorName}
+                              </span>
+                              {isEmployee && (
+                                <span className="rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 px-1.5 py-0.2 text-[10px] font-medium">
+                                  Support
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] text-v2-neutral-400">
+                              {replyTime}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-relaxed text-v2-neutral-200 whitespace-pre-wrap">
+                            {reply.message}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Employee Reply Composer */}
+              {canManage && (
+                <form
+                  onSubmit={handleSendReply}
+                  className="rounded-xl border border-v2-neutral-500 bg-v2-neutral-500/30 p-4 space-y-3"
+                >
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-v2-neutral-300">
+                    Reply to Client
+                  </label>
+
+                  <textarea
+                    rows={3}
+                    required
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Type official reply, action plan, or resolution to the client..."
+                    className="w-full rounded-xl border border-v2-neutral-400 bg-v2-neutral-600 p-3 text-xs text-v2-neutral-100 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-300 focus:ring-2 focus:ring-v2-neutral-400/20 resize-none"
+                  />
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+                    {/* Status change along with reply */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-v2-neutral-300">Status with reply:</span>
+                      <div className="w-36">
+                        <Select
+                          value={currentStatus}
+                          onValueChange={(val) =>
+                            setCurrentStatus(val as ClientFeedbackStatus)
+                          }
+                        >
+                          <SelectTrigger className="h-8 w-full rounded-lg border-v2-neutral-400 bg-v2-neutral-600 px-2 text-xs text-v2-neutral-100 shadow-none">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                            {(
+                              [
+                                "open",
+                                "in_progress",
+                                "in_review",
+                                "resolved",
+                                "rejected",
+                              ] as ClientFeedbackStatus[]
+                            ).map((st) => (
+                              <SelectItem
+                                key={st}
+                                value={st}
+                                className="cursor-pointer text-xs"
+                              >
+                                {TICKET_STATUS_CONFIG[st].label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <Button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-5 py-2 text-xs font-semibold text-white shadow-[0_0_15px_rgba(82,113,255,0.3)] hover:opacity-95 disabled:opacity-50 cursor-pointer"
+                      disabled={isSubmittingReply || !replyText.trim()}
+                      className="gap-1.5 text-xs h-8 px-4"
                     >
-                      <Send className="h-3.5 w-3.5" />
-                      <span>{isSubmitting ? "Sending..." : "Send Feedback"}</span>
-                    </button>
+                      {isSubmittingReply ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Send className="size-3.5" />
+                      )}
+                      <span>Send Reply</span>
+                    </Button>
                   </div>
-                </motion.form>
+                </form>
               )}
-            </AnimatePresence>
-          </div>
+            </div>
 
-          {/* Modal Footer Controls */}
-          <div className="flex items-center justify-between border-t border-white/[0.08] bg-[#0a0826]/40 p-6 sm:px-8">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-xs font-semibold text-white/70 transition hover:bg-white/10 hover:text-white"
-            >
-              Close
-            </button>
+            {/* Modal Footer */}
+            <div className="flex shrink-0 items-center justify-between border-t border-v2-neutral-500 bg-v2-neutral-600/90 px-6 py-4">
+              <span className="text-xs text-v2-neutral-400">
+                Ticket ID:{" "}
+                <span className="font-mono text-[11px] text-v2-neutral-300">
+                  {ticket.id}
+                </span>
+              </span>
 
-            {!isManaging && (
-              <button
-                type="button"
-                onClick={() => setIsManaging(true)}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-6 py-2.5 text-xs font-semibold text-white shadow-[0_0_20px_rgba(82,113,255,0.35)] transition-all duration-300 hover:opacity-95 active:scale-95 cursor-pointer"
-              >
-                <Sliders className="h-4 w-4" />
-                <span>Manage Ticket</span>
-              </button>
-            )}
-          </div>
-        </motion.div>
-      </motion.div>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </AnimatePresence>
   );
 }

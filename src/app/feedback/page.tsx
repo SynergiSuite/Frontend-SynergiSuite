@@ -1,83 +1,92 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  MessageSquareQuote,
-  Send,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  Star,
-  Sparkles,
-  Filter,
-  PlusCircle,
-  HelpCircle,
-  Paperclip,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+  useLayoutEffect,
+} from "react";
 import { gsap } from "gsap";
+import { AlertCircle, Plus, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { CookieManager } from "@/lib/cookieManager";
 import { getAllProjectsApi } from "@/app/projects/apis/getAllProjectsApi";
-import { Projects } from "@/app/projects/schemas/project";
+import { getClientsApi } from "@/app/projects/apis/getAllClients";
 import {
-  submitClientFeedbackApi,
-  FeedbackCategory,
-} from "./apis/submitClientFeedbackApi";
-import {
-  getMyFeedbackApi,
   getClientFeedbackApi,
+  getMyFeedbackApi,
   ClientFeedbackResponse,
   FeedbackPaginationMeta,
-  GetFeedbackApiResponse,
 } from "./apis/getMyFeedbackApi";
+import { updateClientFeedbackApi } from "./apis/updateClientFeedbackApi";
+import TicketStatsCards from "./ticketStatsCards";
+import TicketFilterBar from "./ticketFilterBar";
+import TicketTable from "./ticketTable";
 import FeedbackDetailModal from "./feedbackDetailModal";
-import LoaderCustom from "@/components/ui/loader-custom";
+import CreateTicketModal from "./createTicketModal";
+import DeleteTicketModal from "./deleteTicketModal";
+import {
+  ClientFeedbackStatus,
+  ClientFeedbackTargetType,
+  ClientFeedbackType,
+  type TicketItem,
+} from "./types/ticket";
 
-interface FeedbackItem {
-  rawId?: string | number;
-  id: string;
-  title: string;
-  category: string;
-  projectName: string;
-  message: string;
-  status: "Open" | "In Review" | "In Progress" | "Resolved" | "Rejected";
-  rating?: number;
-  createdAt: string;
-  clientName?: string;
-  clientEmail?: string;
-  reply?: string;
-  replyAt?: string;
+function normalizeStatus(raw?: string): ClientFeedbackStatus {
+  const norm = (raw || "").trim().toLowerCase().replace(" ", "_");
+  if (norm === "in_progress") return "in_progress";
+  if (norm === "in_review") return "in_review";
+  if (norm === "resolved") return "resolved";
+  if (norm === "rejected") return "rejected";
+  return "open";
 }
 
-function normalizeFeedbackStatus(rawStatus?: string): FeedbackItem["status"] {
-  const norm = (rawStatus || "").trim().toLowerCase();
-  if (norm === "in_progress" || norm === "in progress") return "In Progress";
-  if (norm === "in_review" || norm === "in review") return "In Review";
-  if (norm === "resolved") return "Resolved";
-  if (norm === "rejected") return "Rejected";
-  return "Open";
+function normalizeType(raw?: string): ClientFeedbackType {
+  const norm = (raw || "").trim().toLowerCase();
+  if (norm === "request") return "request";
+  if (norm === "review") return "review";
+  if (norm === "issue") return "issue";
+  if (norm === "question") return "question";
+  if (norm === "approval") return "approval";
+  return "general";
 }
 
-function mapFeedbackResponse(
+function mapFeedbackItem(
   item: ClientFeedbackResponse,
   projectMap: Record<string, string>
-): FeedbackItem {
+): TicketItem {
   const rawId = item.id;
-  const displayId = typeof rawId === "number" ? `FB-${rawId}` : String(rawId || `FB-${Math.floor(1000 + Math.random() * 9000)}`);
-  
-  const title = item.titleOfFeedback || item.feedbackTitle || item.title || "Feedback Submission";
-  const category = item.feedbackType || item.category || "general";
+  const displayId =
+    typeof rawId === "number" ? `TK-${rawId}` : String(rawId || "");
 
-  const projectId = item.typeId || item.projectId || item.project_id || item.project?.id;
+  const title =
+    item.titleOfFeedback ||
+    item.feedbackTitle ||
+    item.title ||
+    "Feedback Submission";
+  const feedbackType = normalizeType(
+    item.feedbackType || item.category || "general"
+  );
+  const targetType = (item.targetType ||
+    item.target_type ||
+    "project") as ClientFeedbackTargetType;
+  const typeId = String(
+    item.typeId ||
+      item.type_id ||
+      item.projectId ||
+      item.project_id ||
+      item.project?.id ||
+      ""
+  );
+
   const projectName =
     item.projectName ||
     item.project?.name ||
-    (projectId ? projectMap[String(projectId)] : undefined) ||
-    "General Project";
+    (typeId ? projectMap[typeId] : undefined) ||
+    "Workspace Project";
 
   const rating =
     typeof item.starRating === "number"
@@ -87,605 +96,460 @@ function mapFeedbackResponse(
       : undefined;
 
   return {
-    rawId,
     id: displayId,
-    title,
-    category,
-    projectName,
-    message: item.feedback || item.message || "",
-    status: normalizeFeedbackStatus(item.status),
-    rating,
+    rawId,
+    titleOfFeedback: title,
+    feedback: item.feedback || item.message || "",
+    feedbackType,
+    targetType,
+    typeId,
+    status: normalizeStatus(item.status),
+    starRating: rating,
     createdAt: item.createdAt || item.created_at || new Date().toISOString(),
-    clientName: item.client?.name,
-    clientEmail: item.client?.email,
-    reply: item.reply || item.response,
-    replyAt: item.replyAt,
+    updatedAt: item.updatedAt || item.updated_at,
+    client: item.client
+      ? {
+          id: String(item.client.id || ""),
+          name: item.client.name,
+          email: item.client.email,
+          phone: item.client.phone,
+          company: item.client.company,
+        }
+      : null,
+    createdBy: item.createdBy,
+    projectName,
   };
 }
 
-const mockFeedbackList: FeedbackItem[] = [
-  {
-    id: "FB-8041",
-    title: "Sprint 4 Milestone Review & UI Adjustments",
-    category: "Project Feedback",
-    projectName: "Enterprise Portal Revamp",
-    message: "The new dashboard layout looks incredible! Just requesting a slight adjustment to the contrast on line items.",
-    status: "In Progress",
-    rating: 5,
-    createdAt: "2026-07-28T14:30:00Z",
-  },
-  {
-    id: "FB-7912",
-    title: "Cloud Artifact Export Format Request",
-    category: "Feature Request",
-    projectName: "Cloud Storage Integration",
-    message: "Would love the ability to export cloud build artifacts as zip files directly from the timeline view.",
-    status: "In Review",
-    createdAt: "2026-07-25T09:15:00Z",
-  },
-  {
-    id: "FB-7650",
-    title: "Resolved API Webhook Payload Verification",
-    category: "General Support",
-    projectName: "Webhook Integration",
-    message: "Verified webhook listener configuration. Everything is delivering smoothly now.",
-    status: "Resolved",
-    rating: 5,
-    createdAt: "2026-07-20T11:00:00Z",
-  },
-];
+export default function ClientTicketsPage() {
+  const [tickets, setTickets] = useState<TicketItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export default function ClientFeedbackPage() {
-  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
-  const [isLoadingPage, setIsLoadingPage] = useState(true);
-  const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<string>("All");
-  const [role, setRole] = useState<string>("");
-
+  // Role management
+  const [userRole, setUserRole] = useState<string>("");
   useEffect(() => {
-    const userRole = CookieManager("get", "primary_role") || CookieManager("get", "role");
-    setRole(String(userRole || "").toLowerCase());
+    const roleCookie =
+      CookieManager("get", "primary_role") || CookieManager("get", "role");
+    setUserRole(String(roleCookie || "").toLowerCase());
   }, []);
 
-  const isClientRole = role === "client";
+  const isClient = userRole === "client";
+  const isFounder = userRole.includes("founder");
+  const isManager =
+    userRole.includes("manager") ||
+    userRole.includes("admin") ||
+    userRole.includes("lead");
+  const canManage = isFounder || isManager || !isClient;
 
-  // Form State
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState<FeedbackCategory>("review");
-  const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [projects, setProjects] = useState<Projects[]>([]);
+  // Metadata & Lookups
+  const [projects, setProjects] = useState<Array<{ id: string; name: string }>>(
+    []
+  );
   const [projectMap, setProjectMap] = useState<Record<string, string>>({});
-  const [message, setMessage] = useState("");
-  const [rating, setRating] = useState<number>(4);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [clients, setClients] = useState<
+    Array<{ id: string; name: string; company?: string }>
+  >([]);
 
-  // Pagination State
+  // Search & Filtering State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [statusTab, setStatusTab] = useState<"all" | ClientFeedbackStatus>(
+    "all"
+  );
+  const [selectedType, setSelectedType] = useState<string>("all");
+  const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
+
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [meta, setMeta] = useState<FeedbackPaginationMeta | undefined>(undefined);
+  const [meta, setMeta] = useState<FeedbackPaginationMeta | undefined>(
+    undefined
+  );
 
-  const containerRef = useRef<HTMLDivElement>(null);
-  const userName = (typeof window !== "undefined" ? CookieManager("get", "user") as string : "") || "Client";
+  // Modals & Selection
+  const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [deleteTicketId, setDeleteTicketId] = useState<string | number | null>(
+    null
+  );
 
-  const fetchFeedbackData = useCallback(
-    async (map: Record<string, string>, pageToFetch: number = 1) => {
+  // Debounced search
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim().toLowerCase());
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Load Projects and Clients for dropdowns
+  useEffect(() => {
+    async function loadAuxiliaryData() {
       try {
-        setIsLoadingPage(true);
-        const isClient = role === "client";
-        let response: GetFeedbackApiResponse;
-        if (isClient) {
-          response = await getMyFeedbackApi(pageToFetch);
-        } else {
-          try {
-            response = await getClientFeedbackApi(pageToFetch);
-          } catch {
-            response = await getMyFeedbackApi(pageToFetch);
-          }
+        const [projRes, clientRes] = await Promise.allSettled([
+          getAllProjectsApi(),
+          getClientsApi(),
+        ]);
+
+        const pMap: Record<string, string> = {};
+        if (projRes.status === "fulfilled" && Array.isArray(projRes.value)) {
+          const mappedProjs = projRes.value.map((p) => ({
+            id: String(p.id),
+            name: p.name,
+          }));
+          setProjects(mappedProjs);
+          mappedProjs.forEach((p) => {
+            pMap[p.id] = p.name;
+          });
+          setProjectMap(pMap);
         }
-        const mapped = (response.data || []).map((item) =>
-          mapFeedbackResponse(item, map)
+
+        if (clientRes.status === "fulfilled" && Array.isArray(clientRes.value)) {
+          const mappedClients = clientRes.value.map(
+            (c: { id: string | number; name?: string; company?: string }) => ({
+              id: String(c.id),
+              name: c.name || "Unnamed Client",
+              company: c.company,
+            })
+          );
+          setClients(mappedClients);
+        }
+      } catch (auxErr) {
+        console.warn("Failed to load auxiliary projects/clients:", auxErr);
+      }
+    }
+
+    void loadAuxiliaryData();
+  }, []);
+
+  // Fetch Tickets from API
+  const fetchTickets = useCallback(
+    async (pageToLoad: number = currentPage) => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const params = {
+          page: pageToLoad,
+          status: statusTab !== "all" ? statusTab : undefined,
+          feedbackType: selectedType !== "all" ? selectedType : undefined,
+          typeId: selectedProjectId !== "all" ? selectedProjectId : undefined,
+        };
+
+        const res = isClient
+          ? await getMyFeedbackApi(params)
+          : await getClientFeedbackApi(params);
+
+        const mapped = (res.data || []).map((item) =>
+          mapFeedbackItem(item, projectMap)
         );
-        setFeedbackList(mapped);
-        setMeta(response.meta);
-      } catch (error) {
-        console.error("Failed to load client feedback:", error);
+
+        setTickets(mapped);
+        setMeta(res.meta);
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Failed to load client tickets.";
+        setError(msg);
+        setTickets([]);
       } finally {
-        setIsLoadingPage(false);
+        setIsLoading(false);
       }
     },
-    [role]
+    [currentPage, isClient, projectMap, selectedProjectId, selectedType, statusTab]
   );
 
   useEffect(() => {
-    const loadInitial = async () => {
-      const map: Record<string, string> = {};
-      try {
-        const projects = await getAllProjectsApi();
-        const mappedProjects: Projects[] = projects.map((p) => ({
-          id: p.id,
-          name: p.name,
-          status: p.status,
-          duration: p.duration,
-          teams: [],
-          client: {} as any,
-          tasks: [],
-        }));
-        setProjects(mappedProjects);
-        projects.forEach((p) => {
-          map[String(p.id)] = p.name;
-        });
-        setProjectMap(map);
-      } catch (err) {
-        console.error("Failed to load projects:", err);
+    void fetchTickets(currentPage);
+  }, [fetchTickets, currentPage]);
+
+  // Client-side quick filter over the loaded set for instant search response
+  const filteredTickets = useMemo(() => {
+    return tickets.filter((ticket) => {
+      // Status filter
+      if (statusTab !== "all" && ticket.status !== statusTab) {
+        return false;
       }
-      await fetchFeedbackData(map, currentPage);
+
+      // Type filter
+      if (selectedType !== "all" && ticket.feedbackType !== selectedType) {
+        return false;
+      }
+
+      // Project filter
+      if (
+        selectedProjectId !== "all" &&
+        ticket.typeId !== selectedProjectId
+      ) {
+        return false;
+      }
+
+      // Search query
+      if (debouncedSearch) {
+        const matchesTitle = ticket.titleOfFeedback
+          .toLowerCase()
+          .includes(debouncedSearch);
+        const matchesMessage = ticket.feedback
+          .toLowerCase()
+          .includes(debouncedSearch);
+        const matchesClient =
+          ticket.client?.name?.toLowerCase().includes(debouncedSearch) ||
+          ticket.client?.company?.toLowerCase().includes(debouncedSearch) ||
+          ticket.client?.email?.toLowerCase().includes(debouncedSearch);
+        const matchesProject = ticket.projectName
+          ?.toLowerCase()
+          .includes(debouncedSearch);
+        const matchesId = String(ticket.id).toLowerCase().includes(debouncedSearch);
+
+        return (
+          matchesTitle ||
+          matchesMessage ||
+          matchesClient ||
+          matchesProject ||
+          matchesId
+        );
+      }
+
+      return true;
+    });
+  }, [debouncedSearch, selectedProjectId, selectedType, statusTab, tickets]);
+
+  // Tab counts
+  const statusCounts = useMemo(() => {
+    return {
+      all: tickets.length,
+      open: tickets.filter((t) => t.status === "open").length,
+      in_progress: tickets.filter((t) => t.status === "in_progress").length,
+      in_review: tickets.filter((t) => t.status === "in_review").length,
+      resolved: tickets.filter((t) => t.status === "resolved").length,
+      rejected: tickets.filter((t) => t.status === "rejected").length,
     };
-    loadInitial();
-  }, [fetchFeedbackData]);
+  }, [tickets]);
 
-  useEffect(() => {
-    if (projectMap && Object.keys(projectMap).length > 0) {
-      fetchFeedbackData(projectMap, currentPage);
+  // Quick Status change from Table Row
+  const handleQuickStatusChange = async (
+    ticketId: string | number,
+    newStatus: ClientFeedbackStatus
+  ) => {
+    try {
+      await updateClientFeedbackApi({
+        id: ticketId,
+        status: newStatus,
+      });
+
+      setTickets((prev) =>
+        prev.map((t) => (t.rawId === ticketId ? { ...t, status: newStatus } : t))
+      );
+      toast.success("Ticket status updated.");
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to update ticket status";
+      toast.error(msg);
     }
-  }, [currentPage]);
+  };
 
-  useEffect(() => {
-    if (!isLoadingPage && containerRef.current) {
-      gsap.fromTo(
-        containerRef.current.querySelectorAll(".animate-item"),
-        { opacity: 0, y: 20 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 0.5,
-          stagger: 0.08,
-          ease: "power2.out",
-        }
+  // Sync ticket update from Detail Modal
+  const handleTicketUpdated = (updated: {
+    id: string | number;
+    status: ClientFeedbackStatus;
+    reply?: string;
+  }) => {
+    setTickets((prev) =>
+      prev.map((t) =>
+        t.rawId === updated.id ? { ...t, status: updated.status } : t
+      )
+    );
+    if (selectedTicket && selectedTicket.rawId === updated.id) {
+      setSelectedTicket((prev) =>
+        prev ? { ...prev, status: updated.status } : null
       );
     }
-  }, [isLoadingPage]);
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !message.trim()) {
-      toast.error("Please fill in required fields.");
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    statusTab !== "all" ||
+    selectedType !== "all" ||
+    selectedProjectId !== "all";
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setStatusTab("all");
+    setSelectedType("all");
+    setSelectedProjectId("all");
+  };
+
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const element = rootRef.current;
+    if (
+      !element ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      await submitClientFeedbackApi({
-        feedbackTitle: title.trim(),
-        category,
-        projectId: selectedProjectId || undefined,
-        feedback: message.trim(),
-        rating,
-      });
-
-      toast.success("Feedback submitted successfully!");
-      setTitle("");
-      setMessage("");
-      setSelectedProjectId("");
-      setIsSubmitModalOpen(false);
-      await fetchFeedbackData(projectMap);
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : "Failed to submit feedback";
-      toast.error(msg);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const filteredItems = feedbackList.filter(
-    (item) => activeTab === "All" || item.status === activeTab
-  );
-
-  const getStatusBadge = (status: FeedbackItem["status"]) => {
-    switch (status) {
-      case "In Progress":
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-400 shadow-[0_0_12px_rgba(6,182,212,0.15)]">
-            <Clock className="h-3.5 w-3.5" />
-            In Progress
-          </span>
-        );
-      case "In Review":
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]">
-            <AlertCircle className="h-3.5 w-3.5" />
-            In Review
-          </span>
-        );
-      case "Resolved":
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]">
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            Resolved
-          </span>
-        );
-      case "Rejected":
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-xs font-semibold text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.15)]">
-            Rejected
-          </span>
-        );
-      default:
-        return (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-400 shadow-[0_0_12px_rgba(59,130,246,0.15)]">
-            Open
-          </span>
-        );
-    }
-  };
-
-  const handleUpdateFeedbackLocal = (updated: { id: string; status: string; reply?: string }) => {
-    setSelectedFeedback((prev) =>
-      prev && prev.id === updated.id
-        ? {
-            ...prev,
-            status: updated.status as FeedbackItem["status"],
-            reply: updated.reply ?? prev.reply,
+    const context = gsap.context(() => {
+      const sections = gsap.utils.toArray<HTMLElement>(
+        "[data-tickets-section]"
+      );
+      if (sections.length > 0) {
+        gsap.fromTo(
+          sections,
+          { autoAlpha: 0, y: 16 },
+          {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.35,
+            stagger: 0.05,
+            ease: "power2.out",
+            clearProps: "all",
           }
-        : prev
-    );
+        );
+      }
+    }, element);
 
-    setFeedbackList((prevList) =>
-      prevList.map((item) =>
-        item.id === updated.id
-          ? {
-              ...item,
-              status: updated.status as FeedbackItem["status"],
-              reply: updated.reply ?? item.reply,
-            }
-          : item
-      )
-    );
-  };
+    return () => context.revert();
+  }, [tickets.length]);
 
   return (
-    <div ref={containerRef} className="relative min-h-full w-full space-y-6 overflow-hidden">
-      {/* Background glowing accents */}
-      <div className="pointer-events-none absolute -top-40 left-1/3 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#5271ff]/[0.07] blur-[140px]" />
-      <div className="pointer-events-none absolute top-1/2 right-0 h-[400px] w-[400px] rounded-full bg-[#22d3ee]/[0.05] blur-[120px]" />
-
-      {/* Page Header */}
-      <div className="animate-item flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/[0.08] pb-6">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-[#5271ff]">
-            <Sparkles className="h-4 w-4" />
-            <span>
-              {isClientRole
-                ? "Client Feedback & Collaboration Hub"
-                : "Client Feedback & Operations"}
-            </span>
+    <div ref={rootRef} className="min-h-full text-v2-neutral-100">
+      <div className="flex flex-col gap-6">
+        {/* Page Top Header */}
+        <header
+          data-tickets-section
+          className="flex flex-col gap-4 border-b border-v2-neutral-500 pb-6 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div>
+            <h1 className="text-3xl font-semibold tracking-[-0.045em] text-v2-neutral-100 sm:text-4xl">
+              Client Tickets
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-v2-neutral-300">
+              Review incoming client tickets, track project inquiries, update resolution status, and reply to client requests.
+            </p>
           </div>
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            {isClientRole
-              ? "Project Feedback & Support"
-              : "Manage & Reply Feedback"}
-          </h1>
-          <p className="mt-1 text-xs text-white/50">
-            {isClientRole
-              ? "Share feedback, track request resolution, and collaborate with your project management team."
-              : "Manage and reply to client feedback, track request resolution, and maintain client satisfaction."}
-          </p>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void fetchTickets(currentPage)}
+              disabled={isLoading}
+              className="gap-1.5"
+            >
+              <RefreshCw
+                className={`size-3.5 ${isLoading ? "animate-spin" : ""}`}
+              />
+              <span>Refresh</span>
+            </Button>
+
+            {canManage && (
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsCreateOpen(true)}
+                className="gap-1.5 shadow-md"
+              >
+                <Plus className="size-4" />
+                <span>Record Ticket</span>
+              </Button>
+            )}
+          </div>
+        </header>
+
+        {/* KPI Stats Strip */}
+        <div data-tickets-section>
+          <TicketStatsCards tickets={tickets} totalFromMeta={meta?.totalItems} />
         </div>
 
-        {isClientRole && (
-          <button
-            type="button"
-            onClick={() => setIsSubmitModalOpen(true)}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_0_20px_rgba(82,113,255,0.3)] transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_25px_rgba(82,113,255,0.45)] active:scale-95 cursor-pointer"
+        {/* Filter and Search Bar */}
+        <div data-tickets-section>
+          <TicketFilterBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusTab={statusTab}
+            onStatusTabChange={setStatusTab}
+            selectedType={selectedType}
+            onTypeChange={setSelectedType}
+            selectedProjectId={selectedProjectId}
+            onProjectChange={setSelectedProjectId}
+            projectOptions={projects}
+            statusCounts={statusCounts}
+            onResetFilters={handleResetFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
+        </div>
+
+        {/* Error Notice */}
+        {error && (
+          <div
+            data-tickets-section
+            className="flex items-center justify-between rounded-xl border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs text-rose-500"
           >
-            <PlusCircle className="h-4 w-4" />
-            <span>Submit New Feedback</span>
-          </button>
-        )}
-      </div>
-
-      {/* Tabs Filter */}
-      <div className="animate-item flex flex-wrap items-center justify-between gap-4">
-        <div className="flex rounded-xl border border-white/[0.08] bg-[#0c0a2f]/60 p-1.5 backdrop-blur-md flex-wrap gap-1">
-          {(["All", "Open", "In Review", "In Progress", "Resolved", "Rejected"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab as any)}
-              className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all duration-300 ${
-                activeTab === tab
-                  ? "bg-[#5271ff] text-white shadow-[0_0_12px_rgba(82,113,255,0.4)]"
-                  : "text-white/50 hover:text-white hover:bg-white/5"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        <div className="text-xs text-white/40">
-          Showing <span className="font-semibold text-white">{filteredItems.length}</span> feedback records
-        </div>
-      </div>
-
-      {/* Feedback List Grid */}
-      {isLoadingPage ? (
-        <div className="flex flex-col items-center justify-center py-20">
-          <LoaderCustom />
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center border border-white/[0.08] bg-[#0c0a2f]/40 rounded-2xl p-8 backdrop-blur-md">
-          <MessageSquareQuote className="h-10 w-10 text-white/20 mb-3" />
-          <h3 className="text-base font-bold text-white/80">No Feedback Submissions Found</h3>
-          <p className="text-xs text-white/40 max-w-sm mt-1">
-            You haven't submitted any feedback for this filter view yet. Click "Submit New Feedback" to share your thoughts with your project team.
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {filteredItems.map((item) => (
-            <motion.div
-              key={item.id}
-              layout
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              onClick={() => setSelectedFeedback(item)}
-              className="animate-item relative cursor-pointer overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0a2f]/60 p-6 backdrop-blur-md transition-all duration-300 hover:border-[#5271ff]/40 hover:shadow-[0_8px_32px_rgba(82,113,255,0.15)]"
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/40">
-                      {item.id}
-                    </span>
-                    <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-[#5271ff] uppercase">
-                      {item.category}
-                    </span>
-                    <span className="rounded-md border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-semibold text-white/60">
-                      {item.projectName}
-                    </span>
-                  </div>
-
-                  <h3 className="text-lg font-bold text-white tracking-tight">{item.title}</h3>
-                  <p className="text-sm text-white/70 leading-relaxed line-clamp-2">{item.message}</p>
-                </div>
-
-                <div className="flex flex-col items-start sm:items-end gap-3 shrink-0">
-                  {getStatusBadge(item.status)}
-
-                  {item.rating && (
-                    <div className="flex items-center gap-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`h-3.5 w-3.5 ${
-                            i < (item.rating || 0)
-                              ? "fill-amber-400 text-amber-400"
-                              : "text-white/20"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  <span className="text-[10px] text-white/30">
-                    {new Date(item.createdAt).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      )}
-
-      {/* Pagination Controls */}
-      {meta && (meta.totalPages > 1 || meta.totalItems > 0) && (
-        <div className="mt-8 flex flex-col gap-4 border-t border-white/[0.08] pt-6 sm:flex-row sm:items-center sm:justify-between animate-item">
-          <p className="text-xs text-white/40">
-            Showing{" "}
-            <span className="font-semibold text-white/80">
-              {meta.itemCount > 0 ? (currentPage - 1) * meta.itemsPerPage + 1 : 0}
-            </span>{" "}
-            to{" "}
-            <span className="font-semibold text-white/80">
-              {Math.min(currentPage * meta.itemsPerPage, meta.totalItems)}
-            </span>{" "}
-            of <span className="font-semibold text-white/80">{meta.totalItems}</span> feedback submissions
-          </p>
-
-          {meta.totalPages > 1 && (
-            <div className="flex items-center gap-2 self-end sm:self-auto">
-              <button
-                type="button"
-                disabled={currentPage <= 1 || isLoadingPage}
-                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                Previous
-              </button>
-
-              <span className="px-3 text-xs font-medium text-white/60">
-                Page <span className="text-white font-semibold">{currentPage}</span> of{" "}
-                <span className="text-white font-semibold">{meta.totalPages}</span>
-              </span>
-
-              <button
-                type="button"
-                disabled={currentPage >= meta.totalPages || isLoadingPage}
-                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, meta.totalPages))}
-                className="flex items-center gap-1 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-white/70 transition hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
-              >
-                Next
-                <ChevronRight className="h-4 w-4" />
-              </button>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{error}</span>
             </div>
-          )}
-        </div>
-      )}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void fetchTickets(currentPage)}
+              className="h-7 text-xs border-rose-500/30 text-rose-600 hover:bg-rose-500/10"
+            >
+              Retry
+            </Button>
+          </div>
+        )}
 
-      {/* Feedback Detail & Management Modal */}
-      {selectedFeedback && (
-        <FeedbackDetailModal
-          feedback={selectedFeedback}
-          onClose={() => setSelectedFeedback(null)}
-          onRefresh={() => fetchFeedbackData(projectMap)}
-          onUpdateFeedback={handleUpdateFeedbackLocal}
-          isManagementRole={!isClientRole}
+        {/* Ticket Table */}
+        <div data-tickets-section>
+          <TicketTable
+            tickets={filteredTickets}
+            isLoading={isLoading}
+            onSelectTicket={setSelectedTicket}
+            onQuickStatusChange={handleQuickStatusChange}
+            onDeleteTicket={canManage ? setDeleteTicketId : undefined}
+            canManageTickets={canManage}
+            onCreateTicket={() => setIsCreateOpen(true)}
+            currentPage={currentPage}
+            onPageChange={setCurrentPage}
+            meta={meta}
+          />
+        </div>
+      </div>
+
+      {/* Ticket Detail & Communication Drawer / Modal */}
+      <FeedbackDetailModal
+        ticket={selectedTicket}
+        open={selectedTicket !== null}
+        onClose={() => setSelectedTicket(null)}
+        onTicketUpdated={handleTicketUpdated}
+        canManage={canManage}
+      />
+
+      {/* Create Client Ticket Modal */}
+      {canManage && (
+        <CreateTicketModal
+          open={isCreateOpen}
+          onClose={() => setIsCreateOpen(false)}
+          onTicketCreated={() => void fetchTickets(1)}
+          clients={clients}
+          projects={projects}
         />
       )}
 
-      {/* Submit Feedback Modal */}
-      <AnimatePresence>
-        {isSubmitModalOpen && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center px-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div
-              className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-              onClick={() => setIsSubmitModalOpen(false)}
-            />
-
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 16 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 12 }}
-              className="relative w-full max-w-xl rounded-[28px] border border-white/[0.08] bg-[#0c0a2f] bg-gradient-to-br from-[#5271ff]/10 via-[#0c0a2f] to-[#0a0826] p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.6)] backdrop-blur-md"
-            >
-              <div className="mb-6 border-b border-white/[0.08] pb-4">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <MessageSquareQuote className="h-5 w-5 text-[#5271ff]" />
-                  Submit Feedback & Requests
-                </h2>
-                <p className="text-xs text-white/40 mt-1">
-                  Share your thoughts, report issues, or suggest enhancements for your project.
-                </p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/60">
-                    Title / Subject
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Brief description of your feedback"
-                    className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30"
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/60">
-                      Category
-                    </label>
-                    <select
-                      value={category}
-                      onChange={(e) => setCategory(e.target.value as FeedbackCategory)}
-                      className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50"
-                    >
-                      <option value="request">Request</option>
-                      <option value="review">Review</option>
-                      <option value="issue">Issue</option>
-                      <option value="question">Question</option>
-                      <option value="approval">Approval</option>
-                      <option value="general">General</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/60">
-                      Select Related Project
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={selectedProjectId}
-                        onChange={(e) => setSelectedProjectId(e.target.value)}
-                        className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50"
-                      >
-                        <option value="" className="bg-[#0c0a2f] text-white">-- Select Project --</option>
-                        {projects.map((p) => (
-                          <option key={p.id} value={String(p.id)} className="bg-[#0c0a2f] text-white">
-                            {p.name}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown
-                        size={16}
-                        className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/60">
-                    Detailed Message
-                  </label>
-                  <textarea
-                    required
-                    rows={4}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Provide details about your request or feedback..."
-                    className="w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 p-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-white/60">
-                    Overall Satisfaction Rating
-                  </label>
-                  <div className="flex items-center gap-2">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setRating(star)}
-                        className="p-1 transition-transform hover:scale-110"
-                      >
-                        <Star
-                          className={`h-6 w-6 ${
-                            star <= rating
-                              ? "fill-amber-400 text-amber-400"
-                              : "text-white/20"
-                          }`}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/[0.08]">
-                  <button
-                    type="button"
-                    onClick={() => setIsSubmitModalOpen(false)}
-                    className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-5 py-2.5 text-sm font-semibold text-white/70 transition hover:bg-white/[0.08] hover:text-white"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:opacity-50"
-                  >
-                    <Send className="h-4 w-4" />
-                    <span>{isSubmitting ? "Submitting..." : "Send Feedback"}</span>
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Delete Ticket Confirmation Modal */}
+      {canManage && (
+        <DeleteTicketModal
+          open={deleteTicketId !== null}
+          ticketId={deleteTicketId}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setDeleteTicketId(null);
+          }}
+          onDeleted={() => void fetchTickets(currentPage)}
+        />
+      )}
     </div>
   );
 }

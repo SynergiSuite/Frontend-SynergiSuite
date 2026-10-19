@@ -96,6 +96,7 @@ export default function RootLayout({
     pathName.startsWith("/employees") ||
     pathName.startsWith("/settings") ||
     pathName.startsWith("/teams") ||
+    pathName.startsWith("/clients") ||
     pathName.startsWith("/projects");
 
   useEffect(() => {

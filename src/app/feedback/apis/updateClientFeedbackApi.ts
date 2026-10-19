@@ -1,13 +1,7 @@
 import { CookieManager } from "@/lib/cookieManager";
+import type { ClientFeedbackStatus } from "../types/ticket";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
-export type AllowedFeedbackStatus =
-  | "open"
-  | "in_progress"
-  | "in_review"
-  | "resolved"
-  | "rejected";
+export type AllowedFeedbackStatus = ClientFeedbackStatus;
 
 export interface UpdateClientFeedbackDto {
   id: string | number;
@@ -20,12 +14,12 @@ export async function updateClientFeedbackApi(payload: UpdateClientFeedbackDto) 
   const hasReply = Boolean(payload.reply && payload.reply.trim().length > 0);
 
   if (hasReply) {
-    // Manager reply + status update in one action: POST /client-feedback/:feedbackId/replies
-    const response = await fetch(`${requestBaseUrl}/client-feedback/${payload.id}/replies`, {
+    // If reply is included, send to replies endpoint which records the reply and updates status atomically
+    const response = await fetch(`/api/feedback/${payload.id}/replies`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken ?? ""}`,
       },
       body: JSON.stringify({
         message: payload.reply?.trim(),
@@ -34,17 +28,17 @@ export async function updateClientFeedbackApi(payload: UpdateClientFeedbackDto) 
     });
 
     if (!response.ok) {
-      // Fallback: try PATCH /client-feedback/:feedbackId with reply included
-      const fallbackResponse = await fetch(`${requestBaseUrl}/client-feedback/${payload.id}`, {
+      // Fallback: try direct PATCH /api/feedback/:id
+      const fallbackResponse = await fetch(`/api/feedback/${payload.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
+          Authorization: `Bearer ${accessToken ?? ""}`,
         },
         body: JSON.stringify({
           status: payload.status,
           message: payload.reply?.trim(),
-          reply: payload.reply?.trim(),
+          feedback: payload.reply?.trim(),
         }),
       }).catch(() => null);
 
@@ -57,24 +51,24 @@ export async function updateClientFeedbackApi(payload: UpdateClientFeedbackDto) 
     }
 
     return await response.json();
-  } else {
-    // Status-only update: PATCH /client-feedback/:feedbackId
-    const response = await fetch(`${requestBaseUrl}/client-feedback/${payload.id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        status: payload.status,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => null);
-      throw new Error(errorData?.message || "Failed to update feedback status");
-    }
-
-    return await response.json();
   }
+
+  // Pure status update: PATCH /api/feedback/:id
+  const response = await fetch(`/api/feedback/${payload.id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken ?? ""}`,
+    },
+    body: JSON.stringify({
+      status: payload.status,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => null);
+    throw new Error(errorData?.message || "Failed to update feedback status");
+  }
+
+  return await response.json();
 }
