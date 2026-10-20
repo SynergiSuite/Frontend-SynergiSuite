@@ -102,7 +102,7 @@ export default function TicketTable({
                     <p className="mt-1 text-xs text-v2-neutral-400">
                       No tickets match the selected filters or search terms. Clear your filter criteria or record a new client ticket.
                     </p>
-                    {canManageTickets && onCreateTicket && (
+                    {onCreateTicket && (
                       <Button
                         type="button"
                         onClick={onCreateTicket}

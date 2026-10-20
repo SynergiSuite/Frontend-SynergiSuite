@@ -11,15 +11,15 @@ const toggleVariants = cva(
     variants: {
       variant: {
         default:
-          "border border-transparent bg-transparent text-v2-neutral-400 hover:bg-v2-neutral-200/70 hover:text-v2-neutral-600 data-[state=on]:bg-v2-neutral-500 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm data-[state=on]:font-semibold",
+          "border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 shadow-xs hover:border-v2-neutral-400 hover:bg-v2-neutral-200/70 hover:text-v2-neutral-600 data-[state=on]:border-v2-neutral-600 data-[state=on]:bg-v2-neutral-600 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm data-[state=on]:font-semibold",
         outline:
-          "border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 shadow-xs hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 data-[state=on]:border-v2-neutral-500 data-[state=on]:bg-v2-neutral-500 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm data-[state=on]:font-semibold",
+          "border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 shadow-xs hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 data-[state=on]:border-v2-neutral-600 data-[state=on]:bg-v2-neutral-600 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm data-[state=on]:font-semibold",
         subtle:
-          "border border-transparent bg-transparent text-v2-neutral-400 hover:bg-v2-neutral-200/60 hover:text-v2-neutral-600 data-[state=on]:border-v2-neutral-300/80 data-[state=on]:bg-v2-neutral-100 data-[state=on]:text-v2-neutral-600 data-[state=on]:shadow-xs data-[state=on]:font-semibold",
+          "border border-transparent bg-transparent text-v2-neutral-400 hover:bg-v2-neutral-200/60 hover:text-v2-neutral-600 data-[state=on]:border-v2-neutral-600 data-[state=on]:bg-v2-neutral-600 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm data-[state=on]:font-semibold",
         secondary:
-          "border border-transparent bg-v2-neutral-200 text-v2-neutral-500 hover:bg-v2-neutral-300 hover:text-v2-neutral-600 data-[state=on]:bg-v2-neutral-500 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm",
+          "border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 data-[state=on]:border-v2-neutral-600 data-[state=on]:bg-v2-neutral-600 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm",
         ghost:
-          "border border-transparent bg-transparent text-v2-neutral-400 hover:bg-v2-neutral-200/60 hover:text-v2-neutral-600 data-[state=on]:bg-v2-neutral-200 data-[state=on]:text-v2-neutral-600 data-[state=on]:font-semibold",
+          "border border-transparent bg-transparent text-v2-neutral-400 hover:bg-v2-neutral-200/60 hover:text-v2-neutral-600 data-[state=on]:border-v2-neutral-600 data-[state=on]:bg-v2-neutral-600 data-[state=on]:text-v2-neutral-100 data-[state=on]:font-semibold",
       },
       size: {
         default: "h-10 min-w-10 gap-2 rounded-xl px-3.5 text-sm has-[>svg]:px-3",

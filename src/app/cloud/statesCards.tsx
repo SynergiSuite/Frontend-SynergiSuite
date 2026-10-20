@@ -1,7 +1,14 @@
 "use client";
 
-import React from "react";
-import { Cloud, FileText, Image as ImageIcon } from "lucide-react";
+import React, { useLayoutEffect, useRef } from "react";
+import {
+  FileText,
+  HardDrive,
+  FolderKanban,
+  Image as ImageIcon,
+} from "lucide-react";
+import { gsap } from "gsap";
+import { Card, CardContent } from "@/components/ui/card";
 
 export type FileType = {
   id: string;
@@ -24,97 +31,136 @@ type Props = {
   files: FileType[];
 };
 
-const StatsCards = ({ files }: Props) => {
+type StatItemProps = {
+  title: string;
+  value: number;
+  displayValue?: string;
+  change: string;
+  icon: React.ComponentType<{ className?: string }>;
+  index: number;
+  badgeClass?: string;
+};
+
+function StatCardItem({
+  title,
+  value,
+  displayValue,
+  change,
+  icon: Icon,
+  index,
+  badgeClass,
+}: StatItemProps) {
+  const valueRef = useRef<HTMLParagraphElement>(null);
+
+  useLayoutEffect(() => {
+    const element = valueRef.current;
+    if (
+      !element ||
+      displayValue ||
+      Number.isNaN(value) ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      return;
+    }
+
+    const counter = { val: 0 };
+    const animation = gsap.to(counter, {
+      val: value,
+      duration: 0.85,
+      delay: index * 0.05,
+      ease: "power2.out",
+      onUpdate: () => {
+        element.textContent = Math.round(counter.val).toLocaleString();
+      },
+    });
+
+    return () => {
+      animation.revert();
+    };
+  }, [displayValue, index, value]);
+
+  return (
+    <Card size="sm" className="min-w-0">
+      <CardContent className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-v2-neutral-400">
+            {title}
+          </p>
+          <p
+            ref={valueRef}
+            className="mt-2 text-3xl font-semibold tracking-[-0.045em] text-v2-neutral-600 truncate"
+          >
+            {displayValue ?? value.toLocaleString()}
+          </p>
+          <p className="mt-1.5 truncate text-xs text-v2-neutral-400">{change}</p>
+        </div>
+        <span
+          className={`grid size-10 shrink-0 place-items-center rounded-xl ${
+            badgeClass ?? "bg-v2-neutral-200 text-v2-neutral-500"
+          }`}
+        >
+          <Icon className="size-[18px]" aria-hidden="true" />
+        </span>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function StatsCards({ files }: Props) {
   const totalFiles = files.length;
-  const totalBytes = files.reduce((sum, f) => sum + f.sizeBytes, 0);
-  
-  // Format bytes
+  const totalBytes = files.reduce((sum, f) => sum + (f.sizeBytes || 0), 0);
+
   const formatBytes = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
   const formattedUsed = formatBytes(totalBytes);
   const docsCount = files.filter((f) => f.category === "Document").length;
-  const imagesCount = files.filter((f) => f.category === "Image").length;
+  const mediaCount = files.filter(
+    (f) => f.category === "Image" || f.category === "Media"
+  ).length;
+
+  const stats: Omit<StatItemProps, "index">[] = [
+    {
+      title: "Total Assets",
+      value: totalFiles,
+      change: "Indexed in cloud registry",
+      icon: FolderKanban,
+      badgeClass: "bg-v2-neutral-200 text-v2-neutral-600",
+    },
+    {
+      title: "Storage Consumed",
+      value: totalBytes,
+      displayValue: formattedUsed,
+      change: "Standard 10 GB limit",
+      icon: HardDrive,
+      badgeClass: "bg-sky-100 text-sky-700",
+    },
+    {
+      title: "Documents",
+      value: docsCount,
+      change: "PDFs, spreadsheets, docs",
+      icon: FileText,
+      badgeClass: "bg-amber-100 text-amber-700",
+    },
+    {
+      title: "Visuals & Media",
+      value: mediaCount,
+      change: "Images, videos & audio",
+      icon: ImageIcon,
+      badgeClass: "bg-emerald-100 text-emerald-700",
+    },
+  ];
 
   return (
-    <>
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3 lg:gap-5">
-        {/* Storage Cap Card */}
-        <div className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 p-5 sm:p-6 backdrop-blur-md transition-all duration-300 hover:border-[#5271ff]/30 hover:shadow-[0_0_20px_rgba(82,113,255,0.15)] hover:-translate-y-0.5">
-          <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-[#5271ff]/10 blur-xl transition-all duration-500 group-hover:scale-150" />
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-white/40">
-                Storage Used
-              </p>
-              <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-white">
-                {formattedUsed} <span className="text-xs font-normal text-white/30">/ 10 GB limit</span>
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff] shadow-[0_0_15px_rgba(82,113,255,0.1)]">
-              <Cloud className="h-6 w-6 animate-pulse" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-1.5 text-[11px] text-white/40">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#5271ff]" />
-            Secure cloud asset bounds
-          </div>
-        </div>
-
-        {/* Total Documents Card */}
-        <div className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 p-5 sm:p-6 backdrop-blur-md transition-all duration-300 hover:border-cyan-500/30 hover:shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:-translate-y-0.5">
-          <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-cyan-500/10 blur-xl transition-all duration-500 group-hover:scale-150" />
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-white/40">
-                Documents
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold tracking-tight text-cyan-400 sm:text-4xl">
-                {docsCount} <span className="text-xs font-normal text-white/30">records</span>
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-              <FileText className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-1.5 text-[11px] text-white/40">
-            <span className="h-1.5 w-1.5 rounded-full bg-cyan-500" />
-            PDFs, word files, spreadsheets
-          </div>
-        </div>
-
-        {/* Images/Media Card */}
-        <div className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 p-5 sm:p-6 backdrop-blur-md transition-all duration-300 hover:border-amber-500/30 hover:shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:-translate-y-0.5">
-          <div className="absolute -right-8 -top-8 h-20 w-20 rounded-full bg-amber-500/10 blur-xl transition-all duration-500 group-hover:scale-150" />
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-white/40">
-                Images & Visuals
-              </p>
-              <h3 className="mt-2 text-3xl font-extrabold tracking-tight text-amber-400 sm:text-4xl">
-                {imagesCount} <span className="text-xs font-normal text-white/30">assets</span>
-              </h3>
-            </div>
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-              <ImageIcon className="h-6 w-6" />
-            </div>
-          </div>
-          <div className="mt-4 flex items-center gap-1.5 text-[11px] text-white/40">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            PNGs, JPEGs, SVG vector nodes
-          </div>
-        </div>
-      </div>
-    </>
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {stats.map((item, index) => (
+        <StatCardItem key={item.title} {...item} index={index} />
+      ))}
+    </div>
   );
-};
-
-export default StatsCards;
+}

@@ -14,7 +14,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CookieManager } from "@/lib/cookieManager";
 import { getAllProjectsApi } from "@/app/projects/apis/getAllProjectsApi";
+import { getProjectsApi } from "@/app/projects/apis/getProjectsApi";
 import { getClientsApi } from "@/app/projects/apis/getAllClients";
+import { getClientDetailsApi } from "@/app/clients/apis/getClientDetails";
 import {
   getClientFeedbackApi,
   getMyFeedbackApi,
@@ -182,44 +184,151 @@ export default function ClientTicketsPage() {
   }, [searchQuery]);
 
   // Load Projects and Clients for dropdowns
-  useEffect(() => {
-    async function loadAuxiliaryData() {
-      try {
-        const [projRes, clientRes] = await Promise.allSettled([
-          getAllProjectsApi(),
+  const loadAuxiliaryData = useCallback(async () => {
+    try {
+      const roleCookie = String(
+        CookieManager("get", "primary_role") ||
+          CookieManager("get", "role") ||
+          ""
+      ).toLowerCase();
+      const currentIsClient = roleCookie === "client" || userRole === "client";
+
+      const clientUserId = String(
+        CookieManager("get", "user-id") ||
+          CookieManager("get", "user_id") ||
+          ""
+      ).trim();
+      const clientEmail = String(
+        CookieManager("get", "user-email") || ""
+      ).toLowerCase().trim();
+      const clientName = String(
+        CookieManager("get", "user") || ""
+      ).toLowerCase().trim();
+
+      const [allProjectsRes, clientRes, clientProjectsRes] =
+        await Promise.allSettled([
+          currentIsClient ? Promise.resolve([]) : getAllProjectsApi(),
           getClientsApi(),
+          currentIsClient
+            ? getProjectsApi(1, undefined, "client")
+            : Promise.resolve({ data: [] }),
         ]);
 
-        const pMap: Record<string, string> = {};
-        if (projRes.status === "fulfilled" && Array.isArray(projRes.value)) {
-          const mappedProjs = projRes.value.map((p) => ({
+      const allClients =
+        clientRes.status === "fulfilled" && Array.isArray(clientRes.value)
+          ? clientRes.value
+          : [];
+
+      // Map clients for dropdown (used in staff create ticket modal)
+      const mappedClients = allClients.map(
+        (c: { id: string | number; name?: string; company?: string }) => ({
+          id: String(c.id),
+          name: c.name || "Unnamed Client",
+          company: c.company,
+        })
+      );
+      setClients(mappedClients);
+
+      let clientProjectList: Array<{ id: string; name: string }> = [];
+
+      if (currentIsClient) {
+        // CLIENT POV: only load projects that belong to this specific client
+        const matchedClient = allClients.find((c) => {
+          const cId = String(c.id || "").trim();
+          const cEmail = (c.email || "").toLowerCase().trim();
+          const cName = (c.name || "").toLowerCase().trim();
+          return (
+            (clientUserId && cId === clientUserId) ||
+            (clientEmail && cEmail === clientEmail) ||
+            (clientName && cName === clientName)
+          );
+        });
+
+        // 1. If client record matched, retrieve projects from client details
+        if (matchedClient?.id) {
+          try {
+            const clientDetails = await getClientDetailsApi(
+              String(matchedClient.id)
+            );
+            if (Array.isArray(clientDetails?.projects)) {
+              for (const cp of clientDetails.projects) {
+                if (cp.id && cp.name) {
+                  clientProjectList.push({
+                    id: String(cp.id),
+                    name: cp.name,
+                  });
+                }
+              }
+            }
+          } catch (detailErr) {
+            console.warn(
+              "Failed to fetch client details for projects:",
+              detailErr
+            );
+          }
+        }
+
+        // 2. Also check getProjectsApi (scoped to client) response
+        if (
+          clientProjectsRes.status === "fulfilled" &&
+          Array.isArray(clientProjectsRes.value?.data)
+        ) {
+          for (const p of clientProjectsRes.value.data) {
+            const pClientId = String(p.client?.id || "").trim();
+            const pClientEmail = (p.client?.email || "").toLowerCase().trim();
+            const pClientName = (p.client?.name || "").toLowerCase().trim();
+
+            const belongsToClient =
+              !p.client ||
+              (matchedClient && pClientId === String(matchedClient.id)) ||
+              (clientUserId && pClientId === clientUserId) ||
+              (clientEmail && pClientEmail === clientEmail) ||
+              (clientName && pClientName === clientName);
+
+            if (belongsToClient && p.id && p.name) {
+              if (!clientProjectList.some((cp) => cp.id === String(p.id))) {
+                clientProjectList.push({ id: String(p.id), name: p.name });
+              }
+            }
+          }
+        }
+      } else {
+        // NON-CLIENT POV: show all projects across the business
+        if (
+          allProjectsRes.status === "fulfilled" &&
+          Array.isArray(allProjectsRes.value)
+        ) {
+          clientProjectList = allProjectsRes.value.map((p) => ({
             id: String(p.id),
             name: p.name,
           }));
-          setProjects(mappedProjs);
-          mappedProjs.forEach((p) => {
-            pMap[p.id] = p.name;
-          });
-          setProjectMap(pMap);
         }
+      }
 
-        if (clientRes.status === "fulfilled" && Array.isArray(clientRes.value)) {
-          const mappedClients = clientRes.value.map(
-            (c: { id: string | number; name?: string; company?: string }) => ({
-              id: String(c.id),
-              name: c.name || "Unnamed Client",
-              company: c.company,
-            })
-          );
-          setClients(mappedClients);
-        }
-      } catch (auxErr) {
-        console.warn("Failed to load auxiliary projects/clients:", auxErr);
+      const pMap: Record<string, string> = {};
+      clientProjectList.forEach((p) => {
+        pMap[p.id] = p.name;
+      });
+
+      setProjects(clientProjectList);
+      setProjectMap((prev) => ({ ...prev, ...pMap }));
+    } catch (auxErr) {
+      console.warn("Failed to load auxiliary projects/clients:", auxErr);
+    }
+  }, [userRole]);
+
+  useEffect(() => {
+    void loadAuxiliaryData();
+  }, [loadAuxiliaryData]);
+
+  // Ensure selectedProjectId resets if it does not belong to the client
+  useEffect(() => {
+    if (isClient && selectedProjectId !== "all" && projects.length > 0) {
+      if (!projects.some((p) => p.id === selectedProjectId)) {
+        setSelectedProjectId("all");
       }
     }
-
-    void loadAuxiliaryData();
-  }, []);
+  }, [isClient, projects, selectedProjectId]);
 
   // Fetch Tickets from API
   const fetchTickets = useCallback(
@@ -238,6 +347,43 @@ export default function ClientTicketsPage() {
         const res = isClient
           ? await getMyFeedbackApi(params)
           : await getClientFeedbackApi(params);
+
+        // In Client POV, also merge any projects that appear in the client's own tickets
+        if (isClient && Array.isArray(res.data)) {
+          const ticketsProjects: Array<{ id: string; name: string }> = [];
+          res.data.forEach((item) => {
+            const projId = String(
+              item.project?.id ||
+                item.projectId ||
+                item.project_id ||
+                item.typeId ||
+                ""
+            );
+            const projName = item.projectName || item.project?.name;
+            if (projId && projName) {
+              ticketsProjects.push({ id: projId, name: projName });
+            }
+          });
+
+          if (ticketsProjects.length > 0) {
+            setProjects((prev) => {
+              const existingIds = new Set(prev.map((p) => p.id));
+              const additions = ticketsProjects.filter(
+                (p) => !existingIds.has(p.id)
+              );
+              if (additions.length === 0) return prev;
+              return [...prev, ...additions];
+            });
+
+            setProjectMap((prev) => {
+              const updated = { ...prev };
+              ticketsProjects.forEach((p) => {
+                updated[p.id] = p.name;
+              });
+              return updated;
+            });
+          }
+        }
 
         const mapped = (res.data || []).map((item) =>
           mapFeedbackItem(item, projectMap)
@@ -443,17 +589,15 @@ export default function ClientTicketsPage() {
               <span>Refresh</span>
             </Button>
 
-            {canManage && (
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => setIsCreateOpen(true)}
-                className="gap-1.5 shadow-md"
-              >
-                <Plus className="size-4" />
-                <span>Record Ticket</span>
-              </Button>
-            )}
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsCreateOpen(true)}
+              className="gap-1.5 shadow-md"
+            >
+              <Plus className="size-4" />
+              <span>{isClient ? "New Ticket" : "Record Ticket"}</span>
+            </Button>
           </div>
         </header>
 
@@ -529,15 +673,22 @@ export default function ClientTicketsPage() {
       />
 
       {/* Create Client Ticket Modal */}
-      {canManage && (
-        <CreateTicketModal
-          open={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
-          onTicketCreated={() => void fetchTickets(1)}
-          clients={clients}
-          projects={projects}
-        />
-      )}
+      <CreateTicketModal
+        open={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onTicketCreated={() => void fetchTickets(1)}
+        clients={clients}
+        projects={projects}
+        isClient={isClient}
+        defaultClientId={
+          String(
+            CookieManager("get", "user-id") ||
+              CookieManager("get", "user_id") ||
+              ""
+          ).trim()
+        }
+        clientName={String(CookieManager("get", "user") || "").trim()}
+      />
 
       {/* Delete Ticket Confirmation Modal */}
       {canManage && (

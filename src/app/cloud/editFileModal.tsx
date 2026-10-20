@@ -117,7 +117,16 @@ export default function EditFileModal({
                 <div className="relative">
                   <select
                     value={category}
-                    onChange={(event) => setCategory(event.target.value as any)}
+                    onChange={(event) =>
+                      setCategory(
+                        event.target.value as
+                          | "Document"
+                          | "Image"
+                          | "Media"
+                          | "Archive"
+                          | "Other"
+                      )
+                    }
                     className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
                   >
                     <option value="Document">Document</option>

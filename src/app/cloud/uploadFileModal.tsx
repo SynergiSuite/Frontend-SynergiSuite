@@ -1,8 +1,22 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
-import { ChevronDown, CloudUpload, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  CloudUpload,
+  FileCheck,
+  LoaderCircle,
+  Upload,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { FileType } from "./statesCards";
 import {
   DocumentLabel,
@@ -17,8 +31,11 @@ import { toast } from "sonner";
 
 type UploadFileModalProps = {
   onClose: () => void;
-  onSave: (payload: Omit<FileType, "id" | "uploadedAt" | "sizeBytes"> & { document_id?: number; file_path?: string }) => Promise<void>;
-  teams: any[];
+  onSave: (payload: Omit<FileType, "id" | "uploadedAt" | "sizeBytes"> & {
+    document_id?: number;
+    file_path?: string;
+  }) => Promise<void>;
+  teams: Array<{ id?: string; name?: string; team_id?: string; team_name?: string }>;
   role?: string;
 };
 
@@ -29,19 +46,31 @@ export default function UploadFileModal({
   role,
 }: UploadFileModalProps) {
   const isClientRole = role?.toLowerCase() === "client";
-  const labelOptions = isClientRole ? CLIENT_DOCUMENT_LABEL_OPTIONS : ALL_DOCUMENT_LABEL_OPTIONS;
+  const labelOptions = isClientRole
+    ? CLIENT_DOCUMENT_LABEL_OPTIONS
+    : ALL_DOCUMENT_LABEL_OPTIONS;
 
   const [name, setName] = useState("");
-  const [category, setCategory] = useState<"Document" | "Image" | "Media" | "Archive" | "Other">("Document");
+  const [category, setCategory] = useState<
+    "Document" | "Image" | "Media" | "Archive" | "Other"
+  >("Document");
   const [size, setSize] = useState("");
   const [userLabel, setUserLabel] = useState("");
-  const [labelType, setLabelType] = useState<number>(isClientRole ? DocumentLabel.PROJECT : DocumentLabel.PROJECT);
+  const [labelType, setLabelType] = useState<number>(
+    isClientRole ? DocumentLabel.PROJECT : DocumentLabel.PROJECT
+  );
   const [teamId, setTeamId] = useState("");
   const [projectId, setProjectId] = useState("");
   const [apiProjects, setApiProjects] = useState<Projects[]>([]);
   const [isClient, setIsClient] = useState(true);
   const [forClient, setForClient] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState("");
+
+  // File drag & drop state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const loadProjects = async () => {
@@ -53,7 +82,7 @@ export default function UploadFileModal({
           status: p.status,
           duration: p.duration,
           teams: [],
-          client: {} as any,
+          client: {} as Projects["client"],
           tasks: [],
         }));
         setApiProjects(mappedProjects);
@@ -63,12 +92,6 @@ export default function UploadFileModal({
     };
     loadProjects();
   }, []);
-
-  // Real Upload state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -92,8 +115,8 @@ export default function UploadFileModal({
   const processFile = (file: File) => {
     setSelectedFile(file);
     setName(file.name);
-    
-    // Human-readable size
+
+    // Format human-readable size
     const sizeInMB = file.size / (1024 * 1024);
     if (sizeInMB < 0.1) {
       setSize(`${(file.size / 1024).toFixed(1)} KB`);
@@ -119,10 +142,6 @@ export default function UploadFileModal({
     }
   };
 
-  const handleFileClick = () => {
-    fileInputRef.current?.click();
-  };
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       processFile(e.target.files[0]);
@@ -132,8 +151,8 @@ export default function UploadFileModal({
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!name || !size) {
-      toast.error("Please select a file to upload");
+    if (!name.trim() || !size.trim()) {
+      toast.error("Please select a file to upload.");
       return;
     }
 
@@ -152,7 +171,7 @@ export default function UploadFileModal({
         filePath = presignedData.filePath;
 
         // Step 2: Upload file binary directly to MinIO
-        setUploadStatus("Uploading binary pack...");
+        setUploadStatus("Uploading binary data to MinIO...");
         const uploadRes = await fetch(presignedData.uploadUrl, {
           method: "PUT",
           headers: {
@@ -162,14 +181,13 @@ export default function UploadFileModal({
         });
 
         if (!uploadRes.ok) {
-          throw new Error("Failed to write binary block to MinIO bucket");
+          throw new Error("Failed to write binary block to storage bucket");
         }
       }
 
       // Step 3: Register TypeORM database document record
-      setUploadStatus("Creating database entry...");
-      
-      // Determine reference type and reference ID mapping
+      setUploadStatus("Registering database entry...");
+
       let reference_type = "project";
       let reference_id = projectId || "project";
 
@@ -190,7 +208,6 @@ export default function UploadFileModal({
         reference_id = "other";
       }
 
-      // Build label value
       let finalLabel = userLabel.trim();
       if (labelType === DocumentLabel.CLIENT) {
         const clientFlags = [
@@ -223,13 +240,17 @@ export default function UploadFileModal({
         forClient: labelType === DocumentLabel.CLIENT ? forClient : undefined,
         document_id: dbDoc.document_id,
         file_path: filePath,
-      } as any);
+      });
 
-      toast.success("Document uploaded and saved successfully!");
+      toast.success("Document uploaded and indexed successfully!");
       onClose();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message || "Failed to complete upload workflow");
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to complete upload workflow";
+      toast.error(message);
     } finally {
       setIsSubmitting(false);
       setUploadStatus("");
@@ -237,288 +258,314 @@ export default function UploadFileModal({
   };
 
   return (
-    <motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center px-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <motion.button
-        type="button"
-        aria-label="Close modal"
-        className="absolute inset-0 bg-slate-950/70 backdrop-blur-md"
-        onClick={onClose}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2 }}
-      />
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-v2-neutral-600/75 backdrop-blur-xs"
+          onClick={onClose}
+        />
 
-      <motion.div
-        className="relative w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0c0a2f] bg-gradient-to-br from-[#5271ff]/5 via-[#0c0a2f]/95 to-[#0a0826] p-6 sm:p-8 shadow-[0_24px_80px_rgba(0,0,0,0.6)] backdrop-blur-md flex flex-col max-h-[90vh] overflow-y-auto"
-        initial={{ opacity: 0, y: 16, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 12, scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 260, damping: 24 }}
-      >
-        <div className="mb-6 border-b border-white/[0.08] pb-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-                <CloudUpload className="h-6 w-6 text-[#5271ff]" />
-                Upload New Asset
-              </h2>
-              <p className="text-[10px] uppercase tracking-wider font-semibold text-white/30 mt-1">
-                Store documents, images, and other assets safely in workspace cloud.
-              </p>
+        {/* Modal Container */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          className="relative z-10 w-full max-w-xl max-h-[92vh] flex flex-col rounded-2xl border border-v2-neutral-400 bg-v2-neutral-600 shadow-2xl overflow-hidden"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between border-b border-v2-neutral-500 px-6 py-4 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <span className="grid size-9 place-items-center rounded-xl bg-v2-neutral-100 text-v2-neutral-600 shadow-sm">
+                <CloudUpload className="size-4.5" />
+              </span>
+              <div>
+                <h3 className="text-base font-semibold text-v2-neutral-100">
+                  Upload Cloud Asset
+                </h3>
+                <p className="text-xs text-v2-neutral-400">
+                  Upload files, documents, or visuals directly into cloud storage.
+                </p>
+              </div>
             </div>
+
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.02] text-white/50 transition hover:bg-white/[0.08] hover:text-white"
+              className="inline-flex size-8 items-center justify-center rounded-lg border border-v2-neutral-500 text-v2-neutral-400 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 transition-colors cursor-pointer"
             >
-              <X className="h-4 w-4" />
+              <X className="size-4" />
             </button>
           </div>
-        </div>
 
-        <form className="flex flex-1 flex-col" onSubmit={handleSubmit}>
-          {/* Active Drag and Drop Panel */}
-          <div
-            onClick={handleFileClick}
-            onDragEnter={handleDrag}
-            onDragOver={handleDrag}
-            onDragLeave={handleDrag}
-            onDrop={handleDrop}
-            className={`border border-dashed rounded-2xl p-8 flex flex-col items-center justify-center transition-all cursor-pointer mb-6 ${
-              dragActive
-                ? "border-[#5271ff] bg-[#5271ff]/10 shadow-[0_0_15px_rgba(82,113,255,0.15)]"
-                : selectedFile
-                  ? "border-emerald-500/50 bg-emerald-500/5 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                  : "border-white/20 bg-white/[0.01] hover:bg-white/[0.03]"
-            }`}
+          {/* Form */}
+          <form
+            onSubmit={handleSubmit}
+            className="p-6 space-y-4 overflow-y-auto custom-scrollbar"
           >
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <CloudUpload className={`h-10 w-10 mb-3 ${selectedFile ? "text-emerald-400" : "text-white/40 animate-bounce"}`} />
-            <p className="text-sm font-semibold text-white text-center">
-              {selectedFile ? `Selected: ${selectedFile.name}` : "Drag and drop file here, or click to select"}
-            </p>
-            <p className="text-[10px] text-white/30 mt-1.5 uppercase tracking-wider font-semibold">
-              {selectedFile ? `Calculated Size: ${size}` : "Max file upload limit: 100 MB"}
-            </p>
-          </div>
+            {/* Drag & Drop Area */}
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              onDragEnter={handleDrag}
+              onDragOver={handleDrag}
+              onDragLeave={handleDrag}
+              onDrop={handleDrop}
+              className={`rounded-2xl border-2 border-dashed p-6 flex flex-col items-center justify-center transition-all cursor-pointer text-center ${
+                dragActive
+                  ? "border-v2-neutral-100 bg-v2-neutral-500/50"
+                  : selectedFile
+                  ? "border-emerald-500/60 bg-emerald-500/10"
+                  : "border-v2-neutral-500 hover:border-v2-neutral-400 bg-v2-neutral-500/20 hover:bg-v2-neutral-500/30"
+              }`}
+            >
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <div className="grid size-11 place-items-center rounded-xl bg-v2-neutral-500/40 text-v2-neutral-200 mb-2">
+                {selectedFile ? (
+                  <FileCheck className="size-6 text-emerald-400" />
+                ) : (
+                  <Upload className="size-6 text-v2-neutral-300" />
+                )}
+              </div>
+              <p className="text-xs font-semibold text-v2-neutral-100">
+                {selectedFile
+                  ? `Selected: ${selectedFile.name}`
+                  : "Drag and drop file here, or click to browse"}
+              </p>
+              <p className="text-[11px] text-v2-neutral-400 mt-1">
+                {selectedFile
+                  ? `Size: ${size}`
+                  : "Supports PDF, DOC, Images, Archives, Video (up to 100 MB)"}
+              </p>
+            </div>
 
-          <div className="space-y-4 flex-1">
+            {/* File Name & Category */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  File Name
+                <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                  File Name *
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., Q1_Financial_Report.pdf"
+                  required
+                  placeholder="e.g. Q1_Financial_Report.pdf"
                   value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  required
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Category
+                <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                  Category *
                 </label>
-                <div className="relative">
-                  <select
-                    value={category}
-                    onChange={(event) => setCategory(event.target.value as any)}
-                    className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                  >
-                    <option value="Document" className="bg-[#0c0a2f] text-white">Document</option>
-                    <option value="Image" className="bg-[#0c0a2f] text-white">Image</option>
-                    <option value="Media" className="bg-[#0c0a2f] text-white">Media</option>
-                    <option value="Archive" className="bg-[#0c0a2f] text-white">Archive</option>
-                    <option value="Other" className="bg-[#0c0a2f] text-white">Other</option>
-                  </select>
-                  <ChevronDown
-                    size={16}
-                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
-                  />
-                </div>
+                <Select
+                  value={category}
+                  onValueChange={(val) =>
+                    setCategory(
+                      val as "Document" | "Image" | "Media" | "Archive" | "Other"
+                    )
+                  }
+                >
+                  <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                    <SelectValue placeholder="Select category..." />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                    <SelectItem value="Document" className="cursor-pointer text-xs">
+                      Document (PDF, Word, Sheet)
+                    </SelectItem>
+                    <SelectItem value="Image" className="cursor-pointer text-xs">
+                      Image (PNG, JPG, SVG)
+                    </SelectItem>
+                    <SelectItem value="Media" className="cursor-pointer text-xs">
+                      Media (Video, Audio)
+                    </SelectItem>
+                    <SelectItem value="Archive" className="cursor-pointer text-xs">
+                      Archive (ZIP, RAR, Tar)
+                    </SelectItem>
+                    <SelectItem value="Other" className="cursor-pointer text-xs">
+                      Other File
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
+            {/* File Size & User Label */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  File Size (e.g. 4.2 MB)
+                <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                  File Size *
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., 4.2 MB"
+                  required
+                  placeholder="e.g. 2.4 MB"
                   value={size}
-                  onChange={(event) => setSize(event.target.value)}
-                  required
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
+                  onChange={(e) => setSize(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20 font-mono"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  User Label (Optional)
+                <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                  Custom Label
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g., Confidential Q1"
+                  placeholder="e.g. Q1 Final Deliverable"
                   value={userLabel}
-                  onChange={(event) => setUserLabel(event.target.value)}
-                  className="h-11 w-full rounded-xl border border-white/[0.08] bg-[#0a0826]/40 px-4 text-sm text-white placeholder-white/20 outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
+                  onChange={(e) => setUserLabel(e.target.value)}
+                  className="h-10 w-full rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 outline-none placeholder:text-v2-neutral-400 focus:border-v2-neutral-500 focus:ring-2 focus:ring-v2-neutral-400/20"
                 />
               </div>
             </div>
 
+            {/* Scope / Classification */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                  Access Classification
+                <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                  Access Classification *
                 </label>
-                <div className="relative">
-                  <select
-                    value={labelType}
-                    onChange={(event) => setLabelType(Number(event.target.value))}
-                    className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                  >
-                    {labelOptions.map((option) => (
-                      <option key={option.value} value={option.value} className="bg-[#0c0a2f] text-white">
-                        {option.label}
-                      </option>
+                <Select
+                  value={String(labelType)}
+                  onValueChange={(val) => setLabelType(Number(val))}
+                >
+                  <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                    <SelectValue placeholder="Select classification..." />
+                  </SelectTrigger>
+                  <SelectContent className="z-[100] rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                    {labelOptions.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={String(opt.value)}
+                        className="cursor-pointer text-xs"
+                      >
+                        {opt.label}
+                      </SelectItem>
                     ))}
-                  </select>
-                  <ChevronDown
-                    size={16}
-                    className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
-                  />
-                </div>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Dynamic field rendering depending on classification */}
-              {labelType === DocumentLabel.TEAM && (
+              {/* Dynamic Project / Team Selector */}
+              {labelType === DocumentLabel.PROJECT && (
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                    Select Target Team
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Target Project *
                   </label>
-                  <div className="relative">
-                    <select
-                      value={teamId}
-                      onChange={(event) => setTeamId(event.target.value)}
-                      required
-                      className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                    >
-                      <option value="" className="bg-[#0c0a2f] text-white">-- Choose Team --</option>
-                      {teams.map((t) => (
-                        <option key={t.id || t.team_id || t.name} value={String(t.id || t.team_id || t.name)} className="bg-[#0c0a2f] text-white">
-                          {t.name || t.team_name || "Unnamed Team"}
-                        </option>
+                  <Select
+                    value={projectId}
+                    onValueChange={setProjectId}
+                  >
+                    <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                      <SelectValue placeholder="Choose project..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100] max-h-56 rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                      {apiProjects.map((p) => (
+                        <SelectItem
+                          key={p.id}
+                          value={p.id}
+                          className="cursor-pointer text-xs"
+                        >
+                          {p.name}
+                        </SelectItem>
                       ))}
-                    </select>
-                    <ChevronDown
-                      size={16}
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
-                    />
-                  </div>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
-              {labelType === DocumentLabel.PROJECT && (
+              {labelType === DocumentLabel.TEAM && (
                 <div>
-                  <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-white/50">
-                    Select Related Project
+                  <label className="mb-1.5 block text-xs font-semibold text-v2-neutral-300">
+                    Target Team *
                   </label>
-                  <div className="relative">
-                    <select
-                      value={projectId}
-                      onChange={(event) => setProjectId(event.target.value)}
-                      required
-                      className="h-11 w-full appearance-none rounded-xl border border-white/[0.08] bg-[#0c0a2f] px-4 text-sm text-white outline-none transition-all duration-300 focus:border-[#5271ff]/50 focus:ring-1 focus:ring-[#5271ff]/30 focus:bg-[#0a0826]/60"
-                    >
-                      <option value="" className="bg-[#0c0a2f] text-white">-- Choose Project --</option>
-                      {apiProjects.map((p) => (
-                        <option key={p.id} value={String(p.id)} className="bg-[#0c0a2f] text-white">
-                          {p.name}
-                        </option>
+                  <Select
+                    value={teamId}
+                    onValueChange={setTeamId}
+                  >
+                    <SelectTrigger className="h-10 w-full rounded-xl border-v2-neutral-300 bg-v2-neutral-100 px-3 text-xs text-v2-neutral-600 shadow-none hover:border-v2-neutral-400 focus-visible:border-v2-neutral-500 focus-visible:ring-v2-neutral-400/20">
+                      <SelectValue placeholder="Choose team..." />
+                    </SelectTrigger>
+                    <SelectContent className="z-[100] max-h-56 rounded-xl border border-v2-neutral-200 bg-v2-neutral-100 text-v2-neutral-600 shadow-xl">
+                      {teams.map((t) => (
+                        <SelectItem
+                          key={t.id || t.team_id || t.name}
+                          value={String(t.id || t.team_id || t.name)}
+                          className="cursor-pointer text-xs"
+                        >
+                          {t.name || t.team_name || "Unnamed Team"}
+                        </SelectItem>
                       ))}
-                    </select>
-                    <ChevronDown
-                      size={16}
-                      className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-white/40"
-                    />
-                  </div>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
               {labelType === DocumentLabel.CLIENT && (
-                <div className="flex flex-col justify-center gap-3 pt-2">
-                  <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-4 pt-6">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-v2-neutral-300">
                     <input
                       type="checkbox"
-                      id="isClient"
                       checked={isClient}
-                      onChange={(event) => setIsClient(event.target.checked)}
-                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-[#5271ff] focus:ring-0 focus:ring-offset-0 focus:outline-none"
+                      onChange={(e) => setIsClient(e.target.checked)}
+                      className="size-4 rounded accent-v2-neutral-100"
                     />
-                    <label htmlFor="isClient" className="text-xs font-semibold uppercase tracking-wider text-white/70 select-none cursor-pointer">
-                      From Client
-                    </label>
-                  </div>
-
-                  <div className="flex items-center gap-2.5">
+                    <span>From Client</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-v2-neutral-300">
                     <input
                       type="checkbox"
-                      id="forClient"
                       checked={forClient}
-                      onChange={(event) => setForClient(event.target.checked)}
-                      className="h-4 w-4 rounded border-white/20 bg-white/5 text-[#5271ff] focus:ring-0 focus:ring-offset-0 focus:outline-none"
+                      onChange={(e) => setForClient(e.target.checked)}
+                      className="size-4 rounded accent-v2-neutral-100"
                     />
-                    <label htmlFor="forClient" className="text-xs font-semibold uppercase tracking-wider text-white/70 select-none cursor-pointer">
-                      For Client
-                    </label>
-                  </div>
+                    <span>For Client</span>
+                  </label>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Upload loading status indicator */}
-          {isSubmitting && uploadStatus && (
-            <div className="mt-6 text-center text-xs font-bold uppercase tracking-wider text-[#22d3ee] animate-pulse">
-              ⚡ {uploadStatus}
+            {/* Status indicator */}
+            {uploadStatus && (
+              <div className="flex items-center gap-2 rounded-xl bg-v2-neutral-500/40 p-3 text-xs text-v2-neutral-300">
+                <LoaderCircle className="size-4 animate-spin text-v2-neutral-100" />
+                <span>{uploadStatus}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex items-center justify-end gap-3 pt-4 border-t border-v2-neutral-500 shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <span>Upload Asset</span>
+                )}
+              </Button>
             </div>
-          )}
-
-          <div className="mt-8 flex justify-end gap-3 pt-4 border-t border-white/[0.08]">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-5 py-2 text-sm font-semibold text-white/70 backdrop-blur-md transition-all duration-300 hover:bg-white/[0.08] hover:text-white hover:border-white/20 active:scale-95"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="rounded-xl bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] px-6 py-2 text-sm font-semibold text-white transition-all duration-300 hover:opacity-95 hover:shadow-[0_0_15px_rgba(82,113,255,0.35)] active:scale-95 disabled:opacity-50"
-            >
-              {isSubmitting ? "Uploading..." : "Upload File"}
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </motion.div>
+          </form>
+        </motion.div>
+      </div>
+    </AnimatePresence>
   );
 }

@@ -38,11 +38,7 @@ function ToggleGroup({
       className={cn(
         "group/toggle-group inline-flex w-fit items-center select-none",
         spacing === 0
-          ? variant === "subtle"
-            ? "gap-1 rounded-xl border border-v2-neutral-300 bg-v2-neutral-200/50 p-1 shadow-inner"
-            : variant === "outline"
-            ? "gap-0.5 rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 p-1 shadow-xs"
-            : "gap-1 rounded-xl border border-v2-neutral-300/80 bg-v2-neutral-200/60 p-1 shadow-inner"
+          ? "gap-1 rounded-xl border border-v2-neutral-300 bg-v2-neutral-100 p-1 shadow-xs"
           : "gap-2",
         className
       )}
@@ -80,10 +76,7 @@ function ToggleGroupItem({
         }),
         context.spacing === 0 && [
           "rounded-lg",
-          resolvedVariant === "subtle" &&
-            "data-[state=on]:bg-v2-neutral-100 data-[state=on]:text-v2-neutral-600 data-[state=on]:shadow-xs data-[state=on]:border data-[state=on]:border-v2-neutral-300/80",
-          resolvedVariant === "outline" &&
-            "border-transparent data-[state=on]:border-v2-neutral-300/80 data-[state=on]:bg-v2-neutral-200 data-[state=on]:text-v2-neutral-600",
+          "data-[state=on]:border-v2-neutral-600 data-[state=on]:bg-v2-neutral-600 data-[state=on]:text-v2-neutral-100 data-[state=on]:shadow-sm",
         ],
         className
       )}

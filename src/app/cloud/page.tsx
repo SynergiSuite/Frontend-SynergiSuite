@@ -1,13 +1,23 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useLayoutEffect,
+  useCallback,
+} from "react";
 import { AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { gsap } from "gsap";
+import { RefreshCw, Upload } from "lucide-react";
 
-import SubHeader from "./subHeadingSearchbar";
+import { Button } from "@/components/ui/button";
 import StatsCards, { FileType } from "./statesCards";
+import CloudFilterBar from "./cloudFilterBar";
 import FilesTable from "./filesTable";
+import FilesGridView from "./filesGridView";
 import Pagination from "./footer";
 import UploadFileModal from "./uploadFileModal";
 import DeleteFileModal from "./deleteFileModal";
@@ -26,6 +36,8 @@ const DEFAULT_FILES: FileType[] = [
     size: "2.4 MB",
     sizeBytes: 2516582,
     uploadedAt: "May 10, 2026",
+    labelType: 3,
+    referenceType: "project",
   },
   {
     id: "2",
@@ -34,6 +46,8 @@ const DEFAULT_FILES: FileType[] = [
     size: "14.5 MB",
     sizeBytes: 15204352,
     uploadedAt: "May 12, 2026",
+    labelType: 2,
+    referenceType: "team",
   },
   {
     id: "3",
@@ -42,6 +56,8 @@ const DEFAULT_FILES: FileType[] = [
     size: "128.4 MB",
     sizeBytes: 134637158,
     uploadedAt: "May 14, 2026",
+    labelType: 1,
+    referenceType: "personal",
   },
   {
     id: "4",
@@ -50,6 +66,8 @@ const DEFAULT_FILES: FileType[] = [
     size: "450.8 MB",
     sizeBytes: 472711168,
     uploadedAt: "May 18, 2026",
+    labelType: 3,
+    referenceType: "project",
   },
   {
     id: "5",
@@ -58,10 +76,21 @@ const DEFAULT_FILES: FileType[] = [
     size: "512 KB",
     sizeBytes: 524288,
     uploadedAt: "May 22, 2026",
+    labelType: 4,
+    referenceType: "client",
   },
 ];
 
-const mapDbDocumentToFileType = (dbDoc: any): FileType => {
+interface DbDocument {
+  document_id?: string | number;
+  name?: string;
+  created_at?: string;
+  label?: string | null;
+  reference_type?: string;
+  reference_id?: string;
+}
+
+const mapDbDocumentToFileType = (dbDoc: DbDocument): FileType => {
   const name = dbDoc.name || "Untitled";
   const ext = name.split(".").pop()?.toLowerCase();
 
@@ -78,19 +107,19 @@ const mapDbDocumentToFileType = (dbDoc: any): FileType => {
     category = "Other";
   }
 
-  // Standard size fallbacks since DB record maps path instead of sizes
+  // Size fallback
   const size = "1.2 MB";
   const sizeBytes = 1258291;
 
-  let labelType = 1; // Personal
+  let labelType = 1;
   if (dbDoc.reference_type === "team") labelType = 2;
   else if (dbDoc.reference_type === "project") labelType = 3;
   else if (dbDoc.reference_type === "client") labelType = 4;
   else if (dbDoc.reference_type === "other") labelType = 5;
 
   return {
-    id: String(dbDoc.document_id),
-    name: dbDoc.name,
+    id: String(dbDoc.document_id || ""),
+    name: dbDoc.name || "Untitled",
     category,
     size,
     sizeBytes,
@@ -110,27 +139,46 @@ const mapDbDocumentToFileType = (dbDoc: any): FileType => {
   };
 };
 
+const ITEMS_PER_PAGE = 8;
+
 export default function CloudStoragePage() {
-  // states
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Data states
   const [files, setFiles] = useState<FileType[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
-  const [search, setSearch] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [teams, setTeams] = useState<
+    Array<{ id?: string; name?: string; team_id?: string; team_name?: string }>
+  >([]);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [userId, setUserId] = useState("");
   const [role, setRole] = useState("");
 
-  // modal states
+  // Search & Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedScope, setSelectedScope] = useState("all");
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Modal states
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [detailFile, setDetailFile] = useState<FileType | null>(null);
   const [deleteFileId, setDeleteFileId] = useState<string | null>(null);
 
-  // refs
-  const containerRef = useRef<HTMLDivElement>(null);
-  const itemsPerPage = 4;
+  // Debounce search query
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim().toLowerCase());
+      setCurrentPage(1);
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-  // Load real files on mount
-  const loadDocuments = async () => {
+  // Load documents
+  const loadDocuments = useCallback(async () => {
     try {
+      setIsDataLoading(true);
       const dbDocs = await getDocumentsApi();
       if (dbDocs && Array.isArray(dbDocs)) {
         const mapped = dbDocs.map(mapDbDocumentToFileType);
@@ -139,7 +187,7 @@ export default function CloudStoragePage() {
         setFiles(DEFAULT_FILES);
       }
 
-      // Fetch teams directly after fetching documents
+      // Fetch teams
       try {
         const teamsData = await getTeamsApi();
         if (teamsData && Array.isArray(teamsData.teams)) {
@@ -151,62 +199,98 @@ export default function CloudStoragePage() {
         console.warn("Failed to load teams", teamError);
       }
     } catch (error) {
-      console.warn("Failed to load documents from backend, using mocked fallback database.", error);
+      console.warn("Failed to load documents from backend, using default assets.", error);
       setFiles(DEFAULT_FILES);
+    } finally {
+      setIsDataLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     setUserId(String(CookieManager("get", "user-id") || ""));
     setRole(String(CookieManager("get", "primary_role") || CookieManager("get", "role") || ""));
-    loadDocuments();
-  }, []);
+    void loadDocuments();
+  }, [loadDocuments]);
 
-  // filtering
+  // Filtering
   const filteredFiles = useMemo(() => {
-    return files.filter((f) =>
-      [f.name, f.category, f.size]
-        .join(" ")
-        .toLowerCase()
-        .includes(search.toLowerCase())
-    );
-  }, [files, search]);
+    return files.filter((file) => {
+      // Search
+      if (debouncedSearch) {
+        const matchName = file.name.toLowerCase().includes(debouncedSearch);
+        const matchCat = file.category.toLowerCase().includes(debouncedSearch);
+        const matchLabel = file.userLabel?.toLowerCase().includes(debouncedSearch);
+        const matchSize = file.size.toLowerCase().includes(debouncedSearch);
+        if (!matchName && !matchCat && !matchLabel && !matchSize) {
+          return false;
+        }
+      }
 
-  // pagination
-  const totalPages = Math.max(1, Math.ceil(filteredFiles.length / itemsPerPage));
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentFiles = filteredFiles.slice(startIndex, startIndex + itemsPerPage);
+      // Category filter
+      if (selectedCategory !== "all" && file.category !== selectedCategory) {
+        return false;
+      }
 
-  // GSAP stagger mount animation
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from([".cloud-header-area", ".cloud-stats-area", ".cloud-table-area"], {
-        opacity: 0,
-        y: 20,
-        duration: 0.6,
-        ease: "power3.out",
-        stagger: 0.12,
-        clearProps: "all",
-      });
-    }, containerRef);
-    return () => ctx.revert();
-  }, []);
+      // Scope filter
+      if (selectedScope !== "all") {
+        if (selectedScope === "personal" && file.labelType !== 1 && file.referenceType !== "personal") {
+          return false;
+        }
+        if (selectedScope === "team" && file.labelType !== 2 && file.referenceType !== "team") {
+          return false;
+        }
+        if (selectedScope === "project" && file.labelType !== 3 && file.referenceType !== "project") {
+          return false;
+        }
+        if (selectedScope === "client" && file.labelType !== 4 && file.referenceType !== "client") {
+          return false;
+        }
+        if (selectedScope === "other" && file.labelType !== 5 && file.referenceType !== "other") {
+          return false;
+        }
+      }
 
-  // CRUD handlers
-  const handleUploadFile = async () => {
-    // Re-fetch all documents from backend to reflect the newly logged upload perfectly
-    await loadDocuments();
-  };
+      return true;
+    });
+  }, [files, debouncedSearch, selectedCategory, selectedScope]);
 
-  const handleEditFile = async (id: string, payload: Omit<FileType, "id" | "uploadedAt" | "sizeBytes">) => {
-    try {
-      setFiles((prev) =>
-        prev.map((f) => (f.id === id ? { ...f, ...payload } : f))
-      );
-      toast.success("File record updated successfully");
-    } catch {
-      toast.error("Failed to edit file details");
+  // Pagination
+  const totalItems = filteredFiles.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / ITEMS_PER_PAGE));
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedFiles = filteredFiles.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // GSAP Entrance Animations
+  useLayoutEffect(() => {
+    const element = rootRef.current;
+    if (!element || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
     }
+
+    const context = gsap.context(() => {
+      const sections = gsap.utils.toArray<HTMLElement>("[data-cloud-section]");
+      if (sections.length > 0) {
+        gsap.fromTo(
+          sections,
+          { autoAlpha: 0, y: 16 },
+          {
+            autoAlpha: 1,
+            y: 0,
+            duration: 0.35,
+            stagger: 0.05,
+            ease: "power2.out",
+            clearProps: "all",
+          }
+        );
+      }
+    }, element);
+
+    return () => context.revert();
+  }, [files.length]);
+
+  // Actions
+  const handleUploadFile = async () => {
+    await loadDocuments();
   };
 
   const handleDeleteFile = async (id: string) => {
@@ -222,46 +306,118 @@ export default function CloudStoragePage() {
     }
   };
 
+  const hasActiveFilters =
+    searchQuery.trim().length > 0 ||
+    selectedCategory !== "all" ||
+    selectedScope !== "all";
+
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSelectedScope("all");
+    setCurrentPage(1);
+  };
+
   return (
-    <div ref={containerRef} className="relative min-h-0 w-full overflow-hidden p-6 md:p-10">
-      {/* Ambient background glows */}
-      <div className="pointer-events-none absolute -top-32 left-1/4 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#5271ff]/[0.06] blur-[130px]" />
-      <div className="pointer-events-none absolute top-1/2 right-0 h-[400px] w-[400px] rounded-full bg-[#3a4ec4]/[0.06] blur-[120px]" />
-      <div className="pointer-events-none absolute bottom-0 left-1/3 h-[300px] w-[300px] rounded-full bg-[#22d3ee]/[0.04] blur-[100px]" />
+    <div ref={rootRef} className="min-h-full text-v2-neutral-100">
+      <div className="flex flex-col gap-6">
+        {/* Page Top Header */}
+        <header
+          data-cloud-section
+          className="flex flex-col gap-4 border-b border-v2-neutral-500 pb-6 sm:flex-row sm:items-end sm:justify-between"
+        >
+          <div>
+            <h1 className="text-3xl font-semibold tracking-[-0.045em] text-v2-neutral-100 sm:text-4xl">
+              Cloud Storage
+            </h1>
+            <p className="mt-2 text-sm leading-6 text-v2-neutral-300">
+              Review, organize, preview, and securely manage company files and project deliverables.
+            </p>
+          </div>
 
-      <div className="relative z-10 flex min-h-[calc(100vh-140px)] flex-col gap-6 lg:gap-8">
-        {/* Header Section */}
-        <div className="cloud-header-area">
-          <SubHeader
-            search={search}
-            setSearch={setSearch}
-            onUploadClick={() => setIsUploadOpen(true)}
-          />
-        </div>
+          <div className="flex items-center gap-2.5 shrink-0">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={loadDocuments}
+              disabled={isDataLoading}
+              className="gap-1.5"
+            >
+              <RefreshCw
+                className={`size-3.5 ${isDataLoading ? "animate-spin" : ""}`}
+              />
+              <span>Refresh</span>
+            </Button>
 
-        {/* Stats Widgets */}
-        <div className="cloud-stats-area">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsUploadOpen(true)}
+              className="gap-1.5 shadow-md"
+            >
+              <Upload className="size-4" />
+              <span>Upload File</span>
+            </Button>
+          </div>
+        </header>
+
+        {/* Stats Metrics Cards */}
+        <div data-cloud-section>
           <StatsCards files={files} />
         </div>
 
-        {/* Files Table Section */}
-        <div className="cloud-table-area flex flex-1 flex-col min-h-0">
-          <div className="flex-1 overflow-hidden">
+        {/* Filter and Control Bar */}
+        <div data-cloud-section>
+          <CloudFilterBar
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            selectedCategory={selectedCategory}
+            onCategoryChange={(cat) => {
+              setSelectedCategory(cat);
+              setCurrentPage(1);
+            }}
+            selectedScope={selectedScope}
+            onScopeChange={(scope) => {
+              setSelectedScope(scope);
+              setCurrentPage(1);
+            }}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            onResetFilters={handleResetFilters}
+            hasActiveFilters={hasActiveFilters}
+          />
+        </div>
+
+        {/* Files Content (Table or Grid View) */}
+        <div data-cloud-section className="space-y-4">
+          {viewMode === "table" ? (
             <FilesTable
-              files={currentFiles}
+              files={paginatedFiles}
+              isLoading={isDataLoading}
               onSelect={setDetailFile}
-              onEdit={() => { }}
               onDelete={setDeleteFileId}
+              onUploadClick={() => setIsUploadOpen(true)}
               teams={teams}
               userId={userId}
               role={role}
             />
-          </div>
+          ) : (
+            <FilesGridView
+              files={paginatedFiles}
+              isLoading={isDataLoading}
+              onSelect={setDetailFile}
+              onDelete={setDeleteFileId}
+              onUploadClick={() => setIsUploadOpen(true)}
+            />
+          )}
 
           {/* Pagination */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}
+            totalItems={totalItems}
+            itemsPerPage={ITEMS_PER_PAGE}
             setCurrentPage={setCurrentPage}
           />
         </div>
@@ -269,16 +425,16 @@ export default function CloudStoragePage() {
 
       {/* Modals Portals */}
       <AnimatePresence>
-        {isUploadOpen ? (
+        {isUploadOpen && (
           <UploadFileModal
             onClose={() => setIsUploadOpen(false)}
             onSave={handleUploadFile}
             teams={teams}
             role={role}
           />
-        ) : null}
+        )}
 
-        {detailFile ? (
+        {detailFile && (
           <FileDetailModal
             file={detailFile}
             open={detailFile !== null}
@@ -288,9 +444,9 @@ export default function CloudStoragePage() {
               setDeleteFileId(id);
             }}
           />
-        ) : null}
+        )}
 
-        {deleteFileId ? (
+        {deleteFileId && (
           <DeleteFileModal
             open={deleteFileId !== null}
             fileId={deleteFileId}
@@ -302,7 +458,7 @@ export default function CloudStoragePage() {
               setDeleteFileId(null);
             }}
           />
-        ) : null}
+        )}
       </AnimatePresence>
     </div>
   );

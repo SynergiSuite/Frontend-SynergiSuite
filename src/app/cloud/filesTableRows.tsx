@@ -1,152 +1,231 @@
 "use client";
 
-import React from "react";
-import { Pencil, Trash, FileText, Image as ImageIcon, Video, FolderArchive, File } from "lucide-react";
+import React, { useState } from "react";
+import {
+  FileText,
+  Image as ImageIcon,
+  Video,
+  FolderArchive,
+  File,
+  ExternalLink,
+  Trash,
+  Eye,
+  Building2,
+  FolderKanban,
+  Users,
+  User,
+  LoaderCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import { FileType } from "./statesCards";
+import { getViewUrlApi } from "./apis/getViewUrlApi";
 
 type Props = {
   file: FileType;
   onSelect: (file: FileType) => void;
-  onEdit: (file: FileType) => void;
   onDelete: (id: string) => void;
-  teams?: any[];
+  teams?: Array<{ id?: string; name?: string; team_id?: string; team_name?: string }>;
   userId?: string;
   role?: string;
 };
 
-const getCategoryIcon = (category: string) => {
+export const getCategoryIcon = (category: string, className = "size-4") => {
   switch (category) {
     case "Document":
-      return <FileText className="h-4 w-4 text-cyan-400" />;
+      return <FileText className={`${className} text-amber-600`} />;
     case "Image":
-      return <ImageIcon className="h-4 w-4 text-amber-400" />;
+      return <ImageIcon className={`${className} text-sky-600`} />;
     case "Media":
-      return <Video className="h-4 w-4 text-emerald-400" />;
+      return <Video className={`${className} text-emerald-600`} />;
     case "Archive":
-      return <FolderArchive className="h-4 w-4 text-indigo-400" />;
+      return <FolderArchive className={`${className} text-purple-600`} />;
     default:
-      return <File className="h-4 w-4 text-white/50" />;
+      return <File className={`${className} text-v2-neutral-500`} />;
   }
 };
 
-const getCategoryBadgeClass = (category: string) => {
+export const getCategoryBadge = (category: string) => {
   switch (category) {
     case "Document":
-      return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]";
+      return "bg-amber-100 text-amber-700 border-amber-200";
     case "Image":
-      return "bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-[0_0_12px_rgba(245,158,11,0.15)]";
+      return "bg-sky-100 text-sky-700 border-sky-200";
     case "Media":
-      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_12px_rgba(16,185,129,0.15)]";
+      return "bg-emerald-100 text-emerald-700 border-emerald-200";
     case "Archive":
-      return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20 shadow-[0_0_12px_rgba(99,102,241,0.15)]";
+      return "bg-purple-100 text-purple-700 border-purple-200";
     default:
-      return "bg-white/5 text-white/40 border-white/10";
+      return "bg-v2-neutral-200 text-v2-neutral-600 border-v2-neutral-300";
   }
 };
 
-const FileRow = ({
-  file,
-  onSelect,
-  onEdit,
-  onDelete,
-  teams = [],
-  userId = "",
-  role = "",
-}: Props) => {
-  const getDisplayValue = (value?: string | number) => {
-    return value !== undefined && value !== null && String(value).trim() !== ""
-      ? String(value)
-      : "N/A";
+export const getScopeBadge = (file: FileType) => {
+  if (file.labelType === 1 || file.referenceType === "personal") {
+    return {
+      label: "Personal",
+      icon: User,
+      classes: "bg-v2-neutral-200 text-v2-neutral-600",
+    };
+  }
+  if (file.labelType === 2 || file.referenceType === "team") {
+    return {
+      label: "Team",
+      icon: Users,
+      classes: "bg-indigo-50 text-indigo-700 border border-indigo-200",
+    };
+  }
+  if (file.labelType === 3 || file.referenceType === "project") {
+    return {
+      label: "Project",
+      icon: FolderKanban,
+      classes: "bg-cyan-50 text-cyan-700 border border-cyan-200",
+    };
+  }
+  if (file.labelType === 4 || file.referenceType === "client") {
+    return {
+      label: "Client",
+      icon: Building2,
+      classes: "bg-emerald-50 text-emerald-700 border border-emerald-200",
+    };
+  }
+  return {
+    label: "Workspace",
+    icon: File,
+    classes: "bg-v2-neutral-200 text-v2-neutral-600",
+  };
+};
+
+export default function FileRow({ file, onSelect, onDelete }: Props) {
+  const [isOpening, setIsOpening] = useState(false);
+
+  const scope = getScopeBadge(file);
+  const ext = file.name.split(".").pop()?.toUpperCase() || "FILE";
+
+  const handleDirectView = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setIsOpening(true);
+      toast.loading("Fetching document link...", { id: `view-${file.id}` });
+      const { viewUrl } = await getViewUrlApi(file.id);
+      toast.success("Opening file in new tab", { id: `view-${file.id}` });
+      window.open(viewUrl, "_blank");
+    } catch {
+      toast.error("Failed to load document view URL", { id: `view-${file.id}` });
+    } finally {
+      setIsOpening(false);
+    }
   };
 
-  let canDelete = true;
-
   return (
-    <>
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => onSelect(file)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onSelect(file);
-          }
-        }}
-        className="grid w-full gap-4 border-b border-white/[0.08] px-4 py-4 text-left transition-all duration-300 hover:bg-white/[0.03] hover:translate-x-1 focus:bg-white/[0.03] focus:outline-none last:border-b-0 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)] md:items-center md:gap-0 md:px-6 md:py-5"
-      >
-        {/* Name */}
-        <div className="min-w-0 flex items-center gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/5 border border-white/10">
+    <tr
+      onClick={() => onSelect(file)}
+      className="group cursor-pointer transition-colors hover:bg-v2-neutral-200/40"
+    >
+      {/* File Name & Icon */}
+      <td className="py-3.5 pl-4 pr-3 sm:pl-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="grid size-9 shrink-0 place-items-center rounded-xl bg-v2-neutral-200 shadow-xs group-hover:scale-105 transition-transform">
             {getCategoryIcon(file.category)}
           </div>
           <div className="min-w-0">
-            <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-              File Name
+            <p
+              className="truncate text-xs font-semibold text-v2-neutral-600 group-hover:text-v2-neutral-600 max-w-xs md:max-w-sm"
+              title={file.name}
+            >
+              {file.name}
             </p>
-            <p className="truncate font-semibold text-white text-sm" title={getDisplayValue(file.name)}>
-              {getDisplayValue(file.name)}
-            </p>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span className="font-mono text-[10px] font-bold text-v2-neutral-400">
+                .{ext}
+              </span>
+              {file.userLabel && (
+                <>
+                  <span className="text-v2-neutral-300">•</span>
+                  <span className="text-[11px] text-v2-neutral-400 truncate">
+                    {file.userLabel}
+                  </span>
+                </>
+              )}
+            </div>
           </div>
         </div>
+      </td>
 
-        {/* Category */}
-        <div className="min-w-0">
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Category
-          </p>
-          <span
-            className={`inline-flex items-center gap-1 rounded-full px-3 py-0.5 text-xs font-semibold border ${getCategoryBadgeClass(file.category)}`}
-            title={file.category}
+      {/* Category */}
+      <td className="px-3 py-3.5">
+        <span
+          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold border ${getCategoryBadge(
+            file.category
+          )}`}
+        >
+          {file.category}
+        </span>
+      </td>
+
+      {/* Scope / Classification */}
+      <td className="px-3 py-3.5 hidden md:table-cell">
+        <span
+          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium ${scope.classes}`}
+        >
+          <scope.icon className="size-3" />
+          <span>{scope.label}</span>
+        </span>
+      </td>
+
+      {/* File Size */}
+      <td className="px-3 py-3.5 hidden sm:table-cell">
+        <span className="text-xs font-mono font-medium text-v2-neutral-600">
+          {file.size}
+        </span>
+      </td>
+
+      {/* Upload Date */}
+      <td className="px-3 py-3.5 hidden lg:table-cell">
+        <span className="text-xs text-v2-neutral-400">{file.uploadedAt}</span>
+      </td>
+
+      {/* Actions */}
+      <td className="py-3.5 pl-3 pr-4 sm:pr-6 text-right">
+        <div
+          className="flex items-center justify-end gap-1.5"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Quick View Button */}
+          <button
+            type="button"
+            title="Open document in new tab"
+            disabled={isOpening}
+            onClick={handleDirectView}
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 transition-colors cursor-pointer disabled:opacity-50"
           >
-            {file.category}
-          </span>
-        </div>
-
-        {/* Size */}
-        <div className="min-w-0">
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            File Size
-          </p>
-          <div className="truncate text-white/80 text-sm" title={getDisplayValue(file.size)}>
-            {getDisplayValue(file.size)}
-          </div>
-        </div>
-
-        {/* Date */}
-        <div className="min-w-0">
-          <p className="mb-1 text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Upload Date
-          </p>
-          <div className="truncate text-white/70 text-sm" title={getDisplayValue(file.uploadedAt)}>
-            {getDisplayValue(file.uploadedAt)}
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex min-w-0 items-center justify-between gap-3 md:justify-start">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-white/40 md:hidden">
-            Actions
-          </p>
-          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-            {canDelete && (
-              <button
-                type="button"
-                aria-label="Delete file"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDelete(file.id);
-                }}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.02] text-white/60 transition-all duration-200 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
-              >
-                <Trash className="h-3.5 w-3.5" aria-hidden="true" />
-              </button>
+            {isOpening ? (
+              <LoaderCircle className="size-3.5 animate-spin" />
+            ) : (
+              <ExternalLink className="size-3.5" />
             )}
-          </div>
-        </div>
-      </div>
-    </>
-  );
-};
+          </button>
 
-export default FileRow;
+          {/* Details Button */}
+          <button
+            type="button"
+            title="View asset details"
+            onClick={() => onSelect(file)}
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:border-v2-neutral-400 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 transition-colors cursor-pointer"
+          >
+            <Eye className="size-3.5" />
+          </button>
+
+          {/* Delete Button */}
+          <button
+            type="button"
+            title="Delete file"
+            onClick={() => onDelete(file.id)}
+            className="inline-flex size-8 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-400 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 transition-colors cursor-pointer"
+          >
+            <Trash className="size-3.5" />
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}

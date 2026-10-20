@@ -198,7 +198,7 @@ export default function TicketFilterBar({
             if (val) onStatusTabChange(val as StatusTab);
           }}
           variant="subtle"
-          className="p-1"
+          className="border border-v2-neutral-300 bg-v2-neutral-100 p-1 shadow-xs"
         >
           {STATUS_TABS.map((tab) => {
             const isActive = statusTab === tab.value;
@@ -209,10 +209,10 @@ export default function TicketFilterBar({
                 key={tab.value}
                 value={tab.value}
                 size="sm"
-                className={`group relative inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium cursor-pointer select-none ${
+                className={`group relative inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium cursor-pointer select-none transition-all duration-200 ${
                   isActive
-                    ? "!bg-v2-neutral-100 !text-v2-neutral-600 shadow-xs font-semibold !border !border-v2-neutral-300/80"
-                    : "!text-v2-neutral-400 hover:!text-v2-neutral-600 hover:!bg-v2-neutral-200/70"
+                    ? "!bg-v2-neutral-600 !text-v2-neutral-100 shadow-sm font-semibold !border !border-v2-neutral-600"
+                    : "!text-v2-neutral-400 hover:!text-v2-neutral-600 hover:!bg-v2-neutral-200/60"
                 }`}
               >
                 <span
@@ -220,7 +220,7 @@ export default function TicketFilterBar({
                     tab.dotColor
                   } ${
                     isActive
-                      ? `ring-2 ${tab.activeRing} scale-110`
+                      ? `ring-2 ring-white/70 scale-110 shadow-xs`
                       : "opacity-75 group-hover:opacity-100"
                   }`}
                 />
@@ -228,8 +228,8 @@ export default function TicketFilterBar({
                 <span
                   className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold leading-none transition-colors ${
                     isActive
-                      ? "bg-v2-neutral-200 text-v2-neutral-600"
-                      : "bg-v2-neutral-300/60 text-v2-neutral-400 group-hover:bg-v2-neutral-300 group-hover:text-v2-neutral-500"
+                      ? "bg-white/20 text-v2-neutral-100"
+                      : "bg-v2-neutral-200 text-v2-neutral-500 group-hover:bg-v2-neutral-300/80 group-hover:text-v2-neutral-600"
                   }`}
                 >
                   {count}

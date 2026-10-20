@@ -1,64 +1,116 @@
 "use client";
 
 import React from "react";
-import { File } from "lucide-react";
+import { FolderOpen, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import TableHeader from "./filesTableHeader";
 import FileRow from "./filesTableRows";
 import { FileType } from "./statesCards";
 
 type Props = {
   files: FileType[];
+  isLoading?: boolean;
   onSelect: (file: FileType) => void;
-  onEdit: (file: FileType) => void;
+  onEdit?: (file: FileType) => void;
   onDelete: (id: string) => void;
-  teams?: any[];
+  onUploadClick?: () => void;
+  teams?: Array<{ id?: string; name?: string; team_id?: string; team_name?: string }>;
   userId?: string;
   role?: string;
 };
 
-const FilesTable = ({
+export default function FilesTable({
   files,
+  isLoading = false,
   onSelect,
-  onEdit,
   onDelete,
+  onUploadClick,
   teams = [],
   userId = "",
   role = "",
-}: Props) => {
+}: Props) {
   return (
-    <>
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0a0826]/40 backdrop-blur-md shadow-[0_8px_32px_0_rgba(0,0,0,0.37)]">
-        <TableHeader />
-
-        {files.length > 0 ? (
-          <div className="flex-1 overflow-y-auto">
-            {files.map((file) => (
-              <FileRow
-                key={file.id}
-                file={file}
-                onSelect={onSelect}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                teams={teams}
-                userId={userId}
-                role={role}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-white/[0.03] border border-white/[0.08] text-white/30 shadow-inner">
-              <File className="h-8 w-8" />
-            </div>
-            <h3 className="text-lg font-semibold text-white/80">No documents found for user</h3>
-            <p className="mt-2 max-w-sm text-sm text-white/40">
-              There are currently no documents or files available in your cloud registry.
-            </p>
-          </div>
-        )}
+    <div className="overflow-hidden rounded-2xl border border-v2-neutral-300 bg-v2-neutral-100 shadow-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-xs border-collapse">
+          <TableHeader />
+          <tbody className="divide-y divide-v2-neutral-200/70">
+            {isLoading ? (
+              // Loading skeleton
+              Array.from({ length: 4 }).map((_, idx) => (
+                <tr key={idx} className="animate-pulse">
+                  <td className="py-3.5 pl-4 pr-3 sm:pl-6">
+                    <div className="flex items-center gap-3">
+                      <div className="size-9 rounded-xl bg-v2-neutral-200 shrink-0" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-3.5 w-36 bg-v2-neutral-300 rounded" />
+                        <div className="h-2.5 w-20 bg-v2-neutral-200 rounded" />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-3.5">
+                    <div className="h-5 w-20 bg-v2-neutral-200 rounded-md" />
+                  </td>
+                  <td className="px-3 py-3.5 hidden md:table-cell">
+                    <div className="h-5 w-16 bg-v2-neutral-200 rounded-md" />
+                  </td>
+                  <td className="px-3 py-3.5 hidden sm:table-cell">
+                    <div className="h-3.5 w-14 bg-v2-neutral-300 rounded" />
+                  </td>
+                  <td className="px-3 py-3.5 hidden lg:table-cell">
+                    <div className="h-3.5 w-20 bg-v2-neutral-200 rounded" />
+                  </td>
+                  <td className="py-3.5 pl-3 pr-4 sm:pr-6 text-right">
+                    <div className="flex justify-end gap-1.5">
+                      <div className="size-8 rounded-lg bg-v2-neutral-200" />
+                      <div className="size-8 rounded-lg bg-v2-neutral-200" />
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : files.length > 0 ? (
+              files.map((file) => (
+                <FileRow
+                  key={file.id}
+                  file={file}
+                  onSelect={onSelect}
+                  onDelete={onDelete}
+                  teams={teams}
+                  userId={userId}
+                  role={role}
+                />
+              ))
+            ) : (
+              <tr>
+                <td colSpan={6} className="px-6 py-16 text-center">
+                  <div className="flex flex-col items-center justify-center">
+                    <div className="grid size-12 place-items-center rounded-2xl bg-v2-neutral-200 text-v2-neutral-500 mb-3 shadow-inner">
+                      <FolderOpen className="size-6" />
+                    </div>
+                    <p className="text-sm font-semibold text-v2-neutral-600">
+                      No documents found
+                    </p>
+                    <p className="mt-1 text-xs text-v2-neutral-400 max-w-sm">
+                      There are currently no assets matching your filters. Adjust your search or upload a new file.
+                    </p>
+                    {onUploadClick && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={onUploadClick}
+                        className="mt-4 gap-1.5 shadow-sm"
+                      >
+                        <Plus className="size-3.5" />
+                        <span>Upload File</span>
+                      </Button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
-    </>
+    </div>
   );
-};
-
-export default FilesTable;
+}

@@ -97,7 +97,9 @@ export default function RootLayout({
     pathName.startsWith("/settings") ||
     pathName.startsWith("/teams") ||
     pathName.startsWith("/clients") ||
-    pathName.startsWith("/projects");
+    pathName.startsWith("/projects") ||
+    pathName.startsWith("/cloud") ||
+    pathName.startsWith("/feedback");
 
   useEffect(() => {
     const patchedWindow = window as WindowWithPatchedFetch;
