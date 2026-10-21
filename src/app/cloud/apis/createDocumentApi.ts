@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export type CreateDocumentDto = {
   name: string;
   reference_type: string;
@@ -13,11 +11,11 @@ export type CreateDocumentDto = {
 export async function createDocumentApi(payload: CreateDocumentDto) {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/documents`, {
+    const response = await fetch("/api/documents", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token ?? ""}`,
       },
       body: JSON.stringify(payload),
     });

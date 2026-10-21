@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Mic, MicOff, Phone, PhoneOff, Shield, X } from "lucide-react";
 import { ConnectionState, Room, RoomEvent, Track } from "livekit-client";
 import { CallDto, CallTokenResponse } from "./callTypes";
+import { Button } from "@/components/ui/button";
 
 interface CallOverlayProps {
   call: CallDto | null;
@@ -303,32 +304,30 @@ export default function CallOverlay({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-[#030114]/95 backdrop-blur-2xl"
+          className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-v2-neutral-600/95 backdrop-blur-2xl"
         >
           <div
             ref={audioContainerRef}
             className="pointer-events-none absolute h-px w-px overflow-hidden opacity-0"
             aria-hidden="true"
           />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_#5271ff_1px,_transparent_1px)] [background-size:24px_24px] opacity-10" />
-          <div className="pointer-events-none absolute h-[480px] w-[480px] rounded-full bg-[#5271ff]/10 blur-[140px]" />
 
           <div className="relative flex w-full max-w-md flex-col items-center px-6 text-center">
             <div className="mb-8 flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-emerald-400">
               <Shield size={12} /> Encrypted voice call
             </div>
 
-            <div className="relative mb-7 flex h-36 w-36 items-center justify-center rounded-full border-2 border-white/10 bg-gradient-to-tr from-[#5271ff] to-[#3a4ec4] text-4xl font-bold text-white shadow-[0_0_40px_rgba(82,113,255,0.4)]">
+            <div className="relative mb-7 flex h-32 w-32 items-center justify-center rounded-full border-2 border-v2-neutral-400 bg-v2-neutral-500 text-3xl font-bold text-v2-neutral-100 shadow-2xl">
               {otherUser?.name?.slice(0, 2).toUpperCase() || "??"}
               <motion.div
-                animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0, 0.4] }}
+                animate={{ scale: [1, 1.25, 1], opacity: [0.5, 0, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="absolute inset-0 -z-10 rounded-full border border-[#5271ff]"
+                className="absolute inset-0 -z-10 rounded-full border border-v2-neutral-300"
               />
             </div>
 
-            <h2 className="text-2xl font-bold text-white">{otherUser?.name || "Voice call"}</h2>
-            <p className="mt-2 text-xs uppercase tracking-[0.2em] text-white/45">
+            <h2 className="text-xl font-bold text-v2-neutral-100">{otherUser?.name || "Voice call"}</h2>
+            <p className="mt-2 text-xs uppercase tracking-[0.2em] text-v2-neutral-400">
               {call.status === "active"
                 ? credentials
                   ? time
@@ -343,7 +342,7 @@ export default function CallOverlay({
             )}
 
             {call.status === "active" && (
-              <div className="mt-4 flex items-center gap-3 text-[10px] uppercase tracking-wider text-white/40">
+              <div className="mt-4 flex items-center gap-3 text-[10px] uppercase tracking-wider text-v2-neutral-400">
                 <span className={microphonePublished ? "text-emerald-400" : "text-rose-400"}>
                   Mic {microphonePublished ? "live" : "offline"}
                 </span>
@@ -355,35 +354,68 @@ export default function CallOverlay({
             )}
 
             {audioPlaybackBlocked && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 onClick={enableAudioPlayback}
-                className="mt-5 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs font-semibold text-amber-300"
+                className="mt-5 border-amber-400/30 bg-amber-400/10 text-xs font-semibold text-amber-300 hover:bg-amber-400/20"
               >
                 Enable speaker audio
-              </button>
+              </Button>
             )}
 
-            <div className="mt-12 flex items-center gap-5 rounded-2xl border border-white/10 bg-[#0c0a2d]/80 px-6 py-4 backdrop-blur-lg">
+            <div className="mt-10 flex items-center gap-5 rounded-2xl border border-v2-neutral-400 bg-v2-neutral-500/80 px-6 py-4 backdrop-blur-lg shadow-xl">
               {call.status === "ringing" && isRecipient ? (
                 <>
-                  <button onClick={onReject} className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-600 text-white" aria-label="Reject call">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={onReject}
+                    className="size-14 rounded-full bg-rose-600 text-white shadow-lg hover:bg-rose-500"
+                    aria-label="Reject call"
+                  >
                     <X size={22} />
-                  </button>
-                  <button onClick={onAccept} className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-600 text-white" aria-label="Accept call">
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    onClick={onAccept}
+                    className="size-14 rounded-full bg-emerald-600 text-white shadow-lg hover:bg-emerald-500"
+                    aria-label="Accept call"
+                  >
                     <Phone size={22} />
-                  </button>
+                  </Button>
                 </>
               ) : (
                 <>
                   {call.status === "active" && (
-                    <button onClick={toggleMute} className={`flex h-12 w-12 items-center justify-center rounded-full border ${isMuted ? "border-rose-500/40 bg-rose-500/25 text-rose-400" : "border-white/10 bg-white/5 text-white"}`} aria-label={isMuted ? "Unmute" : "Mute"}>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={toggleMute}
+                      className={`size-12 rounded-full border transition ${
+                        isMuted
+                          ? "border-rose-500/40 bg-rose-500/25 text-rose-400 hover:bg-rose-500/35"
+                          : "border-v2-neutral-300 bg-v2-neutral-500 text-v2-neutral-100 hover:bg-v2-neutral-400"
+                      }`}
+                      aria-label={isMuted ? "Unmute" : "Mute"}
+                    >
                       {isMuted ? <MicOff size={19} /> : <Mic size={19} />}
-                    </button>
+                    </Button>
                   )}
-                  <button onClick={call.status === "active" ? onEnd : onCancel} className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-600 text-white" aria-label="End call">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={call.status === "active" ? onEnd : onCancel}
+                    className="size-14 rounded-full bg-rose-600 text-white shadow-lg hover:bg-rose-500"
+                    aria-label="End call"
+                  >
                     <PhoneOff size={22} />
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

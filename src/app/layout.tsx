@@ -92,6 +92,7 @@ export default function RootLayout({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isChatbotRightBarOpen, setIsChatbotRightBarOpen] = useState(false);
   const isChatbotRoute = pathName.startsWith("/chatbot");
+  const isCollabRoute = pathName.startsWith("/collab-station");
   const usesV2WorkspaceSurface =
     pathName.startsWith("/employees") ||
     pathName.startsWith("/settings") ||
@@ -99,7 +100,8 @@ export default function RootLayout({
     pathName.startsWith("/clients") ||
     pathName.startsWith("/projects") ||
     pathName.startsWith("/cloud") ||
-    pathName.startsWith("/feedback");
+    pathName.startsWith("/feedback") ||
+    pathName.startsWith("/collab-station");
 
   useEffect(() => {
     const patchedWindow = window as WindowWithPatchedFetch;
@@ -416,7 +418,7 @@ export default function RootLayout({
                     : "bg-[#030114] p-6 lg:p-8"
                   : ""
               } ${
-                isChatbotRoute ? "overflow-hidden" : "overflow-y-auto"
+                isChatbotRoute || isCollabRoute ? "overflow-hidden" : "overflow-y-auto"
               }`}
             >
               {isLoading ? (

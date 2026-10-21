@@ -1,14 +1,12 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function deleteDocumentApi(id: string | number) {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/documents/${id}`, {
+    const response = await fetch(`/api/documents/${id}`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token ?? ""}`,
       },
     });
 

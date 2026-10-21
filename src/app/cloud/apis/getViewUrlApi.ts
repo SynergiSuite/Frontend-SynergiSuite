@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export type ViewUrlResponse = {
   viewUrl: string;
 };
@@ -9,11 +7,12 @@ export type ViewUrlResponse = {
 export async function getViewUrlApi(documentId: string): Promise<ViewUrlResponse> {
   try {
     const token = await CookieManager("get", "access-token");
-    const response = await fetch(`${requestBaseUrl}/resources/${documentId}/view-url`, {
+    const response = await fetch(`/api/resources/${documentId}/view-url`, {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token ?? ""}`,
       },
+      cache: "no-store",
     });
 
     if (!response.ok) {

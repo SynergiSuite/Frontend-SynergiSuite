@@ -1,7 +1,5 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const requestBaseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export type ChatUploadUrlResponse = {
   uploadUrl: string;
   filePath: string;
@@ -12,11 +10,11 @@ export async function getChatUploadUrlApi(
   mimeType: string
 ): Promise<ChatUploadUrlResponse> {
   const token = await CookieManager("get", "access-token");
-  const response = await fetch(`${requestBaseUrl}/resources/chat/upload-url`, {
+  const response = await fetch("/api/resources/chat/upload-url", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token ?? ""}`,
     },
     body: JSON.stringify({
       fileName,

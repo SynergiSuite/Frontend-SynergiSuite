@@ -12,11 +12,13 @@ import ChatWindow from "./ChatWindow";
 import RightSidebar from "./RightSidebar";
 import NewChatModal from "./NewChatModal";
 import LoaderCustom from "@/components/ui/loader-custom";
+import { Button } from "@/components/ui/button";
+import { Users, MessageSquarePlus } from "lucide-react";
 import { ChatChannel, Message, ChatThreadMap, Attachment } from "./types";
 import { toast } from "sonner";
 import { authHeaders, backendBaseUrl, getAccessToken, readTokenUser, TokenUser, UserId } from "./helpers/mainHelper";
 import { formatMissedCallMessage, getMissedCallPreview } from "./helpers/callHelperFunctions";
-import { formatChatTime, formatMessage, getUploadedFileUrl } from "./helpers/chatHelperFunctions";
+import { formatChatTime, formatMessage } from "./helpers/chatHelperFunctions";
 import { ChatDetailsModal, EditChatModal, DeleteChatModal, AddMemberModal } from "./popupModels";
 import { playNotificationSound as triggerGlobalSound } from "@/lib/soundUtils";
 import { getChatUploadUrlApi } from "./apis/getChatUploadUrlApi";
@@ -41,7 +43,6 @@ import {
   emitJoinMeeting,
   emitLeaveMeeting,
   emitEndMeeting,
-  subscribeMeetingSocketEvents,
 } from "../meetings/meetingSocket";
 import { useRealtime } from "@/context/RealtimeContext";
 
@@ -233,6 +234,7 @@ export default function CollabStationPage() {
     };
 
     fetchChats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -642,20 +644,36 @@ function getMeetingId(m: any): string {
 
   if (isLoading) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-[#030114]">
-        <LoaderCustom text="Establishing Secure Sync..." />
+      <div className="flex h-full w-full items-center justify-center bg-v2-neutral-600">
+        <LoaderCustom text="Syncing Collaboration Channels..." />
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="flex h-full min-h-0 flex-col overflow-hidden">
-      <div className="collab-panel-wrapper relative flex h-full min-h-0 overflow-hidden bg-[#030114] border border-white/[0.08] shadow-2xl md:rounded-3xl">
-        <div className="pointer-events-none absolute -top-32 left-1/4 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-[#5271ff]/[0.06] blur-[130px]" />
-        <div className="pointer-events-none absolute top-1/2 right-0 h-[400px] w-[400px] rounded-full bg-[#3a4ec4]/[0.06] blur-[120px]" />
-        <div className="pointer-events-none absolute bottom-0 left-1/3 h-[300px] w-[300px] rounded-full bg-[#22d3ee]/[0.04] blur-[100px]" />
+    <div ref={containerRef} className="flex h-full min-h-0 flex-col overflow-hidden text-v2-neutral-100">
+      <div className="collab-panel-wrapper relative flex h-full min-h-0 overflow-hidden bg-v2-neutral-600 border border-v2-neutral-500 shadow-2xl rounded-2xl md:rounded-3xl">
+        {/* Left Column: Channels List Navigator */}
+        <div
+          className={`${
+            activeChannelId ? "hidden md:flex" : "flex"
+          } w-full md:w-80 lg:w-88 shrink-0 h-full relative z-10 flex-col border-r border-v2-neutral-500`}
+        >
+          <RightSidebar
+            activeId={activeChannelId}
+            groups={groups}
+            recentChats={recentChats}
+            onSelectChannel={handleSelectChannel}
+            onOpenNewChat={() => setIsNewChatOpen(true)}
+          />
+        </div>
 
-        <div className="flex-1 min-w-0 h-full relative z-10">
+        {/* Right Column: Chat Window / Conversation */}
+        <div
+          className={`${
+            !activeChannelId ? "hidden md:flex" : "flex"
+          } flex-1 min-w-0 h-full relative z-10 flex-col`}
+        >
           {activeChannel ? (
             <ChatWindow
               activeChannelName={activeChannel.name}
@@ -671,23 +689,30 @@ function getMeetingId(m: any): string {
               activeGroupMeeting={activeChannelId ? groupMeetingsMap[activeChannelId] : null}
               onStartGroupMeeting={() => setIsMeetingModalOpen(true)}
               onJoinGroupMeeting={handleJoinMeetingFromChat}
+              onBackToChannels={() => setActiveChannelId("")}
             />
           ) : (
-            <div className="flex h-full flex-col items-center justify-center text-center opacity-40 select-none">
-              <p className="text-sm text-white/80">No active thread selected.</p>
-              <p className="text-xs text-white/40 mt-1">Pick a synchronization link from the right sidebar.</p>
+            <div className="flex h-full flex-col items-center justify-center text-center p-6 text-v2-neutral-400 select-none">
+              <div className="flex size-14 items-center justify-center rounded-2xl border border-v2-neutral-500 bg-v2-neutral-500/40 text-v2-neutral-300 mb-3 shadow-inner">
+                <Users className="size-7" />
+              </div>
+              <h3 className="text-base font-semibold text-v2-neutral-100">
+                No conversation selected
+              </h3>
+              <p className="text-xs text-v2-neutral-400 mt-1 max-w-sm leading-relaxed">
+                Choose a channel from the sidebar to start messaging, or create a new squad group.
+              </p>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsNewChatOpen(true)}
+                className="mt-4 gap-1.5 text-xs font-semibold cursor-pointer"
+              >
+                <MessageSquarePlus className="size-3.5" />
+                <span>Start New Thread</span>
+              </Button>
             </div>
           )}
-        </div>
-
-        <div className="hidden lg:block w-[320px] shrink-0 border-l border-white/[0.08] relative z-10">
-          <RightSidebar
-            activeId={activeChannelId}
-            groups={groups}
-            recentChats={recentChats}
-            onSelectChannel={handleSelectChannel}
-            onOpenNewChat={() => setIsNewChatOpen(true)}
-          />
         </div>
       </div>
 

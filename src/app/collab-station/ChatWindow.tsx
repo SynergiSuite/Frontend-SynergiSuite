@@ -3,10 +3,26 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Video, Paperclip, Send, X, File, Download, ArrowDown, Trash2, PhoneMissed } from "lucide-react";
+import {
+  Phone,
+  Video,
+  Paperclip,
+  Send,
+  X,
+  File,
+  Download,
+  ArrowDown,
+  Trash2,
+  PhoneMissed,
+  Info,
+  ExternalLink,
+  Users,
+  ArrowLeft,
+} from "lucide-react";
 import { Message, Attachment } from "./types";
 import { MeetingResponseDto } from "../meetings/types/meetingTypes";
-import { Users, Radio } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface ChatWindowProps {
   activeChannelName: string;
@@ -19,6 +35,7 @@ interface ChatWindowProps {
   activeGroupMeeting?: MeetingResponseDto | null;
   onStartGroupMeeting?: () => void;
   onJoinGroupMeeting?: (meeting: MeetingResponseDto) => void;
+  onBackToChannels?: () => void;
 }
 
 function ImageAttachmentPreview({
@@ -32,32 +49,37 @@ function ImageAttachmentPreview({
 
   if (!attachment.url || hasError) {
     return (
-      <div className="flex max-w-[300px] items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
-          <File size={16} />
+      <div className="flex max-w-[280px] items-center gap-2.5 rounded-xl border border-v2-neutral-500 bg-v2-neutral-500/40 p-2.5">
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-v2-neutral-500 text-v2-neutral-300">
+          <File className="size-4" />
         </div>
         <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-white">{attachment.name}</p>
-          <p className="text-[10px] text-white/40">Preview unavailable</p>
+          <p className="truncate text-xs font-medium text-v2-neutral-100">{attachment.name}</p>
+          <p className="text-[10px] text-v2-neutral-400">Preview unavailable</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative inline-block overflow-hidden rounded-xl border border-white/10 group">
+    <div className="group relative inline-block overflow-hidden rounded-xl border border-v2-neutral-400 bg-v2-neutral-500/30">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={attachment.url}
         alt={attachment.name}
-        className="block h-auto max-w-[300px] rounded-xl object-cover"
+        className="block h-auto max-w-[280px] rounded-xl object-cover cursor-pointer"
         onError={() => setHasError(true)}
+        onClick={onOpen}
       />
       <button
         type="button"
         onClick={onOpen}
-        className="absolute inset-0 flex h-full w-full cursor-pointer items-center justify-center border-none bg-[#0a0826]/40 text-white opacity-0 outline-none backdrop-blur-sm transition group-hover:opacity-100"
+        className="absolute inset-0 flex size-full cursor-pointer items-center justify-center bg-v2-neutral-600/50 text-v2-neutral-100 opacity-0 backdrop-blur-xs transition group-hover:opacity-100"
       >
-        <span className="rounded-full bg-black/50 px-3 py-1.5 text-xs font-semibold backdrop-blur-md">View Image</span>
+        <span className="flex items-center gap-1.5 rounded-full bg-v2-neutral-600/80 px-3 py-1 text-xs font-semibold backdrop-blur-md">
+          <ExternalLink className="size-3" />
+          <span>View Image</span>
+        </span>
       </button>
     </div>
   );
@@ -74,45 +96,42 @@ export default function ChatWindow({
   activeGroupMeeting,
   onStartGroupMeeting,
   onJoinGroupMeeting,
+  onBackToChannels,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState("");
   const [selectedFile, setSelectedFile] = useState<Attachment | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-scroll to bottom on message updates
+  // Auto-scroll on new message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages.length]);
 
-  // Dynamic composer box auto-sizing
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    textarea.style.height = "0px";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
-  }, [inputText]);
+  // Track scroll position to toggle "Scroll to bottom" button
+  const handleScroll = () => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 180);
+  };
 
-  // Close lightbox on Escape key
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setLightboxImage(null);
-    };
-    if (lightboxImage) {
-      window.addEventListener("keydown", handleEsc);
-    }
-    return () => window.removeEventListener("keydown", handleEsc);
-  }, [lightboxImage]);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
   const handleSend = () => {
-    const trimmed = inputText.trim();
-    if (!trimmed && !selectedFile) return;
-
-    onSendMessage(trimmed, selectedFile || undefined);
+    if (!inputText.trim() && !selectedFile) return;
+    onSendMessage(inputText.trim(), selectedFile || undefined);
     setInputText("");
     setSelectedFile(null);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -125,367 +144,444 @@ export default function ChatWindow({
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const isImage = file.type.startsWith("image/");
+    const localUrl = URL.createObjectURL(file);
+
+    const formatSize = (bytes: number) => {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
     setSelectedFile({
       name: file.name,
-      size: `${(file.size / 1024).toFixed(1)} KB`,
+      size: formatSize(file.size),
       type: isImage ? "image" : "file",
+      url: localUrl,
       file,
     });
+
     e.target.value = "";
   };
 
-  return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-transparent">
-      
-      {/* Header Panel */}
-      <div className="shrink-0 border-b border-white/[0.08] bg-[#0c0a2d]/25 px-6 py-4 flex items-center justify-between shadow-sm">
-        <button
-          type="button"
-          onClick={onOpenDetails}
-          className="flex items-center gap-3 text-left group cursor-pointer border-none bg-transparent p-1 -ml-1 rounded-xl hover:bg-white/[0.04] transition duration-200 outline-none"
-          title="Click for chat details & settings"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#5271ff]/10 border border-[#5271ff]/20 text-[#5271ff] shadow-[inset_0_0_10px_rgba(82,113,255,0.2)] font-bold text-sm relative group-hover:border-[#5271ff]/50 transition">
-            {(activeChannelName || "Unknown").startsWith("#") 
-              ? (activeChannelName || "Unknown").slice(1, 3).toUpperCase() 
-              : (activeChannelName || "Unknown").slice(0, 2).toUpperCase()}
-            {activeChannelType === "direct" && (
-              <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-[#030114] shadow-[0_0_8px_#10b981]" />
-            )}
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-white tracking-wide group-hover:text-[#5271ff] transition flex items-center gap-1.5">
-              {activeChannelName || "Unknown"}
-            </h2>
-            <p className="text-[10px] text-white/40 flex items-center gap-1">
-              {activeChannelType === "group" ? (
-                <>
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Active Workspace Connection
-                </>
-              ) : (
-                <>
-                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Secure Line Enabled
-                </>
-              )}
-            </p>
-          </div>
-        </button>
+  const isMeetingLive = activeGroupMeeting?.status === "live";
 
-        {/* Call Controls Area */}
-        <div className="flex items-center gap-3">
-          {activeChannelType === "group" && (
-            <motion.button
+  return (
+    <div className="flex h-full w-full flex-col bg-v2-neutral-600 text-v2-neutral-100">
+      {/* Channel Header Bar */}
+      <div className="shrink-0 flex items-center justify-between border-b border-v2-neutral-500 bg-v2-neutral-600/90 px-4 sm:px-5 py-3.5 backdrop-blur-md">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          {onBackToChannels && (
+            <Button
               type="button"
-              onClick={onStartGroupMeeting}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-2 rounded-xl border border-[#5271ff]/40 bg-[#5271ff]/15 px-3.5 py-2 text-xs font-bold text-white shadow-[0_0_12px_rgba(82,113,255,0.25)] transition hover:bg-[#5271ff]/25 hover:border-[#5271ff] cursor-pointer"
+              variant="ghost"
+              size="icon"
+              onClick={onBackToChannels}
+              className="md:hidden size-8.5 rounded-lg text-v2-neutral-300 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 shrink-0"
+              title="Back to channels"
             >
-              <Users size={15} className="text-[#5271ff]" />
-              <span>Meeting</span>
-            </motion.button>
+              <ArrowLeft className="size-4" />
+            </Button>
           )}
 
-          {/* Audio Call Button */}
-          <motion.button
+          <Avatar className="size-10 border border-v2-neutral-400 bg-v2-neutral-500 text-xs font-bold text-v2-neutral-100 shrink-0">
+            <AvatarFallback>
+              {(activeChannelName || "CH")
+                .split(" ")
+                .map((p) => p[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="truncate text-sm font-semibold tracking-[-0.02em] text-v2-neutral-100">
+                {activeChannelName}
+              </h3>
+              <span className="rounded-md border border-v2-neutral-500 bg-v2-neutral-500/40 px-1.5 py-0.5 text-[9px] font-medium text-v2-neutral-400 uppercase tracking-wider">
+                {activeChannelType === "group" ? "Group" : "Direct"}
+              </span>
+            </div>
+
+            <p className="truncate text-xs text-v2-neutral-400 mt-0.5">
+              {activeChannelType === "group"
+                ? "Click details to view participants and manage squad settings"
+                : "Encrypted direct discussion channel"}
+            </p>
+          </div>
+        </div>
+
+        {/* Action Controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Voice Call Button - Sleek Glass Pill with Emerald Accent */}
+          <Button
             type="button"
+            variant="outline"
+            size="sm"
             onClick={() => onInitiateCall("audio")}
-            whileHover={{ scale: 1.08, backgroundColor: "rgba(82, 113, 255, 0.15)" }}
-            whileTap={{ scale: 0.95 }}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/70 transition hover:text-white hover:border-[#5271ff]/30 shadow-sm cursor-pointer"
-            aria-label="Audio call button"
+            title="Start Voice Call"
+            className="h-8.5 rounded-xl border border-v2-neutral-400/80 bg-v2-neutral-500/50 px-3 text-xs text-v2-neutral-200 shadow-xs backdrop-blur-sm transition-all hover:border-v2-neutral-300 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 active:scale-[0.98] cursor-pointer gap-1.5"
           >
-            <Phone size={16} />
-          </motion.button>
+            <Phone className="size-3.5 text-emerald-400 shrink-0" />
+            <span className="hidden font-medium sm:inline">Call</span>
+          </Button>
+
+          {/* Video / Meeting Button - High Contrast Prominent Pill */}
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              if (activeChannelType === "group") {
+                if (isMeetingLive && activeGroupMeeting && onJoinGroupMeeting) {
+                  onJoinGroupMeeting(activeGroupMeeting);
+                } else if (onStartGroupMeeting) {
+                  onStartGroupMeeting();
+                }
+              } else {
+                onInitiateCall("video");
+              }
+            }}
+            title={
+              activeChannelType === "group"
+                ? isMeetingLive
+                  ? "Join Live Meeting"
+                  : "Start Meeting"
+                : "Start Video Call"
+            }
+            className="h-8.5 rounded-xl bg-v2-neutral-100 px-3.5 text-xs font-semibold text-v2-neutral-600 shadow-sm transition-all hover:bg-v2-neutral-200 active:scale-[0.98] cursor-pointer gap-1.5"
+          >
+            <Video className="size-3.5 shrink-0" />
+            <span>
+              {activeChannelType === "group"
+                ? isMeetingLive
+                  ? "Join Meeting"
+                  : "Meet"
+                : "Video"}
+            </span>
+          </Button>
+
+          {/* Details / Settings Button */}
+          {activeChannelType === "group" && onOpenDetails && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onOpenDetails}
+              title="Group Details"
+              className="h-8.5 rounded-xl border border-v2-neutral-400/80 bg-v2-neutral-500/40 px-2.5 text-xs text-v2-neutral-200 shadow-xs transition-all hover:border-v2-neutral-300 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 active:scale-[0.98] cursor-pointer"
+            >
+              <Info className="size-3.5" />
+              <span className="sr-only">Details</span>
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* Live Group Meeting Banner */}
-      {activeGroupMeeting && activeGroupMeeting.status === "live" && (
-        <div className="mx-6 mt-4 flex items-center justify-between rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-3 text-white backdrop-blur-md shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+      {/* Live Meeting Banner (if group call is in progress) */}
+      {isMeetingLive && (
+        <div className="flex items-center justify-between border-b border-emerald-500/30 bg-emerald-500/10 px-5 py-2.5 text-xs text-emerald-400">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex size-2.5">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex size-2.5 rounded-full bg-emerald-500" />
             </span>
-            <div>
-              <p className="text-xs font-bold text-emerald-300 flex items-center gap-2">
-                Live Group Meeting: {activeGroupMeeting.title}
-              </p>
-              <p className="text-[10px] text-white/50">
-                Hosted by {activeGroupMeeting.host?.name || "Host"} • {activeGroupMeeting.participants?.length || 1} participant(s)
-              </p>
-            </div>
+            <span className="font-semibold text-emerald-300">Live Meeting in Progress</span>
+            <span className="text-[11px] text-emerald-400/80">
+              ({activeGroupMeeting.participants?.length || 1} participant
+              {(activeGroupMeeting.participants?.length || 1) > 1 ? "s" : ""})
+            </span>
           </div>
 
-          <button
+          <Button
             type="button"
+            size="sm"
             onClick={() => onJoinGroupMeeting?.(activeGroupMeeting)}
-            className="flex items-center gap-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-extrabold text-white shadow-[0_0_15px_rgba(16,185,129,0.4)] hover:bg-emerald-400 transition cursor-pointer"
+            className="h-7 px-3 text-xs bg-emerald-500 text-v2-neutral-600 hover:bg-emerald-400 font-semibold"
           >
-            <Video size={14} />
             Join Meeting
-          </button>
+          </Button>
         </div>
       )}
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin select-text">
+      {/* Messages Timeline Feed */}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto px-5 py-6 space-y-4 custom-scrollbar relative"
+      >
         {messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-center opacity-40">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-dashed border-white/30 text-white/50">
-              <ArrowDown className="animate-bounce" size={24} />
+          <div className="flex h-full flex-col items-center justify-center text-center opacity-60">
+            <div className="flex size-12 items-center justify-center rounded-2xl border border-v2-neutral-500 bg-v2-neutral-500/40 text-v2-neutral-300 mb-3 shadow-inner">
+              <Users className="size-6" />
             </div>
-            <p className="text-sm font-medium text-white/80">Transmission stream empty.</p>
-            <p className="text-xs text-white/40 mt-1">Initiate typing to transmit new messages.</p>
+            <p className="text-sm font-semibold text-v2-neutral-200">
+              No messages in this channel yet
+            </p>
+            <p className="mt-1 text-xs text-v2-neutral-400 max-w-xs">
+              Say hello or share project updates to kick off the thread.
+            </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-6">
-            {messages.map((message) => {
-              const isMe = message.sender === "me";
-              const isMissedCall = message.id.startsWith("missed-call-") || message.senderName === "Missed Call";
+          messages.map((message) => {
+            const isMe = message.sender === "me";
+            const isMissedCall = message.id.startsWith("missed-call-");
 
-              if (isMissedCall) {
-                return (
-                  <motion.div
-                    key={message.id}
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.15 }}
-                    className="flex w-full justify-center my-2"
-                  >
-                    <div className="flex items-center gap-2.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-2 text-xs font-semibold text-rose-300 shadow-[0_0_15px_rgba(244,63,94,0.15)] backdrop-blur-md">
-                      <PhoneMissed size={15} className="text-rose-400 shrink-0" />
-                      <span>{message.text}</span>
-                      {message.time && (
-                        <span className="text-[10px] text-rose-300/70 border-l border-rose-500/30 pl-2 font-mono">
-                          {message.time}
-                        </span>
-                      )}
-                    </div>
-                  </motion.div>
-                );
-              }
-
+            if (isMissedCall) {
               return (
-                <motion.div
-                  key={message.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.15 }}
-                  className={`flex w-full group ${isMe ? "justify-end" : "justify-start"}`}
-                >
-                  <div className={`flex max-w-[80%] gap-3 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
-                    
-                    {/* User Avatar */}
-                    {!isMe && (
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-[#5271ff]/20 to-[#3a4ec4]/10 border border-white/10 text-xs font-bold text-white shadow-sm">
-                        {message.avatar || message.senderName.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-
-                    <div className="space-y-1">
-                      {/* Sender Name (Only in Group chats from others) */}
-                      {!isMe && activeChannelType === "group" && (
-                        <p className="text-[10px] font-bold text-white/35 ml-1">
-                          {message.senderName}
-                        </p>
-                      )}
-
-                      {/* Bubble Text Body */}
-                      <div
-                        className={`p-4 rounded-2xl border ${
-                          isMe
-                            ? "bg-[#5271ff]/15 text-white border-[#5271ff]/30 shadow-[0_4px_16px_rgba(82,113,255,0.15)]"
-                            : "bg-[#0a0826]/60 text-white/95 border-white/[0.08] shadow-[0_6px_20px_rgba(0,0,0,0.3)]"
-                        }`}
-                      >
-                        {/* Render Attached Files inside Message if any */}
-                        {message.attachment && (
-                          <div className="mb-3">
-                            {message.attachment.type.startsWith("image") || message.attachment.name.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
-                              <ImageAttachmentPreview
-                                attachment={message.attachment}
-                                onOpen={() => setLightboxImage(message.attachment?.url || null)}
-                              />
-                            ) : (
-                              <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff]">
-                                  <File size={16} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="truncate text-xs font-semibold text-white">
-                                    {message.attachment.name}
-                                  </p>
-                                  <p className="text-[10px] text-white/40">
-                                    {message.attachment.size}
-                                  </p>
-                                </div>
-                                <a
-                                  href={message.attachment.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-white/60 hover:bg-white/10 hover:text-white transition cursor-pointer"
-                                >
-                                  <Download size={14} />
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {message.text && (
-                          <p className="text-xs leading-5 break-words whitespace-pre-wrap">
-                            {message.text}
-                          </p>
-                        )}
-                      </div>
-                      
-                      <div className={`flex items-center mt-1 ${isMe ? "justify-end" : "justify-start"}`}>
-                        <p className={`text-[10px] text-white/40 ${
-                          isMe ? "mr-1" : "ml-1"
-                        }`}>
-                          {message.time}
-                        </p>
-                      </div>
+                <div key={message.id} className="flex justify-center my-3">
+                  <div className="inline-flex items-center gap-2.5 rounded-xl border border-rose-500/25 bg-rose-500/10 px-3.5 py-2 text-xs text-rose-300 shadow-xs">
+                    <PhoneMissed className="size-4 text-rose-400 shrink-0" />
+                    <div>
+                      <span className="font-semibold">{message.text}</span>
+                      <span className="text-[10px] text-rose-400/70 ml-2">
+                        {message.time}
+                      </span>
                     </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => onInitiateCall("audio")}
+                      className="ml-2 h-6 rounded-lg bg-rose-500/20 px-2 text-[10px] font-semibold text-rose-200 hover:bg-rose-500/30 hover:text-rose-100"
+                    >
+                      Call Back
+                    </Button>
+                  </div>
+                </div>
+              );
+            }
 
-                    {/* Delete Action Button (Visible on Hover for User's Own Messages) */}
-                    {isMe && onDeleteMessage && (
-                      <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity px-1">
-                        <button
-                          type="button"
-                          onClick={() => onDeleteMessage(message.id)}
-                          className="flex h-8 w-8 items-center justify-center rounded-full text-white/30 hover:bg-red-500/10 hover:text-red-400 transition cursor-pointer"
-                          title="Delete message"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+            return (
+              <div
+                key={message.id}
+                className={`group flex items-end gap-2.5 ${
+                  isMe ? "justify-end" : "justify-start"
+                }`}
+              >
+                {/* Them Avatar */}
+                {!isMe && (
+                  <Avatar className="size-7.5 border border-v2-neutral-400 bg-v2-neutral-500 text-[10px] font-bold text-v2-neutral-100 shrink-0 mb-1">
+                    <AvatarFallback>{message.avatar || "TH"}</AvatarFallback>
+                  </Avatar>
+                )}
+
+                {/* Message Bubble Container */}
+                <div
+                  className={`flex flex-col max-w-[82%] sm:max-w-[70%] ${
+                    isMe ? "items-end" : "items-start"
+                  }`}
+                >
+                  {/* Sender Name for Them */}
+                  {!isMe && (
+                    <span className="text-[11px] font-semibold text-v2-neutral-300 px-1 mb-1">
+                      {message.senderName}
+                    </span>
+                  )}
+
+                  {/* Bubble Content */}
+                  <div
+                    className={`relative rounded-2xl px-4 py-2.5 shadow-xs transition-colors ${
+                      isMe
+                        ? "bg-v2-neutral-100 text-v2-neutral-600 rounded-tr-xs font-medium"
+                        : "bg-v2-neutral-500/60 border border-v2-neutral-400/80 text-v2-neutral-100 rounded-tl-xs"
+                    }`}
+                  >
+                    {/* Attachment rendering */}
+                    {message.attachment && (
+                      <div className="mb-2">
+                        {message.attachment.type === "image" ? (
+                          <ImageAttachmentPreview
+                            attachment={message.attachment}
+                            onOpen={() => setLightboxImage(message.attachment?.url || null)}
+                          />
+                        ) : (
+                          <a
+                            href={message.attachment.url || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={message.attachment.name}
+                            className={`flex items-center gap-2.5 rounded-xl p-2.5 border transition ${
+                              isMe
+                                ? "border-v2-neutral-300 bg-v2-neutral-200/70 text-v2-neutral-600 hover:bg-v2-neutral-200"
+                                : "border-v2-neutral-500 bg-v2-neutral-500/40 text-v2-neutral-100 hover:bg-v2-neutral-500/70"
+                            }`}
+                          >
+                            <File className="size-4 shrink-0 text-v2-neutral-400" />
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-semibold">
+                                {message.attachment.name}
+                              </p>
+                              {message.attachment.size && (
+                                <p className="text-[10px] opacity-70">
+                                  {message.attachment.size}
+                                </p>
+                              )}
+                            </div>
+                            <Download className="size-3.5 shrink-0 opacity-70 hover:opacity-100" />
+                          </a>
+                        )}
                       </div>
                     )}
+
+                    {/* Text Message */}
+                    {message.text && (
+                      <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">
+                        {message.text}
+                      </p>
+                    )}
+
+                    {/* Timestamp */}
+                    <p
+                      className={`text-[9px] font-medium mt-1 select-none ${
+                        isMe ? "text-v2-neutral-400 text-right" : "text-v2-neutral-400"
+                      }`}
+                    >
+                      {message.time}
+                    </p>
                   </div>
-                </motion.div>
-              );
-            })}
-          </div>
+                </div>
+
+                {/* Delete Message Action Button (User's own messages on hover) */}
+                {isMe && onDeleteMessage && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteMessage(message.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-lg text-v2-neutral-400 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                    title="Delete message"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                )}
+              </div>
+            );
+          })
         )}
         <div ref={messagesEndRef} />
+
+        {/* Floating Scroll to Bottom Button */}
+        {showScrollBottom && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            onClick={scrollToBottom}
+            className="fixed bottom-24 right-8 z-30 size-9 rounded-full border-v2-neutral-400 bg-v2-neutral-600 text-v2-neutral-100 shadow-xl hover:bg-v2-neutral-500 hover:text-v2-neutral-100"
+            title="Scroll to latest messages"
+          >
+            <ArrowDown className="size-4" />
+          </Button>
+        )}
       </div>
 
-      {/* Composer Input Bar */}
-      <div className="shrink-0 border-t border-white/[0.08] bg-[#0c0a2d]/10 px-5 py-4">
-        
-        {/* Attachment preview banner */}
+      {/* Message Composer Area */}
+      <div className="shrink-0 border-t border-v2-neutral-500 bg-v2-neutral-600/90 p-4">
+        {/* Selected Attachment Preview Chip */}
         <AnimatePresence>
           {selectedFile && (
             <motion.div
               initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-              animate={{ height: "auto", opacity: 1, marginBottom: 12 }}
+              animate={{ height: "auto", opacity: 1, marginBottom: 10 }}
               exit={{ height: 0, opacity: 0, marginBottom: 0 }}
               className="overflow-hidden"
             >
-              <div className="flex items-center justify-between rounded-xl border border-[#5271ff]/30 bg-[#5271ff]/5 p-3 shadow-md backdrop-blur-md">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#5271ff]/20 text-[#5271ff] shadow-[0_0_8px_rgba(82,113,255,0.2)]">
-                    <File size={14} />
+              <div className="flex items-center justify-between rounded-xl border border-v2-neutral-400 bg-v2-neutral-500/50 p-2.5 shadow-sm">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex size-7 shrink-0 items-center justify-center rounded-lg bg-v2-neutral-500 text-v2-neutral-200">
+                    <File className="size-3.5" />
                   </div>
-                  <div>
-                    <p className="text-xs font-semibold text-white truncate max-w-xs sm:max-w-sm">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold text-v2-neutral-100 max-w-xs sm:max-w-md">
                       {selectedFile.name}
                     </p>
-                    <p className="text-[10px] text-white/40">{selectedFile.size}</p>
+                    <p className="text-[10px] text-v2-neutral-400">{selectedFile.size}</p>
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setSelectedFile(null)}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-white/50 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                  className="rounded-lg p-1 text-v2-neutral-400 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 transition cursor-pointer"
                 >
-                  <X size={12} />
+                  <X className="size-3.5" />
                 </button>
               </div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* Input Dock frame */}
-        <div className="w-full border border-white/[0.08] rounded-2xl px-4 py-2.5 flex items-end justify-between gap-3 bg-white/[0.02] focus-within:border-[#5271ff]/50 transition-all duration-300">
-          
-          <div className="flex items-center gap-3 w-full">
-            {/* Attachment Button */}
-            <motion.button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.95 }}
-              className="w-9 h-9 rounded-full bg-white/5 border border-white/10 hover:bg-[#5271ff]/10 hover:border-[#5271ff]/30 flex items-center justify-center transition-all duration-300 shrink-0 text-white/60 hover:text-white cursor-pointer"
-              aria-label="Attach documents"
-            >
-              <Paperclip size={16} />
-            </motion.button>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
+        {/* Input Dock Frame */}
+        <div className="flex items-end gap-2 rounded-2xl border border-v2-neutral-400 bg-v2-neutral-500/30 p-2 focus-within:border-v2-neutral-300 focus-within:ring-2 focus-within:ring-v2-neutral-400/20 transition-all">
+          {/* File Attachment Button */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            className="size-9 shrink-0 rounded-xl text-v2-neutral-400 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 cursor-pointer"
+            title="Attach file or image"
+          >
+            <Paperclip className="size-4" />
+          </Button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            className="hidden"
+          />
 
-            {/* Main Textarea input */}
-            <textarea
-              ref={textareaRef}
-              placeholder="Write a message..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="w-full resize-none outline-none bg-transparent text-xs text-white placeholder:text-white/30 leading-5 min-h-[24px] max-h-[120px] overflow-y-auto pt-1.5 focus:outline-none"
-            />
-          </div>
+          {/* Textarea */}
+          <textarea
+            ref={textareaRef}
+            placeholder="Type a message... (Enter to send, Shift+Enter for newline)"
+            value={inputText}
+            onChange={(e) => {
+              setInputText(e.target.value);
+              e.target.style.height = "auto";
+              e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+            }}
+            onKeyDown={handleKeyDown}
+            rows={1}
+            className="flex-1 resize-none bg-transparent py-2 text-xs leading-5 text-v2-neutral-100 placeholder:text-v2-neutral-400 outline-none max-h-28 overflow-y-auto custom-scrollbar"
+          />
 
           {/* Send Button */}
-          <motion.button
+          <Button
             type="button"
-            onClick={handleSend}
+            size="icon"
             disabled={!inputText.trim() && !selectedFile}
-            whileHover={{ scale: 1.08 }}
-            whileTap={{ scale: 0.95 }}
-            className="w-9 h-9 rounded-full bg-gradient-to-r from-[#5271ff] to-[#3a4ec4] shadow-[0_0_12px_rgba(82,113,255,0.3)] hover:shadow-[0_0_18px_rgba(82,113,255,0.5)] flex items-center justify-center shrink-0 disabled:opacity-30 disabled:pointer-events-none transition-all duration-300 cursor-pointer"
-            aria-label="Send message"
+            onClick={handleSend}
+            className="size-9 shrink-0 rounded-xl shadow-sm cursor-pointer disabled:opacity-30"
           >
-            <Send size={14} className="text-white" />
-          </motion.button>
-
+            <Send className="size-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Lightbox Modal */}
-      {typeof window !== "undefined" &&
-        lightboxImage &&
+      {/* Lightbox Image Modal */}
+      {lightboxImage &&
+        typeof document !== "undefined" &&
         createPortal(
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm"
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4 backdrop-blur-md"
+            onClick={() => setLightboxImage(null)}
+          >
+            <button
+              type="button"
               onClick={() => setLightboxImage(null)}
+              className="absolute right-5 top-5 rounded-full bg-v2-neutral-600/80 p-2 text-v2-neutral-100 hover:bg-v2-neutral-500 transition cursor-pointer"
             >
-              <button
-                className="absolute top-6 right-6 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition cursor-pointer"
-                onClick={() => setLightboxImage(null)}
-              >
-                <X size={24} />
-              </button>
-              <img
-                src={lightboxImage}
-                alt="Preview"
-                className="max-h-[90vh] max-w-full rounded-md object-contain shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </motion.div>
-          </AnimatePresence>,
+              <X className="size-5" />
+            </button>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={lightboxImage}
+              alt="Attachment enlarged"
+              className="max-h-[85vh] max-w-[90vw] rounded-2xl object-contain shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>,
           document.body
         )}
     </div>
