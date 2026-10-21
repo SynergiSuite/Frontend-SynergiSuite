@@ -833,7 +833,7 @@ function getMeetingId(m: any): string {
       {/* Create Meeting Modal */}
       {isMeetingModalOpen && (
         <CreateMeetingModal
-          groups={groups.map((g) => ({ id: g.id, name: g.name }))}
+          groups={[...groups, ...recentChats].map((g) => ({ id: g.id, name: g.name }))}
           defaultGroupId={activeChannelId}
           onClose={() => setIsMeetingModalOpen(false)}
           onSubmit={handleCreateMeetingFromChat}

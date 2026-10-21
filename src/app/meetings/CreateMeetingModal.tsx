@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion as m } from "framer-motion";
-import { X, Calendar, Video, Users, Clock } from "lucide-react";
+import { X, Calendar, Video } from "lucide-react";
 import { CreateMeetingPayload } from "./types/meetingTypes";
 import { toast } from "sonner";
 
@@ -27,19 +27,19 @@ export default function CreateMeetingModal({
   onSubmit,
 }: CreateMeetingModalProps) {
   const [mounted, setMounted] = useState(false);
-  const [groupId, setGroupId] = useState(defaultGroupId || groups[0]?.id || "");
-  const [title, setTitle] = useState("");
+  const initialGroupId = defaultGroupId || groups[0]?.id || "";
+  const initialGroup = groups.find((g) => g.id === initialGroupId);
+  const [groupId, setGroupId] = useState(initialGroupId);
+  const [title, setTitle] = useState(initialGroup ? `${initialGroup.name} Sync` : "");
   const [isInstant, setIsInstant] = useState(true);
   const [startsAtDate, setStartsAtDate] = useState("");
   const [startsAtTime, setStartsAtTime] = useState("");
-  const [selectedParticipants, setSelectedParticipants] = useState<number[]>([]);
+  const [selectedParticipants] = useState<number[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  const selectedGroup = groups.find((g) => g.id === groupId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

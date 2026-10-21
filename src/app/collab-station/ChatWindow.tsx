@@ -234,10 +234,10 @@ export default function ChatWindow({
             type="button"
             size="sm"
             onClick={() => {
-              if (activeChannelType === "group") {
-                if (isMeetingLive && activeGroupMeeting && onJoinGroupMeeting) {
-                  onJoinGroupMeeting(activeGroupMeeting);
-                } else if (onStartGroupMeeting) {
+              if (isMeetingLive && activeGroupMeeting && onJoinGroupMeeting) {
+                onJoinGroupMeeting(activeGroupMeeting);
+              } else if (activeChannelType === "group") {
+                if (onStartGroupMeeting) {
                   onStartGroupMeeting();
                 }
               } else {
@@ -245,20 +245,20 @@ export default function ChatWindow({
               }
             }}
             title={
-              activeChannelType === "group"
-                ? isMeetingLive
-                  ? "Join Live Meeting"
-                  : "Start Meeting"
+              isMeetingLive
+                ? "Join Live Meeting"
+                : activeChannelType === "group"
+                ? "Start Meeting"
                 : "Start Video Call"
             }
             className="h-8.5 rounded-xl bg-v2-neutral-100 px-3.5 text-xs font-semibold text-v2-neutral-600 shadow-sm transition-all hover:bg-v2-neutral-200 active:scale-[0.98] cursor-pointer gap-1.5"
           >
             <Video className="size-3.5 shrink-0" />
             <span>
-              {activeChannelType === "group"
-                ? isMeetingLive
-                  ? "Join Meeting"
-                  : "Meet"
+              {isMeetingLive
+                ? "Join Meeting"
+                : activeChannelType === "group"
+                ? "Meet"
                 : "Video"}
             </span>
           </Button>
