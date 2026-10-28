@@ -16,3 +16,10 @@ export const readTokenUser = (token: string): TokenUser => {
     return {};
   }
 };
+
+export const isClientRole = (): boolean => {
+  const primaryRole = CookieManager("get", "primary_role");
+  const assignedRole = CookieManager("get", "role");
+  const role = String(primaryRole || assignedRole || "").toLowerCase();
+  return role === "client";
+};

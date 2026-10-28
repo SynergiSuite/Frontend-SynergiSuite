@@ -12,11 +12,14 @@ import {
   Phone,
   RefreshCw,
   Send,
+  Share2,
   Star,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import ShareToChatDialog from "@/app/collab-station/components/ShareToChatDialog";
+import { isClientRole } from "@/app/collab-station/helpers/mainHelper";
 import {
   Select,
   SelectContent,
@@ -61,6 +64,12 @@ export default function FeedbackDetailModal({
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(isClientRole());
+  }, []);
 
   const fetchReplies = useCallback(async () => {
     if (!ticket) return;
@@ -562,12 +571,37 @@ export default function FeedbackDetailModal({
                 </span>
               </span>
 
-              <Button type="button" variant="outline" onClick={onClose}>
-                Close
-              </Button>
+              <div className="flex items-center gap-2.5">
+                {!isClient && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsShareOpen(true)}
+                    className="gap-1.5 border-v2-neutral-400 text-xs text-v2-neutral-200 hover:bg-v2-neutral-500 hover:text-v2-neutral-100"
+                  >
+                    <Share2 className="size-3.5" />
+                    Share
+                  </Button>
+                )}
+
+                <Button type="button" variant="outline" onClick={onClose}>
+                  Close
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>
+      )}
+
+      {isShareOpen && ticket && (
+        <ShareToChatDialog
+          open={isShareOpen}
+          onOpenChange={setIsShareOpen}
+          entityType="client_feedback"
+          entityId={ticket.id}
+          projectId={ticket.targetType === "project" ? ticket.typeId : undefined}
+          itemTitle={ticket.titleOfFeedback}
+        />
       )}
     </AnimatePresence>
   );

@@ -18,17 +18,20 @@ import {
   ExternalLink,
   Users,
   ArrowLeft,
+  CornerDownRight,
 } from "lucide-react";
 import { Message, Attachment } from "./types";
 import { MeetingResponseDto } from "../meetings/types/meetingTypes";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import SharedItemCard from "./components/SharedItemCard";
+import { formatMessagePreview } from "./helpers/chatHelperFunctions";
 
 interface ChatWindowProps {
   activeChannelName: string;
   activeChannelType: "group" | "direct";
   messages: Message[];
-  onSendMessage: (text: string, attachment?: Attachment) => void;
+  onSendMessage: (text: string, attachment?: Attachment, replyToId?: string) => void;
   onInitiateCall: (type: "audio" | "video") => void;
   onDeleteMessage?: (messageId: string) => void;
   onOpenDetails?: () => void;
@@ -36,6 +39,8 @@ interface ChatWindowProps {
   onStartGroupMeeting?: () => void;
   onJoinGroupMeeting?: (meeting: MeetingResponseDto) => void;
   onBackToChannels?: () => void;
+  onOpenThread?: (message: Message) => void;
+  highlightMessageId?: string | null;
 }
 
 function ImageAttachmentPreview({
@@ -97,11 +102,14 @@ export default function ChatWindow({
   onStartGroupMeeting,
   onJoinGroupMeeting,
   onBackToChannels,
+  onOpenThread,
+  highlightMessageId,
 }: ChatWindowProps) {
   const [inputText, setInputText] = useState("");
   const [selectedFile, setSelectedFile] = useState<Attachment | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [activeReplyTarget, setActiveReplyTarget] = useState<Message | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -112,6 +120,16 @@ export default function ChatWindow({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  // Scroll to highlighted message if present
+  useEffect(() => {
+    if (highlightMessageId) {
+      const el = document.getElementById(`msg-${highlightMessageId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [highlightMessageId, messages]);
 
   // Track scroll position to toggle "Scroll to bottom" button
   const handleScroll = () => {
@@ -126,9 +144,10 @@ export default function ChatWindow({
 
   const handleSend = () => {
     if (!inputText.trim() && !selectedFile) return;
-    onSendMessage(inputText.trim(), selectedFile || undefined);
+    onSendMessage(inputText.trim(), selectedFile || undefined, activeReplyTarget?.id);
     setInputText("");
     setSelectedFile(null);
+    setActiveReplyTarget(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -185,32 +204,60 @@ export default function ChatWindow({
             </Button>
           )}
 
-          <Avatar className="size-10 border border-v2-neutral-400 bg-v2-neutral-500 text-xs font-bold text-v2-neutral-100 shrink-0">
-            <AvatarFallback>
-              {(activeChannelName || "CH")
-                .split(" ")
-                .map((p) => p[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          <div
+            onClick={activeChannelType === "group" && onOpenDetails ? onOpenDetails : undefined}
+            onKeyDown={(e) => {
+              if (
+                activeChannelType === "group" &&
+                onOpenDetails &&
+                (e.key === "Enter" || e.key === " ")
+              ) {
+                e.preventDefault();
+                onOpenDetails();
+              }
+            }}
+            role={activeChannelType === "group" && onOpenDetails ? "button" : undefined}
+            tabIndex={activeChannelType === "group" && onOpenDetails ? 0 : undefined}
+            title={activeChannelType === "group" && onOpenDetails ? `Open details for ${activeChannelName}` : undefined}
+            className={`group/header-info flex items-center gap-2.5 sm:gap-3 min-w-0 select-none text-left rounded-lg p-1 -m-1 transition-all outline-none ${
+              activeChannelType === "group" && onOpenDetails
+                ? "cursor-pointer hover:bg-v2-neutral-500/40 focus-visible:ring-1 focus-visible:ring-v2-neutral-300"
+                : ""
+            }`}
+          >
+            <Avatar className={`size-10 border border-v2-neutral-400 bg-v2-neutral-500 text-xs font-bold text-v2-neutral-100 shrink-0 transition-transform ${
+              activeChannelType === "group" && onOpenDetails ? "group-hover/header-info:scale-105" : ""
+            }`}>
+              <AvatarFallback>
+                {(activeChannelName || "CH")
+                  .split(" ")
+                  .map((p) => p[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
 
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate text-sm font-semibold tracking-[-0.02em] text-v2-neutral-100">
-                {activeChannelName}
-              </h3>
-              <span className="rounded-md border border-v2-neutral-500 bg-v2-neutral-500/40 px-1.5 py-0.5 text-[9px] font-medium text-v2-neutral-400 uppercase tracking-wider">
-                {activeChannelType === "group" ? "Group" : "Direct"}
-              </span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className={`truncate text-sm font-semibold tracking-[-0.02em] text-v2-neutral-100 transition-colors ${
+                  activeChannelType === "group" && onOpenDetails ? "group-hover/header-info:text-white group-hover/header-info:underline underline-offset-2" : ""
+                }`}>
+                  {activeChannelName}
+                </h3>
+                <span className="rounded-md border border-v2-neutral-500 bg-v2-neutral-500/40 px-1.5 py-0.5 text-[9px] font-medium text-v2-neutral-400 uppercase tracking-wider">
+                  {activeChannelType === "group" ? "Group" : "Direct"}
+                </span>
+              </div>
+
+              <p className={`truncate text-xs text-v2-neutral-400 mt-0.5 transition-colors ${
+                activeChannelType === "group" && onOpenDetails ? "group-hover/header-info:text-v2-neutral-300" : ""
+              }`}>
+                {activeChannelType === "group"
+                  ? "Click to view group details & members"
+                  : "Encrypted direct discussion channel"}
+              </p>
             </div>
-
-            <p className="truncate text-xs text-v2-neutral-400 mt-0.5">
-              {activeChannelType === "group"
-                ? "Click details to view participants and manage squad settings"
-                : "Encrypted direct discussion channel"}
-            </p>
           </div>
         </div>
 
@@ -354,12 +401,15 @@ export default function ChatWindow({
               );
             }
 
+            const isSharedItem = message.type === "shared_item" || Boolean(message.sharedEntityType);
+
             return (
               <div
                 key={message.id}
-                className={`group flex items-end gap-2.5 ${
-                  isMe ? "justify-end" : "justify-start"
-                }`}
+                id={`msg-${message.id}`}
+                className={`group flex items-end gap-2.5 transition-all duration-500 ${
+                  highlightMessageId === message.id ? "bg-v2-neutral-500/20 p-2 rounded-2xl" : ""
+                } ${isMe ? "justify-end" : "justify-start"}`}
               >
                 {/* Them Avatar */}
                 {!isMe && (
@@ -368,11 +418,13 @@ export default function ChatWindow({
                   </Avatar>
                 )}
 
-                {/* Message Bubble Container */}
+                {/* Message Bubble / Card Container */}
                 <div
-                  className={`flex flex-col max-w-[82%] sm:max-w-[70%] ${
-                    isMe ? "items-end" : "items-start"
-                  }`}
+                  className={`flex flex-col ${
+                    isSharedItem
+                      ? "max-w-[92%] sm:max-w-[82%]"
+                      : "max-w-[82%] sm:max-w-[70%]"
+                  } ${isMe ? "items-end" : "items-start"}`}
                 >
                   {/* Sender Name for Them */}
                   {!isMe && (
@@ -381,67 +433,117 @@ export default function ChatWindow({
                     </span>
                   )}
 
-                  {/* Bubble Content */}
-                  <div
-                    className={`relative rounded-2xl px-4 py-2.5 shadow-xs transition-colors ${
-                      isMe
-                        ? "bg-v2-neutral-100 text-v2-neutral-600 rounded-tr-xs font-medium"
-                        : "bg-v2-neutral-500/60 border border-v2-neutral-400/80 text-v2-neutral-100 rounded-tl-xs"
-                    }`}
-                  >
-                    {/* Attachment rendering */}
-                    {message.attachment && (
-                      <div className="mb-2">
-                        {message.attachment.type === "image" ? (
-                          <ImageAttachmentPreview
-                            attachment={message.attachment}
-                            onOpen={() => setLightboxImage(message.attachment?.url || null)}
-                          />
-                        ) : (
-                          <a
-                            href={message.attachment.url || "#"}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            download={message.attachment.name}
-                            className={`flex items-center gap-2.5 rounded-xl p-2.5 border transition ${
-                              isMe
-                                ? "border-v2-neutral-300 bg-v2-neutral-200/70 text-v2-neutral-600 hover:bg-v2-neutral-200"
-                                : "border-v2-neutral-500 bg-v2-neutral-500/40 text-v2-neutral-100 hover:bg-v2-neutral-500/70"
+                  {/* Thread quote banner if replying to another message */}
+                  {message.replyToId && (
+                    <div className="mb-1 flex items-center gap-1.5 rounded-lg border border-v2-neutral-500/60 bg-v2-neutral-500/30 px-2.5 py-1 text-[10px] text-v2-neutral-300">
+                      <CornerDownRight className="size-3 text-v2-neutral-400 shrink-0" />
+                      <span className="truncate max-w-[220px]">
+                        {(() => {
+                          const parent = messages.find((m) => m.id === message.replyToId);
+                          return parent
+                            ? `Replying to ${parent.senderName}: ${formatMessagePreview(parent)}`
+                            : "Replying in thread";
+                        })()}
+                      </span>
+                    </div>
+                  )}
+
+                  {isSharedItem ? (
+                    <div className="space-y-2 w-full">
+                      <SharedItemCard
+                        message={message}
+                        isMe={isMe}
+                        onOpenThread={onOpenThread}
+                        onReply={(m) => {
+                          setActiveReplyTarget(m);
+                          textareaRef.current?.focus();
+                        }}
+                        isHighlighted={highlightMessageId === message.id}
+                      />
+
+                      {/* Optional Note Text attached to the share */}
+                      {message.text && (
+                        <div
+                          className={`rounded-2xl px-4 py-2.5 text-xs shadow-xs leading-relaxed ${
+                            isMe
+                              ? "bg-v2-neutral-100 text-v2-neutral-600 rounded-tr-xs font-medium"
+                              : "bg-v2-neutral-500/60 border border-v2-neutral-400/80 text-v2-neutral-100 rounded-tl-xs"
+                          }`}
+                        >
+                          <p className="whitespace-pre-wrap break-words">{message.text}</p>
+                          <p
+                            className={`text-[9px] font-medium mt-1 select-none ${
+                              isMe ? "text-v2-neutral-400 text-right" : "text-v2-neutral-400"
                             }`}
                           >
-                            <File className="size-4 shrink-0 text-v2-neutral-400" />
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-semibold">
-                                {message.attachment.name}
-                              </p>
-                              {message.attachment.size && (
-                                <p className="text-[10px] opacity-70">
-                                  {message.attachment.size}
-                                </p>
-                              )}
-                            </div>
-                            <Download className="size-3.5 shrink-0 opacity-70 hover:opacity-100" />
-                          </a>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Text Message */}
-                    {message.text && (
-                      <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">
-                        {message.text}
-                      </p>
-                    )}
-
-                    {/* Timestamp */}
-                    <p
-                      className={`text-[9px] font-medium mt-1 select-none ${
-                        isMe ? "text-v2-neutral-400 text-right" : "text-v2-neutral-400"
+                            {message.time}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* Regular Bubble Content */
+                    <div
+                      className={`relative rounded-2xl px-4 py-2.5 shadow-xs transition-colors ${
+                        isMe
+                          ? "bg-v2-neutral-100 text-v2-neutral-600 rounded-tr-xs font-medium"
+                          : "bg-v2-neutral-500/60 border border-v2-neutral-400/80 text-v2-neutral-100 rounded-tl-xs"
                       }`}
                     >
-                      {message.time}
-                    </p>
-                  </div>
+                      {/* Attachment rendering */}
+                      {message.attachment && (
+                        <div className="mb-2">
+                          {message.attachment.type === "image" ? (
+                            <ImageAttachmentPreview
+                              attachment={message.attachment}
+                              onOpen={() => setLightboxImage(message.attachment?.url || null)}
+                            />
+                          ) : (
+                            <a
+                              href={message.attachment.url || "#"}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download={message.attachment.name}
+                              className={`flex items-center gap-2.5 rounded-xl p-2.5 border transition ${
+                                isMe
+                                  ? "border-v2-neutral-300 bg-v2-neutral-200/70 text-v2-neutral-600 hover:bg-v2-neutral-200"
+                                  : "border-v2-neutral-500 bg-v2-neutral-500/40 text-v2-neutral-100 hover:bg-v2-neutral-500/70"
+                              }`}
+                            >
+                              <File className="size-4 shrink-0 text-v2-neutral-400" />
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-xs font-semibold">
+                                  {message.attachment.name}
+                                </p>
+                                {message.attachment.size && (
+                                  <p className="text-[10px] opacity-70">
+                                    {message.attachment.size}
+                                  </p>
+                                )}
+                              </div>
+                              <Download className="size-3.5 shrink-0 opacity-70 hover:opacity-100" />
+                            </a>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Text Message */}
+                      {message.text && (
+                        <p className="text-xs leading-relaxed whitespace-pre-wrap break-words">
+                          {message.text}
+                        </p>
+                      )}
+
+                      {/* Timestamp */}
+                      <p
+                        className={`text-[9px] font-medium mt-1 select-none ${
+                          isMe ? "text-v2-neutral-400 text-right" : "text-v2-neutral-400"
+                        }`}
+                      >
+                        {message.time}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Delete Message Action Button (User's own messages on hover) */}
@@ -478,6 +580,29 @@ export default function ChatWindow({
 
       {/* Message Composer Area */}
       <div className="shrink-0 border-t border-v2-neutral-500 bg-v2-neutral-600/90 p-4">
+        {/* Active Reply Banner */}
+        {activeReplyTarget && (
+          <div className="mb-2.5 flex items-center justify-between rounded-xl border border-v2-neutral-400 bg-v2-neutral-500/50 px-3 py-2 text-xs shadow-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <CornerDownRight className="size-3.5 text-v2-neutral-300 shrink-0" />
+              <div className="min-w-0">
+                <span className="font-semibold text-v2-neutral-200">
+                  Replying to {activeReplyTarget.senderName}
+                </span>
+                <p className="text-[11px] text-v2-neutral-400 truncate">
+                  {formatMessagePreview(activeReplyTarget)}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveReplyTarget(null)}
+              className="rounded-lg p-1 text-v2-neutral-400 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 transition cursor-pointer"
+            >
+              <X className="size-3.5" />
+            </button>
+          </div>
+        )}
         {/* Selected Attachment Preview Chip */}
         <AnimatePresence>
           {selectedFile && (

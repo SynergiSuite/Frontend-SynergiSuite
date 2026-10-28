@@ -18,10 +18,11 @@ import { ChatChannel, Message, ChatThreadMap, Attachment } from "./types";
 import { toast } from "sonner";
 import { authHeaders, backendBaseUrl, getAccessToken, readTokenUser, TokenUser, UserId } from "./helpers/mainHelper";
 import { formatMissedCallMessage, getMissedCallPreview } from "./helpers/callHelperFunctions";
-import { formatChatTime, formatMessage } from "./helpers/chatHelperFunctions";
+import { formatChatTime, formatMessage, formatMessagePreview, RawChatMessage } from "./helpers/chatHelperFunctions";
 import { ChatDetailsModal, EditChatModal, DeleteChatModal, AddMemberModal } from "./popupModels";
 import { playNotificationSound as triggerGlobalSound } from "@/lib/soundUtils";
 import { getChatUploadUrlApi } from "./apis/getChatUploadUrlApi";
+import SharedItemThreadPanel from "./components/SharedItemThreadPanel";
 import CreateMeetingModal from "../meetings/CreateMeetingModal";
 import MeetingRoomModal from "../meetings/MeetingRoomModal";
 import {
@@ -52,9 +53,11 @@ import { useRealtime } from "@/context/RealtimeContext";
 export default function CollabStationPage() {
   const searchParams = useSearchParams();
   const chatIdParam = searchParams?.get("chatId");
+  const highlightMessageIdParam = searchParams?.get("highlightMessageId");
   const rt = useRealtime();
 
   const [activeChannelId, setActiveChannelId] = useState("");
+  const [activeThreadMessage, setActiveThreadMessage] = useState<Message | null>(null);
   const [groups, setGroups] = useState<ChatChannel[]>([]);
   const [recentChats, setRecentChats] = useState<ChatChannel[]>([]);
   const [threads, setThreads] = useState<ChatThreadMap>({});
@@ -82,6 +85,8 @@ export default function CollabStationPage() {
   const currentUserRef = useRef<TokenUser>({});
   const currentUserIdRef = useRef<UserId | undefined>(undefined);
   const chatIdsRef = useRef<string[]>([]);
+  const activeChannelIdRef = useRef(activeChannelId);
+  activeChannelIdRef.current = activeChannelId;
 
   const identifyCurrentUser = () => {
     const token = getAccessToken();
@@ -167,7 +172,15 @@ export default function CollabStationPage() {
             const displayUser = otherMember?.user;
             const missedCalls = Array.isArray(c.missedCalls) ? c.missedCalls : [];
             const latestMissedCall = missedCalls[0];
-            const latestMessageText = c.latestMessage?.m_text;
+            const latestMessageText = c.latestMessage
+              ? formatMessagePreview({
+                  type: c.latestMessage.m_type || c.latestMessage.type,
+                  sharedEntityType: c.latestMessage.sharedEntityType,
+                  sharedEntitySnapshot: c.latestMessage.sharedEntitySnapshot,
+                  text: c.latestMessage.m_text || c.latestMessage.text,
+                  m_text: c.latestMessage.m_text,
+                })
+              : "";
             const latestMessageTime = c.latestMessage?.m_createdAt;
 
             return {
@@ -257,7 +270,7 @@ export default function CollabStationPage() {
         const messages = Array.isArray(data) ? data : data.messages || [];
         setThreads((prev) => ({
           ...prev,
-          [activeChannelId]: messages.map((message: any) => formatMessage(message, currentUserRef.current)),
+          [activeChannelId]: messages.map((message: RawChatMessage) => formatMessage(message, currentUserRef.current)),
         }));
       })
       .catch((err) => console.log("Failed to load messages", err));
@@ -268,20 +281,24 @@ export default function CollabStationPage() {
   }, [activeChannelId]);
 
   useEffect(() => {
-    const receiveMessage = (message: any) => {
-      const roomId = message.groupId;
+    const receiveMessage = (message: RawChatMessage) => {
+      const roomId = message.groupId || activeChannelIdRef.current;
+      if (!roomId) return;
+
       const formatted = formatMessage(message, currentUserRef.current);
       if (formatted.sender !== "me") {
         triggerGlobalSound();
       }
 
       setThreads((prev) => {
-        const roomThreads = prev[roomId] || [];
+        const roomThreads: Message[] = prev[roomId] || [];
 
-        // Find matching temporary message by text or attachment name — if
-        // found, this incoming message is actually our own echoing back.
-        const tempIndexToRemove = roomThreads.findIndex((m) => {
+        // Find matching temporary message by text or attachment name or shared item ID
+        const tempIndexToRemove = roomThreads.findIndex((m: Message) => {
           if (!m.id.startsWith("temp-")) return false;
+          if (formatted.type === "shared_item" && m.sharedEntityId && formatted.sharedEntityId) {
+            return m.sharedEntityId === formatted.sharedEntityId;
+          }
           const textMatch = m.text && formatted.text && m.text === formatted.text;
           const attachmentMatch =
             m.attachment?.name && formatted.attachment?.name && m.attachment.name === formatted.attachment.name;
@@ -292,13 +309,60 @@ export default function CollabStationPage() {
           formatted.sender = "me";
         }
 
-        const newThreads = roomThreads.filter((item, idx) => item.id !== formatted.id && idx !== tempIndexToRemove);
+        const newThreads = roomThreads.filter(
+          (item: Message, idx: number) => item.id !== formatted.id && idx !== tempIndexToRemove
+        );
+
+        // Update reply count on parent message if this is a thread reply
+        const updatedWithCount = newThreads.map((item: Message) => {
+          if (formatted.replyToId && item.id === formatted.replyToId) {
+            return {
+              ...item,
+              repliesCount: (item.repliesCount || 0) + 1,
+            };
+          }
+          return item;
+        });
 
         return {
           ...prev,
-          [roomId]: [...newThreads, formatted],
+          [roomId]: [...updatedWithCount, formatted],
         };
       });
+
+      // Update lastMessage preview on channel list
+      const previewText = formatMessagePreview(formatted);
+      const senderPrefix = formatted.sender === "me" ? "Me: " : "";
+      setGroups((prev) =>
+        prev.map((g) =>
+          g.id === roomId
+            ? {
+                ...g,
+                lastMessage: `${senderPrefix}${previewText}`,
+                time: formatted.time,
+                unreadCount:
+                  g.id === activeChannelIdRef.current
+                    ? 0
+                    : (g.unreadCount || 0) + (formatted.sender === "me" ? 0 : 1),
+              }
+            : g
+        )
+      );
+      setRecentChats((prev) =>
+        prev.map((c) =>
+          c.id === roomId
+            ? {
+                ...c,
+                lastMessage: `${senderPrefix}${previewText}`,
+                time: formatted.time,
+                unreadCount:
+                  c.id === activeChannelIdRef.current
+                    ? 0
+                    : (c.unreadCount || 0) + (formatted.sender === "me" ? 0 : 1),
+              }
+            : c
+        )
+      );
     };
 
     const handleMessageDeleted = (data: { messageId: string; groupId: string }) => {
@@ -335,7 +399,7 @@ export default function CollabStationPage() {
     );
   };
 
-  const handleSendMessage = async (text: string, attachment?: Attachment) => {
+  const handleSendMessage = async (text: string, attachment?: Attachment, replyToId?: string) => {
     if (!activeChannel) return;
 
     try {
@@ -355,6 +419,7 @@ export default function CollabStationPage() {
         text,
         time: timeString,
         avatar: "",
+        replyToId,
         attachment: attachment
           ? { name: attachment.name, size: attachment.size, type: attachment.type, url: previewUrl || "" }
           : undefined,
@@ -415,12 +480,14 @@ export default function CollabStationPage() {
           fileName: attachment.file.name,
           mimeType: attachment.file.type || "application/octet-stream",
           fileSize: attachment.file.size,
+          replyToId,
         });
       } else {
         socket.emit("message:send", {
           groupId: activeChannel.id,
           text,
           type: "text",
+          replyToId,
         });
       }
 
@@ -668,29 +735,49 @@ function getMeetingId(m: any): string {
           />
         </div>
 
-        {/* Right Column: Chat Window / Conversation */}
+        {/* Right Column: Chat Window / Conversation & Thread Panel */}
         <div
           className={`${
             !activeChannelId ? "hidden md:flex" : "flex"
-          } flex-1 min-w-0 h-full relative z-10 flex-col`}
+          } flex-1 min-w-0 h-full relative z-10 flex-row overflow-hidden`}
         >
           {activeChannel ? (
-            <ChatWindow
-              activeChannelName={activeChannel.name}
-              activeChannelType={activeChannel.type}
-              messages={visibleMessages}
-              onSendMessage={handleSendMessage}
-              onInitiateCall={(type) => {
-                if (type === "audio") void handleStartCall();
-                else setIsMeetingModalOpen(true);
-              }}
-              onDeleteMessage={handleDeleteMessage}
-              onOpenDetails={() => setIsDetailsModalOpen(true)}
-              activeGroupMeeting={activeChannelId ? groupMeetingsMap[activeChannelId] : null}
-              onStartGroupMeeting={() => setIsMeetingModalOpen(true)}
-              onJoinGroupMeeting={handleJoinMeetingFromChat}
-              onBackToChannels={() => setActiveChannelId("")}
-            />
+            <>
+              <div className="flex-1 min-w-0 h-full">
+                <ChatWindow
+                  activeChannelName={activeChannel.name}
+                  activeChannelType={activeChannel.type}
+                  messages={visibleMessages}
+                  onSendMessage={handleSendMessage}
+                  onInitiateCall={(type) => {
+                    if (type === "audio") void handleStartCall();
+                    else setIsMeetingModalOpen(true);
+                  }}
+                  onDeleteMessage={handleDeleteMessage}
+                  onOpenDetails={() => setIsDetailsModalOpen(true)}
+                  activeGroupMeeting={activeChannelId ? groupMeetingsMap[activeChannelId] : null}
+                  onStartGroupMeeting={() => setIsMeetingModalOpen(true)}
+                  onJoinGroupMeeting={handleJoinMeetingFromChat}
+                  onBackToChannels={() => setActiveChannelId("")}
+                  onOpenThread={(msg) => setActiveThreadMessage(msg)}
+                  highlightMessageId={highlightMessageIdParam}
+                />
+              </div>
+
+              {activeThreadMessage && (
+                <SharedItemThreadPanel
+                  open={Boolean(activeThreadMessage)}
+                  onClose={() => setActiveThreadMessage(null)}
+                  parentMessage={activeThreadMessage}
+                  channelMessages={visibleMessages}
+                  groupId={activeChannel.id}
+                  currentUser={currentUserRef.current}
+                  onSendReply={async (replyText, replyToId) => {
+                    await handleSendMessage(replyText, undefined, replyToId);
+                  }}
+                />
+              )}
+            </>
           ) : (
             <div className="flex h-full flex-col items-center justify-center text-center p-6 text-v2-neutral-400 select-none">
               <div className="flex size-14 items-center justify-center rounded-2xl border border-v2-neutral-500 bg-v2-neutral-500/40 text-v2-neutral-300 mb-3 shadow-inner">

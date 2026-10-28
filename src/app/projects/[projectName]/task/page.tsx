@@ -2,7 +2,7 @@
 
 import React, { useEffect, useLayoutEffect, useState, useRef, useMemo } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { gsap } from "gsap";
 import {
   AlertCircle,
@@ -10,12 +10,10 @@ import {
   ChevronLeft,
   Clock3,
   FolderKanban,
-  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AnimatePresence } from "framer-motion";
 
-import { Button } from "@/components/ui/button";
 import LoaderCustom from "@/components/ui/loader-custom";
 import { CookieManager } from "@/lib/cookieManager";
 import { Team } from "@/app/projects/schemas/team";
@@ -38,6 +36,7 @@ import TaskList from "./taskList";
 import TaskGrid from "./taskgrid";
 import CalendarWidget from "./calendar";
 import NewTaskModal, { type NewTaskPayload } from "./createModal";
+import TaskDetailModal from "./taskDetailModal";
 import { TaskViewEditPayload } from "./viewAndEdit";
 import {
   extractTeamMembers,
@@ -61,7 +60,11 @@ export default function TaskPage() {
   const [projectId, setProjectId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [role, setRole] = useState("");
+  const [deepLinkedTask, setDeepLinkedTask] = useState<Task | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const searchParams = useSearchParams();
+  const taskIdParam = searchParams?.get("taskId");
 
   const rawProjectName = useParams().projectName as string;
   const projectName = decodeURIComponent(rawProjectName || "");
@@ -77,6 +80,17 @@ export default function TaskPage() {
       toast.error("Failed to fetch tasks: " + error);
     }
   };
+
+  useEffect(() => {
+    if (taskIdParam && tasks.length > 0 && !deepLinkedTask) {
+      const match = tasks.find((t) => String(t.id) === String(taskIdParam));
+      if (match) {
+        setDeepLinkedTask(match);
+      } else {
+        toast.error("You don't have access to this item");
+      }
+    }
+  }, [taskIdParam, tasks, deepLinkedTask]);
 
   useEffect(() => {
     setRole(
@@ -628,6 +642,19 @@ export default function TaskPage() {
               />
             )}
           </AnimatePresence>
+
+          {/* Deep linked task detail modal */}
+          {deepLinkedTask && (
+            <TaskDetailModal
+              task={deepLinkedTask}
+              canEdit={canEditTasks}
+              projectId={projectId}
+              onClose={() => setDeepLinkedTask(null)}
+              onEdit={() => {
+                setDeepLinkedTask(null);
+              }}
+            />
+          )}
         </div>
       )}
     </>

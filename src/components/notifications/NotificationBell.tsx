@@ -69,10 +69,14 @@ function getNotificationRedirectUrl(notification: AppNotification): string | nul
     notification.type === "message_received" ||
     notification.type === "group_member_added" ||
     notification.type === "missed_call" ||
+    data.type === "shared_item" ||
+    data.sharedEntityType ||
     channelId
   ) {
     if (channelId) {
-      return `/collab-station?chatId=${encodeURIComponent(String(channelId))}`;
+      const highlightParam =
+        data.messageId || data.id ? `&highlightMessageId=${encodeURIComponent(String(data.messageId || data.id))}` : "";
+      return `/collab-station?chatId=${encodeURIComponent(String(channelId))}${highlightParam}`;
     }
     return "/collab-station";
   }
@@ -130,6 +134,7 @@ export default function NotificationBell() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const seenIdsRef = useRef(new Set<string>());
+  const openNotificationRef = useRef<((notification: AppNotification) => void) | null>(null);
 
   const loadNotifications = useCallback(async (cursor?: string) => {
     if (cursor) setIsLoadingMore(true);
@@ -184,16 +189,32 @@ export default function NotificationBell() {
         if (!isSubscribed) return;
         if (seenIdsRef.current.has(notification.id)) return;
         seenIdsRef.current.add(notification.id);
-        setNotifications((current) => [notification, ...current]);
+        let bodyText = notification.body;
+        if (!bodyText && (notification.data?.type === "shared_item" || notification.data?.sharedEntityType)) {
+          const data = notification.data as Record<string, unknown>;
+          const entityLabel =
+            data.sharedEntityType === "client_feedback"
+              ? "feedback"
+              : String(data.sharedEntityType || "item");
+          const snapshot = data.snapshot as { title?: string } | undefined;
+          const title = snapshot?.title || String(data.title || "an item");
+          bodyText = `Shared a ${entityLabel}: ${title}`;
+        }
+
+        const normalizedNotification = bodyText !== notification.body
+          ? { ...notification, body: bodyText }
+          : notification;
+
+        setNotifications((current) => [normalizedNotification, ...current]);
         if (!notification.isRead) {
           setUnreadCount((count) => count + 1);
         }
         playNotificationSound();
         toast(notification.title, {
-          description: notification.body || undefined,
+          description: bodyText || undefined,
           action: {
             label: "View",
-            onClick: () => openNotification(notification),
+            onClick: () => openNotificationRef.current?.(normalizedNotification),
           },
         });
       };
@@ -237,6 +258,7 @@ export default function NotificationBell() {
       router.push(targetUrl);
     }
   };
+  openNotificationRef.current = openNotification;
 
   const markAllRead = async () => {
     const hadUnread = unreadCount > 0;

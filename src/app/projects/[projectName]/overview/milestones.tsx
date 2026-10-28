@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Calendar,
   CheckCircle2,
   Clock,
   Flag,
   Pencil,
+  Share2,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -18,8 +19,11 @@ import { Milestone, MilestoneUpdate } from "../schemas/milestone";
 import { Task } from "../task/schemas/task";
 import DeleteMilestoneModal from "./deleteModal";
 import MilestoneEditModal from "./milestoneEditModal";
+import ShareToChatDialog from "@/app/collab-station/components/ShareToChatDialog";
+import { isClientRole } from "@/app/collab-station/helpers/mainHelper";
 
 type MilestonesProps = {
+  projectId?: string;
   milestones: Milestone[];
   availableTasks: Task[];
   canManageMilestones: boolean;
@@ -45,6 +49,7 @@ const getMonthsRemaining = (dateValue: string) => {
 };
 
 export default function Milestones({
+  projectId,
   milestones,
   availableTasks,
   canManageMilestones,
@@ -58,6 +63,12 @@ export default function Milestones({
   const [deleteMilestoneId, setDeleteMilestoneId] = useState<string | null>(
     null
   );
+  const [shareMilestone, setShareMilestone] = useState<Milestone | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(isClientRole());
+  }, []);
 
   const openEditModal = (milestone: Milestone) => {
     if (!canManageMilestones) return;
@@ -202,28 +213,41 @@ export default function Milestones({
                       </div>
 
                       {/* Actions */}
-                      {canManageMilestones && (
-                        <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!isClient && (
                           <button
                             type="button"
-                            aria-label="Edit milestone"
-                            onClick={() => openEditModal(milestone)}
+                            aria-label="Share milestone"
+                            title="Share to Collab Station"
+                            onClick={() => setShareMilestone(milestone)}
                             className="inline-flex size-7 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 transition-colors"
                           >
-                            <Pencil className="size-3.5" />
+                            <Share2 className="size-3.5" />
                           </button>
-                          <button
-                            type="button"
-                            aria-label="Delete milestone"
-                            onClick={() =>
-                              setDeleteMilestoneId(milestone.id)
-                            }
-                            className="inline-flex size-7 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </div>
-                      )}
+                        )}
+                        {canManageMilestones && (
+                          <>
+                            <button
+                              type="button"
+                              aria-label="Edit milestone"
+                              onClick={() => openEditModal(milestone)}
+                              className="inline-flex size-7 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:bg-v2-neutral-200 hover:text-v2-neutral-600 transition-colors"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              aria-label="Delete milestone"
+                              onClick={() =>
+                                setDeleteMilestoneId(milestone.id)
+                              }
+                              className="inline-flex size-7 items-center justify-center rounded-lg border border-v2-neutral-300 bg-v2-neutral-100 text-v2-neutral-500 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </div>
 
                     {/* Progress */}
@@ -316,7 +340,7 @@ export default function Milestones({
           milestoneId={activeMilestone.id}
           initialName={activeMilestone.name}
           initialEndDate={activeMilestone.end_date}
-          initialTaskIds={activeMilestone.tasks?.map((task) => task.id) || []}
+          initialTaskIds={activeMilestone.tasks?.map((task: Task) => task.id) || []}
           availableTasks={availableTasks}
           isSubmitting={isSubmittingEdit}
         />
@@ -333,6 +357,19 @@ export default function Milestones({
             }
           }}
           onConfirm={handleDeleteConfirm}
+        />
+      )}
+
+      {shareMilestone && (
+        <ShareToChatDialog
+          open={Boolean(shareMilestone)}
+          onOpenChange={(open) => {
+            if (!open) setShareMilestone(null);
+          }}
+          entityType="milestone"
+          entityId={shareMilestone.id}
+          projectId={projectId}
+          itemTitle={shareMilestone.name}
         />
       )}
     </div>

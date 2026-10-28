@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import { gsap } from "gsap";
 import { AlertCircle, Plus, RefreshCw } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { CookieManager } from "@/lib/cookieManager";
@@ -168,12 +169,32 @@ export default function ClientTicketsPage() {
     undefined
   );
 
+  // SearchParams & Deep Linking
+  const searchParams = useSearchParams();
+  const ticketIdParam = searchParams?.get("ticketId") || searchParams?.get("feedbackId");
+
   // Modals & Selection
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteTicketId, setDeleteTicketId] = useState<string | number | null>(
     null
   );
+
+  // Auto-open ticket from shared link
+  useEffect(() => {
+    if (ticketIdParam && tickets.length > 0 && !selectedTicket) {
+      const match = tickets.find(
+        (t) =>
+          String(t.id) === String(ticketIdParam) ||
+          String(t.rawId) === String(ticketIdParam)
+      );
+      if (match) {
+        setSelectedTicket(match);
+      } else {
+        toast.error("You don't have access to this item");
+      }
+    }
+  }, [ticketIdParam, tickets, selectedTicket]);
 
   // Debounced search
   useEffect(() => {

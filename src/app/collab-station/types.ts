@@ -23,6 +23,39 @@ export interface Attachment {
   file?: File;
 }
 
+export type MessageType = "text" | "image" | "file" | "shared_item";
+
+export type SharedEntityType = "task" | "milestone" | "client_feedback";
+
+export interface SharedItemSnapshot {
+  title: string;
+  projectId: string;
+  projectName?: string;
+  status?: string;
+  priority?: string;
+  dueDate?: string;
+  targetType?: string;
+}
+
+export interface ShareMessagePayload {
+  groupId: string;
+  entityType: SharedEntityType;
+  entityId: string;
+  text?: string;
+}
+
+export interface CollabGroup {
+  id: string;
+  name: string;
+  type: "group" | "direct";
+  groupType?: "team" | "project" | "custom";
+  projectId?: string;
+  projectName?: string;
+  membersCount?: number;
+  avatar?: string;
+  description?: string;
+}
+
 export interface Message {
   id: string;
   sender: "me" | "them";
@@ -31,6 +64,14 @@ export interface Message {
   time: string;
   avatar?: string;
   attachment?: Attachment;
+  type?: MessageType;
+  sharedEntityType?: SharedEntityType;
+  sharedEntityId?: string;
+  sharedEntitySnapshot?: SharedItemSnapshot;
+  replyToId?: string;
+  repliesCount?: number;
+  createdAt?: string;
+  groupId?: string;
 }
 
 export interface ChatThreadMap {
@@ -38,3 +79,4 @@ export interface ChatThreadMap {
 }
 
 export type CallType = "audio" | "video" | null;
+

@@ -5,6 +5,7 @@ import {
   Calendar,
   Edit3,
   Flag,
+  Share2,
   User,
   UserX,
   Users,
@@ -26,10 +27,13 @@ import {
   isDueToday,
   isOverdue,
 } from "./task-utils";
+import ShareToChatDialog from "@/app/collab-station/components/ShareToChatDialog";
+import { isClientRole } from "@/app/collab-station/helpers/mainHelper";
 
 type TaskDetailModalProps = {
   task: Task;
   canEdit: boolean;
+  projectId?: string;
   onClose: () => void;
   onEdit: () => void;
 };
@@ -37,12 +41,21 @@ type TaskDetailModalProps = {
 export default function TaskDetailModal({
   task,
   canEdit,
+  projectId,
   onClose,
   onEdit,
 }: TaskDetailModalProps) {
+  const [isShareOpen, setIsShareOpen] = React.useState(false);
+  const [isClient, setIsClient] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsClient(isClientRole());
+  }, []);
+
   const statusCfg = getStatusConfig(task.status);
   const priorityCfg = getPriorityConfig(task.priority);
   const overdue = isOverdue(task.due_date, task.status);
+
   const dueToday = isDueToday(task.due_date);
   const primaryTeam = task.teams && task.teams.length > 0 ? task.teams[0] : null;
 
@@ -173,6 +186,19 @@ export default function TaskDetailModal({
           >
             Close
           </Button>
+
+          {!isClient && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIsShareOpen(true)}
+              className="gap-2 border-v2-neutral-300 text-v2-neutral-600 hover:bg-v2-neutral-200"
+            >
+              <Share2 className="size-4" />
+              Share
+            </Button>
+          )}
+
           {canEdit && (
             <Button
               type="button"
@@ -185,6 +211,21 @@ export default function TaskDetailModal({
           )}
         </DialogFooter>
       </DialogContent>
+
+      {isShareOpen && (
+        <ShareToChatDialog
+          open={isShareOpen}
+          onOpenChange={setIsShareOpen}
+          entityType="task"
+          entityId={task.id}
+          projectId={
+            projectId ||
+            (task as unknown as { projectId?: string; project_id?: string }).projectId ||
+            (task as unknown as { projectId?: string; project_id?: string }).project_id
+          }
+          itemTitle={task.title}
+        />
+      )}
     </Dialog>
   );
 }

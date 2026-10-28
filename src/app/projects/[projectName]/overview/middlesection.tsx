@@ -69,6 +69,7 @@ export default function MiddleSection({
   return (
     <div className="w-full min-w-0">
       <Milestones
+        projectId={projectId}
         milestones={milestones}
         availableTasks={availableTasks}
         canManageMilestones={canManageMilestones}
