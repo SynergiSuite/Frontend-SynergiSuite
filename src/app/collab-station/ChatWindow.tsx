@@ -205,28 +205,24 @@ export default function ChatWindow({
           )}
 
           <div
-            onClick={activeChannelType === "group" && onOpenDetails ? onOpenDetails : undefined}
+            onClick={onOpenDetails}
             onKeyDown={(e) => {
-              if (
-                activeChannelType === "group" &&
-                onOpenDetails &&
-                (e.key === "Enter" || e.key === " ")
-              ) {
+              if (onOpenDetails && (e.key === "Enter" || e.key === " ")) {
                 e.preventDefault();
                 onOpenDetails();
               }
             }}
-            role={activeChannelType === "group" && onOpenDetails ? "button" : undefined}
-            tabIndex={activeChannelType === "group" && onOpenDetails ? 0 : undefined}
-            title={activeChannelType === "group" && onOpenDetails ? `Open details for ${activeChannelName}` : undefined}
-            className={`group/header-info flex items-center gap-2.5 sm:gap-3 min-w-0 select-none text-left rounded-lg p-1 -m-1 transition-all outline-none ${
-              activeChannelType === "group" && onOpenDetails
+            role={onOpenDetails ? "button" : undefined}
+            tabIndex={onOpenDetails ? 0 : undefined}
+            title={onOpenDetails ? `Open details for ${activeChannelName}` : undefined}
+            className={`group/header-info flex items-center gap-2.5 sm:gap-3 min-w-0 select-none text-left rounded-xl p-1.5 -m-1.5 transition-all outline-none ${
+              onOpenDetails
                 ? "cursor-pointer hover:bg-v2-neutral-500/40 focus-visible:ring-1 focus-visible:ring-v2-neutral-300"
                 : ""
             }`}
           >
             <Avatar className={`size-10 border border-v2-neutral-400 bg-v2-neutral-500 text-xs font-bold text-v2-neutral-100 shrink-0 transition-transform ${
-              activeChannelType === "group" && onOpenDetails ? "group-hover/header-info:scale-105" : ""
+              onOpenDetails ? "group-hover/header-info:scale-105" : ""
             }`}>
               <AvatarFallback>
                 {(activeChannelName || "CH")
@@ -241,7 +237,7 @@ export default function ChatWindow({
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className={`truncate text-sm font-semibold tracking-[-0.02em] text-v2-neutral-100 transition-colors ${
-                  activeChannelType === "group" && onOpenDetails ? "group-hover/header-info:text-white group-hover/header-info:underline underline-offset-2" : ""
+                  onOpenDetails ? "group-hover/header-info:text-white group-hover/header-info:underline underline-offset-2" : ""
                 }`}>
                   {activeChannelName}
                 </h3>
@@ -251,11 +247,11 @@ export default function ChatWindow({
               </div>
 
               <p className={`truncate text-xs text-v2-neutral-400 mt-0.5 transition-colors ${
-                activeChannelType === "group" && onOpenDetails ? "group-hover/header-info:text-v2-neutral-300" : ""
+                onOpenDetails ? "group-hover/header-info:text-v2-neutral-300" : ""
               }`}>
                 {activeChannelType === "group"
                   ? "Click to view group details & members"
-                  : "Encrypted direct discussion channel"}
+                  : "Click to view chat details & members"}
               </p>
             </div>
           </div>
@@ -311,13 +307,13 @@ export default function ChatWindow({
           </Button>
 
           {/* Details / Settings Button */}
-          {activeChannelType === "group" && onOpenDetails && (
+          {onOpenDetails && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={onOpenDetails}
-              title="Group Details"
+              title={activeChannelType === "group" ? "Group Details" : "Chat Details"}
               className="h-8.5 rounded-xl border border-v2-neutral-400/80 bg-v2-neutral-500/40 px-2.5 text-xs text-v2-neutral-200 shadow-xs transition-all hover:border-v2-neutral-300 hover:bg-v2-neutral-500 hover:text-v2-neutral-100 active:scale-[0.98] cursor-pointer"
             >
               <Info className="size-3.5" />

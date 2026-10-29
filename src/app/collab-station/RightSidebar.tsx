@@ -10,6 +10,7 @@ import {
   Search,
   MessageCircle,
   X,
+  Trash2,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { ChatChannel } from "./types";
@@ -22,6 +23,7 @@ interface RightSidebarProps {
   recentChats: ChatChannel[];
   onSelectChannel: (id: string) => void;
   onOpenNewChat: () => void;
+  onOpenDeleteChatForMe?: (channel: ChatChannel) => void;
 }
 
 type FilterTab = "all" | "direct" | "team" | "project" | "custom";
@@ -32,6 +34,7 @@ export default function RightSidebar({
   recentChats,
   onSelectChannel,
   onOpenNewChat,
+  onOpenDeleteChatForMe,
 }: RightSidebarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -340,9 +343,24 @@ export default function RightSidebar({
                       </h4>
                       {getChannelBadge(channel)}
                     </div>
-                    <span className="text-[10px] text-v2-neutral-400 font-medium shrink-0">
-                      {channel.time}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="text-[10px] text-v2-neutral-400 font-medium">
+                        {channel.time}
+                      </span>
+                      {onOpenDeleteChatForMe && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenDeleteChatForMe(channel);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-v2-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                          title="Delete chat for me"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 mt-1">

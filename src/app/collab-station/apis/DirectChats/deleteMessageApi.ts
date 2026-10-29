@@ -1,20 +1,21 @@
 import { CookieManager } from "@/lib/cookieManager";
 
-const baseUrl = process.env.NEXT_PUBLIC_BACKEND_BASE_URL;
-
 export async function deleteMessageApi(messageId: string) {
   const token = await CookieManager("get", "access-token");
 
-  const res = await fetch(`${baseUrl}/chat/messages/${messageId}`, {
+  const res = await fetch(`/api/chat/messages/${encodeURIComponent(messageId)}`, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${token ?? ""}`,
+      "Content-Type": "application/json",
     },
   });
 
   if (!res.ok) {
-    throw new Error("Failed to delete message");
+    const errorData = await res.json().catch(() => null);
+    const msg = errorData?.message || "Failed to delete message";
+    throw new Error(msg);
   }
 
-  return res.json();
+  return res.json().catch(() => ({ success: true }));
 }

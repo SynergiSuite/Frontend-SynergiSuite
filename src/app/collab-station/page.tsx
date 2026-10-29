@@ -19,9 +19,10 @@ import { toast } from "sonner";
 import { authHeaders, backendBaseUrl, getAccessToken, readTokenUser, TokenUser, UserId } from "./helpers/mainHelper";
 import { formatMissedCallMessage, getMissedCallPreview } from "./helpers/callHelperFunctions";
 import { formatChatTime, formatMessage, formatMessagePreview, RawChatMessage } from "./helpers/chatHelperFunctions";
-import { ChatDetailsModal, EditChatModal, DeleteChatModal, AddMemberModal } from "./popupModels";
+import { ChatDetailsModal, EditChatModal, DeleteChatModal, AddMemberModal, DeleteChatForMeModal } from "./popupModels";
 import { playNotificationSound as triggerGlobalSound } from "@/lib/soundUtils";
 import { getChatUploadUrlApi } from "./apis/getChatUploadUrlApi";
+import { deleteGroupChatApi } from "./apis/deleteGroupChatApi";
 import SharedItemThreadPanel from "./components/SharedItemThreadPanel";
 import CreateMeetingModal from "../meetings/CreateMeetingModal";
 import MeetingRoomModal from "../meetings/MeetingRoomModal";
@@ -69,6 +70,7 @@ export default function CollabStationPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
+  const [chatToDeleteForMe, setChatToDeleteForMe] = useState<ChatChannel | null>(null);
   const [rawGroupsDataMap, setRawGroupsDataMap] = useState<Record<string, any>>({});
 
   // Group Meetings State
@@ -201,6 +203,9 @@ export default function CollabStationPage() {
               membersCount: c.members?.length || 0,
               missedCalls,
               missedCallCount: c.missedCallCount ?? missedCalls.length,
+              projectId: c.projectId,
+              projectName: c.projectName,
+              description: c.description,
             };
           });
 
@@ -517,9 +522,36 @@ export default function CollabStationPage() {
         socket.emit("message:delete", { messageId, groupId: activeChannel.id });
       }
 
-      deleteMessageApi(messageId).catch((err) => console.log("Fallback delete message failed:", err));
-    } catch (err) {
+      await deleteMessageApi(messageId);
+      toast.success("Message deleted");
+    } catch (err: unknown) {
       console.log("Delete message failed:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete message");
+    }
+  };
+
+  const handleDeleteChatForMe = async (groupId: string) => {
+    try {
+      await deleteGroupChatApi(groupId);
+      toast.success("Chat deleted for you");
+
+      // Clear the local messages for this group
+      setThreads((prev) => ({
+        ...prev,
+        [groupId]: [],
+      }));
+
+      // Reset last message display and unread count in channels list
+      setGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, lastMessage: "", time: "", unreadCount: 0 } : g))
+      );
+      setRecentChats((prev) =>
+        prev.map((c) => (c.id === groupId ? { ...c, lastMessage: "", time: "", unreadCount: 0 } : c))
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to delete chat";
+      toast.error(msg);
+      throw err;
     }
   };
 
@@ -732,6 +764,7 @@ function getMeetingId(m: any): string {
             recentChats={recentChats}
             onSelectChannel={handleSelectChannel}
             onOpenNewChat={() => setIsNewChatOpen(true)}
+            onOpenDeleteChatForMe={(channel) => setChatToDeleteForMe(channel)}
           />
         </div>
 
@@ -823,6 +856,10 @@ function getMeetingId(m: any): string {
         onOpenAddMember={() => {
           setIsAddMemberModalOpen(true);
         }}
+        onOpenDeleteChatForMe={() => {
+          setIsDetailsModalOpen(false);
+          setChatToDeleteForMe(activeChannel || null);
+        }}
         onMemberRemoved={(removedId) => {
           setRawGroupsDataMap((prev) => {
             const currentRaw = prev[activeChannelId];
@@ -889,6 +926,14 @@ function getMeetingId(m: any): string {
           setIsEditModalOpen(false);
           setIsDeleteModalOpen(false);
         }}
+      />
+
+      {/* Delete Chat For Me Popup */}
+      <DeleteChatForMeModal
+        isOpen={Boolean(chatToDeleteForMe)}
+        onClose={() => setChatToDeleteForMe(null)}
+        channel={chatToDeleteForMe}
+        onConfirm={handleDeleteChatForMe}
       />
 
       {/* Add Group Member Popup */}

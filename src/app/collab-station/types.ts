@@ -13,6 +13,9 @@ export interface ChatChannel {
   membersCount?: number;
   missedCalls?: CallDto[];
   missedCallCount?: number;
+  projectId?: string;
+  projectName?: string;
+  description?: string;
 }
 
 export interface Attachment {
